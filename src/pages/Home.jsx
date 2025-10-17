@@ -3,7 +3,7 @@ import Landing from "./Landing";
 import { AuthProvider } from "../libs/AuthProvider";
 import Teacher from "./teacher/dashboard";
 import AddStudent from "./teacher/schoolmanagement/addStudent";
-import Dashboard from "./student/dashboard";
+import Dashboard from "./TakeExam/pages/exampage";
 import ViewStudent from "./teacher/schoolmanagement/Liststudent";
 import EditStudent from "./teacher/schoolmanagement/editStudent";
 import AddQuestion from "./teacher/questionbank/addQuestion";
@@ -20,7 +20,7 @@ const Home = () => {
         <Route path="/" element={<Landing />} />
 
         {/* student routes */}
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/take_exam" element={<Dashboard />} />
 
         <Route path="/teacher_dashboard" element={<Teacher />} />
         <Route path="/teacher/add_student" element={<AddStudent />} />

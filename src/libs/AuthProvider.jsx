@@ -1,5 +1,6 @@
 import { useContext, useEffect, useState, createContext } from "react";
 import { getSingleUser } from "../api-endpoint/auth/auths";
+import { logoutUser } from "../api-endpoint/auth/auths";
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -12,6 +13,18 @@ export const AuthProvider = ({ children }) => {
 
   const [loading, setLoading] = useState(false);
 
+  const logout = async () => {
+    try {
+      await logoutUser();
+    } catch (error) {
+      console.error("Backend logout failed:", error);
+    } finally {
+      setUser(null);
+      localStorage.removeItem("USER_KEY");
+
+      navigate("/");
+    }
+  };
   // const fetchUser = async () => {
   //   try {
   //     setLoading(true);
@@ -35,6 +48,7 @@ export const AuthProvider = ({ children }) => {
         user,
         setUser,
         loading,
+        logout,
         // fetchUser
       }}
     >

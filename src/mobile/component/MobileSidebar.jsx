@@ -46,7 +46,7 @@ const MobileSideBar = ({ onClose }) => {
         </Text>
       </Flex>
 
-      <Flex direction="column" mt={8} p={4}>
+      <Flex direction="column" mt={4} p={4}>
         <NavLink to="/teacher_dashboard" style={{ textDecoration: "none" }}>
           {({ isActive }) => (
             <Flex
@@ -126,7 +126,7 @@ const MobileSideBar = ({ onClose }) => {
           )}
         </NavLink>
 
-        <NavLink to="/teacher/ed" style={{ textDecoration: "none" }}>
+        {/* <NavLink to="/teacher/ed" style={{ textDecoration: "none" }}>
           {({ isActive }) => (
             <Flex
               gap={2}
@@ -140,7 +140,7 @@ const MobileSideBar = ({ onClose }) => {
               <Text>Import questions from Excel/CSV</Text>
             </Flex>
           )}
-        </NavLink>
+        </NavLink> */}
 
         <NavLink to="/teacher/edit" style={{ textDecoration: "none" }}>
           {({ isActive }) => (

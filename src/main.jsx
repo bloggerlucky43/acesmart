@@ -9,6 +9,7 @@ import {
   defaultConfig,
   defineConfig,
 } from "@chakra-ui/react";
+import { ExamProvider } from "./pages/TakeExam/component/ExamContext.jsx";
 
 const config = defineConfig({
   theme: {
@@ -32,7 +33,9 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <ChakraProvider value={system}>
-        <App />
+        <ExamProvider>
+          <App />
+        </ExamProvider>
       </ChakraProvider>
     </BrowserRouter>
   </StrictMode>

@@ -1,13 +1,10 @@
 import { Box } from "@chakra-ui/react";
-import Navbar from "../components/student/navbar";
+
 import Sidebar from "../components/student/sidebar";
 const StudentLayout = ({ children }) => {
   return (
-    <Box>
-      <Box>
-        <Sidebar />
-        <Navbar />
-      </Box>
+    <Box bg="gray.200" minH="100vh">
+      <Box>{/* <Sidebar /> */}</Box>
       <Box>{children}</Box>
     </Box>
   );

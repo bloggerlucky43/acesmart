@@ -62,9 +62,19 @@ export const getSingleUser = async () => {
     }
     return data;
   } catch (error) {
-    toaster.create({
-      title: `${error.response?.data?.error} || "Registration failed"`,
-      type: "error",
-    });
+    console.error("Error validating user", error);
+  }
+};
+
+export const logoutUser = async () => {
+  try {
+    const response = await api.post(
+      "/auth/logout",
+      {},
+      { withCredentials: true }
+    );
+    toaster.success({ title: "Logged out successfully" });
+  } catch (error) {
+    console.error(error);
   }
 };

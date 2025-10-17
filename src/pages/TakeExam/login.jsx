@@ -14,21 +14,26 @@ import {
 import { PasswordInput } from "../../components/ui/password-input";
 import { FaBrain } from "react-icons/fa";
 import { useState } from "react";
+import { toaster } from "../../components/ui/toaster";
 const ExamLoginPage = () => {
   const [examDetail, setExamDetail] = useState({ studentId: "", password: "" });
   const [loading, setLoading] = useState(false);
   const { id } = useParams();
-  console.log(id);
-  const isMobile = useBreakpointValue({ base: true, lg: false });
+
   console.log(examDetail);
   const handleSubmit = (e) => {
     e.preventDefault();
-    setLoading(true);
 
-    if (!examDetail.password && !examDetail.studentId && !id) {
-      setLoading(false);
+    if (window.innerWidth < 768) {
+      toaster.warning({ title: "Exam not allowed on small devices" });
       return;
     }
+
+    if (!examDetail.password && !examDetail.studentId && !id) {
+      toaster.error({ title: "Exam key or student ID is invalid" });
+      return;
+    }
+    setLoading(true);
   };
 
   return (
@@ -39,7 +44,8 @@ const ExamLoginPage = () => {
         h="100vh"
         align="center"
         justify="center"
-        justifySelf="center">
+        justifySelf="center"
+      >
         <Flex
           direction="column"
           justify="center"
@@ -49,7 +55,8 @@ const ExamLoginPage = () => {
           w="80%"
           p={2}
           borderRadius="lg"
-          boxShadow="2xl">
+          boxShadow="2xl"
+        >
           <Flex align="center" gap={2}>
             <Icon
               as={FaBrain}
@@ -118,7 +125,8 @@ const ExamLoginPage = () => {
                   borderRadius="md"
                   loading={loading}
                   loadingText="Authenticating..."
-                  spinnerPlacement="start">
+                  spinnerPlacement="start"
+                >
                   Login
                 </Button>
               </Box>
