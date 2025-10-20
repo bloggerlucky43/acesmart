@@ -1,10 +1,13 @@
 import { Box, Flex, Text, Icon, Button } from "@chakra-ui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FaClock, FaPen, FaUser } from "react-icons/fa";
 import SubmitModal from "./SubmitModal";
+import { useExam } from "./ExamContext";
 
 export default function ExamTopBar() {
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+  const { formatTime } = useExam();
+
   return (
     <>
       <Flex
@@ -38,7 +41,7 @@ export default function ExamTopBar() {
             <Text>Remaining Time</Text>
           </Flex>
           <Text color="danger" fontSize="2xl">
-            00:58:00
+            {formatTime()}
           </Text>
           <Flex mt={2} gap={2}>
             <Button size="sm" variant="outline">

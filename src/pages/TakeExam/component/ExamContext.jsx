@@ -1,5 +1,5 @@
 // ExamContext.jsx
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 // Simulated exam data with correct answers
 const examData = {
@@ -61,6 +61,20 @@ export const ExamProvider = ({ children }) => {
   const [answers, setAnswers] = useState({});
   const [scores, setScores] = useState({});
   const [totalScore, setTotalScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(60 * 60);
+
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      submitExam();
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timeLeft]);
 
   console.log("Total score", totalScore);
 
@@ -114,6 +128,18 @@ export const ExamProvider = ({ children }) => {
     return { sectionScores: newScores, total: roundedOverall };
   };
 
+  const formatTime = () => {
+    const hours = Math.floor(timeLeft / 3600);
+    const minutes = Math.floor((timeLeft % 3600) / 60);
+    const seconds = timeLeft % 60;
+
+    return [
+      hours.toString().padStart(2, "0"),
+      minutes.toString().padStart(2, "0"),
+      seconds.toString().padStart(2, "0"),
+    ].join(":");
+  };
+
   return (
     <ExamContext.Provider
       value={{
@@ -123,6 +149,8 @@ export const ExamProvider = ({ children }) => {
         totalScore,
         saveAnswer,
         submitExam,
+        timeLeft,
+        formatTime,
       }}
     >
       {children}

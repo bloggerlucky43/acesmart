@@ -13,6 +13,7 @@ import AllExams from "./teacher/exammanagement/AllExams";
 import EditSettings from "./teacher/exammanagement/examSettings";
 import ExamQuestionPage from "./teacher/exammanagement/examquestionpage";
 import { Toaster } from "../components/ui/toaster";
+import ScoreModal from "./TakeExam/component/ScoreModal";
 const Home = () => {
   return (
     <AuthProvider>
@@ -21,7 +22,7 @@ const Home = () => {
 
         {/* student routes */}
         <Route path="/take_exam" element={<Dashboard />} />
-
+        <Route path="/student_result" element={<ScoreModal />} />
         <Route path="/teacher_dashboard" element={<Teacher />} />
         <Route path="/teacher/add_student" element={<AddStudent />} />
         <Route path="/teacher/view" element={<ViewStudent />} />
