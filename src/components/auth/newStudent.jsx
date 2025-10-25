@@ -16,11 +16,7 @@ const NewStudent = () => {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
-    email: "",
-    role: "student",
-    school: "Adeleke",
-    class: "",
-    department: "",
+    studentemail: "",
   });
 
   return (
@@ -31,8 +27,10 @@ const NewStudent = () => {
       justifySelf={"center"}
       w="70%"
       p={4}
+      minH="100vh"
       color="gray.900"
-      bg="gray.200">
+      bg="gray.200"
+    >
       <Fieldset.Root size="lg" maxW="4xl">
         <form>
           <Box>
@@ -52,7 +50,7 @@ const NewStudent = () => {
                 </Field.Label>
                 <Input
                   name="name"
-                  placeholder="Enter your l name"
+                  placeholder="Enter your firstname"
                   value={form.firstName}
                   borderColor="gray.800"
                   _focus={{ outline: "none", borderColor: "primary" }}
@@ -69,7 +67,7 @@ const NewStudent = () => {
                 </Field.Label>
                 <Input
                   name="lastname"
-                  placeholder="Enter your name"
+                  placeholder="Enter your surname"
                   value={form.lastName}
                   borderColor="gray.800"
                   _focus={{ outline: "none", borderColor: "primary" }}
@@ -81,115 +79,18 @@ const NewStudent = () => {
               </Field.Root>
               <Field.Root required>
                 <Field.Label>
-                  Email
+                  Student Email
                   <Field.RequiredIndicator />
                 </Field.Label>
                 <Input
-                  name="email"
-                  placeholder="Enter your email address"
                   type="email"
-                  value={form.email}
-                  borderColor="gray.800"
-                  _focus={{ outline: "none", borderColor: "primary" }}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
-                />
-              </Field.Root>
-              <Field.Root required>
-                <Field.Label>
-                  Username
-                  <Field.RequiredIndicator />
-                </Field.Label>
-                <Input
-                  name="username"
-                  placeholder="Enter your username"
-                  type="text"
-                  value={form.username}
+                  name="email"
+                  placeholder="e.g example@gmail.com"
+                  value={form.studentemail}
                   borderColor="gray.800"
                   _focus={{ outline: "none", borderColor: "primary" }}
                   onChange={(e) =>
-                    setForm({ ...form, username: e.target.value })
-                  }
-                  required
-                />
-              </Field.Root>
-              <Field.Root required>
-                <Field.Label>
-                  Role
-                  <Field.RequiredIndicator />
-                </Field.Label>
-                <Input
-                  name="role"
-                  type="text"
-                  value={form.role}
-                  borderColor="gray.800"
-                  disabled
-                />
-              </Field.Root>
-
-              <Field.Root required>
-                <Field.Label>
-                  Department
-                  <Field.RequiredIndicator />
-                </Field.Label>
-                <NativeSelect.Root
-                  size="sm"
-                  value={form.value}
-                  onChange={(e) =>
-                    setForm({ ...form, department: e.target.value })
-                  }>
-                  <NativeSelect.Field
-                    borderColor="gray.800"
-                    _focus={{ outline: "none", borderColor: "primary" }}>
-                    <option value="science">Science</option>
-                    <option value="arts">Arts</option>
-                    <option value="commercial">Commercial</option>
-                  </NativeSelect.Field>
-                  <NativeSelect.Indicator />
-                </NativeSelect.Root>
-              </Field.Root>
-              <Field.Root required>
-                <Field.Label>
-                  Class
-                  <Field.RequiredIndicator />
-                </Field.Label>
-                <Input
-                  name="class"
-                  placeholder="Enter your current class"
-                  type="text"
-                  value={form.class}
-                  borderColor="gray.800"
-                  _focus={{ outline: "none", borderColor: "primary" }}
-                  onChange={(e) => setForm({ ...form, class: e.target.value })}
-                  required
-                />
-              </Field.Root>
-
-              <Field.Root required>
-                <Field.Label>
-                  Password
-                  <Field.RequiredIndicator />
-                </Field.Label>
-                <PasswordInput
-                  value={form.password}
-                  borderColor="gray.800"
-                  _focus={{ outline: "none", borderColor: "primary" }}
-                  onChange={(e) =>
-                    setForm({ ...form, password: e.target.value })
-                  }
-                />
-              </Field.Root>
-              <Field.Root required>
-                <Field.Label>
-                  Confirm Password
-                  <Field.RequiredIndicator />
-                </Field.Label>
-                <PasswordInput
-                  value={form.confirmPassword}
-                  borderColor="gray.800"
-                  _focus={{ outline: "none", borderColor: "primary" }}
-                  onChange={(e) =>
-                    setForm({ ...form, confirmPassword: e.target.value })
+                    setForm({ ...form, studentemail: e.target.value })
                   }
                   required
                 />
