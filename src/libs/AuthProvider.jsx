@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState, createContext } from "react";
 import { getSingleUser } from "../api-endpoint/auth/auths";
 import { logoutUser } from "../api-endpoint/auth/auths";
+import { useNavigate } from "react-router-dom";
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -10,7 +11,7 @@ export const AuthProvider = ({ children }) => {
   });
 
   console.log("user at authprovider", user);
-
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   const logout = async () => {
@@ -25,23 +26,32 @@ export const AuthProvider = ({ children }) => {
       navigate("/");
     }
   };
-  // const fetchUser = async () => {
-  //   try {
-  //     setLoading(true);
-  //     const res = await getSingleUser();
-  //     console.log("Ath authporvider", res);
+  const fetchUser = async () => {
+    try {
+      setLoading(true);
+      const res = await getSingleUser();
+      console.log("Ath authporvider", res);
 
-  //     setUser(res.data);
-  //   } catch (error) {
-  //     setUser(null);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+      setUser(res.data);
+    } catch (error) {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // useEffect(() => {
-  //   fetchUser();
-  // }, []);
+  useEffect(() => {
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    const logoutHandler = () => {
+      setUser(null);
+    };
+
+    window.addEventListener("force-logout", logoutHandler);
+    return () => window.removeEventListener("force-logout", logoutHandler);
+  }, []);
   return (
     <AuthContext.Provider
       value={{
@@ -49,7 +59,7 @@ export const AuthProvider = ({ children }) => {
         setUser,
         loading,
         logout,
-        // fetchUser
+        fetchUser,
       }}
     >
       {children}

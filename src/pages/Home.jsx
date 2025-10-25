@@ -14,29 +14,40 @@ import EditSettings from "./teacher/exammanagement/examSettings";
 import ExamQuestionPage from "./teacher/exammanagement/examquestionpage";
 import { Toaster } from "../components/ui/toaster";
 import ScoreModal from "./TakeExam/component/ScoreModal";
+import { ExamProvider } from "./TakeExam/component/ExamContext";
 const Home = () => {
   return (
-    <AuthProvider>
-      <Routes>
-        <Route path="/" element={<Landing />} />
+    <>
+      <ExamProvider>
+        <Routes>
+          <Route path="/take_exam" element={<Dashboard />} />
+          <Route path="/student_result" element={<ScoreModal />} />
+        </Routes>
+      </ExamProvider>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Landing />} />
 
-        {/* student routes */}
-        <Route path="/take_exam" element={<Dashboard />} />
-        <Route path="/student_result" element={<ScoreModal />} />
-        <Route path="/teacher_dashboard" element={<Teacher />} />
-        <Route path="/teacher/add_student" element={<AddStudent />} />
-        <Route path="/teacher/view" element={<ViewStudent />} />
-        <Route path="/teacher/edit" element={<EditStudent />} />
-        <Route path="/teacher/add_questions" element={<AddQuestion />} />
-        <Route path="/teacher/create_exam" element={<CreateExam />} />
-        <Route path="/teacher/exams" element={<AllExams />} />
-        <Route path="/teacher/exams/edit" element={<EditSettings />} />
-        <Route path="/teacher/exam/questions" element={<ExamQuestionPage />} />
-        {/* student take exam */}
-        <Route path="/school/exam/:id" element={<ExamLoginPage />} />
-      </Routes>
-      <Toaster />
-    </AuthProvider>
+          {/* student routes */}
+
+          <Route path="/teacher_dashboard" element={<Teacher />} />
+          <Route path="/teacher/add_student" element={<AddStudent />} />
+          <Route path="/teacher/view" element={<ViewStudent />} />
+          <Route path="/teacher/edit" element={<EditStudent />} />
+          <Route path="/teacher/add_questions" element={<AddQuestion />} />
+          <Route path="/teacher/create_exam" element={<CreateExam />} />
+          <Route path="/teacher/exams" element={<AllExams />} />
+          <Route path="/teacher/exams/edit" element={<EditSettings />} />
+          <Route
+            path="/teacher/exam/questions"
+            element={<ExamQuestionPage />}
+          />
+          {/* student take exam */}
+          <Route path="/school/exam/:id" element={<ExamLoginPage />} />
+        </Routes>
+        <Toaster />
+      </AuthProvider>
+    </>
   );
 };
 

@@ -76,7 +76,7 @@ export const ExamProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [timeLeft]);
 
-  console.log("Total score", totalScore);
+  // console.log("Total score", totalScore);
 
   const saveAnswer = (section, qid, value) => {
     setAnswers((prev) => ({

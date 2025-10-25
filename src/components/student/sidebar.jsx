@@ -40,7 +40,8 @@ const Sidebar = () => {
       left={0}
       borderRight="solid 2px"
       borderColor="primary"
-      w="20%">
+      w="20%"
+    >
       <Flex gap={2} align="center" justify="center" mt={2}>
         <Icon
           as={FaBrain}
@@ -63,7 +64,8 @@ const Sidebar = () => {
               align="center"
               cursor="pointer"
               color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}>
+              _hover={{ color: "purple.400" }}
+            >
               <Icon as={FaTachometerAlt} boxSize={4} />
               <Text>Dashboard</Text>
             </Flex>
@@ -84,14 +86,16 @@ const Sidebar = () => {
             <VStack align="start" pl={6} mt={2} spacing={2}>
               <NavLink
                 to="/teacher/add_student"
-                style={{ textDecoration: "none" }}>
+                style={{ textDecoration: "none" }}
+              >
                 {({ isActive }) => (
                   <Flex
                     gap={2}
                     align="center"
                     cursor="pointer"
                     color={isActive ? "primary" : "black"}
-                    _hover={{ color: "purple.400" }}>
+                    _hover={{ color: "purple.400" }}
+                  >
                     <Icon as={FaUserPlus} boxSize={4} />
                     <Text>Add Students</Text>
                   </Flex>
@@ -105,7 +109,8 @@ const Sidebar = () => {
                     align="center"
                     cursor="pointer"
                     color={isActive ? "primary" : "black"}
-                    _hover={{ color: "purple.400" }}>
+                    _hover={{ color: "purple.400" }}
+                  >
                     <Icon as={FaUserEdit} boxSize={4} />
                     <Text>Edit Student</Text>
                   </Flex>
@@ -119,7 +124,8 @@ const Sidebar = () => {
                     align="center"
                     cursor="pointer"
                     color={isActive ? "primary" : "black"}
-                    _hover={{ color: "purple.400" }}>
+                    _hover={{ color: "purple.400" }}
+                  >
                     <Icon as={FaUsers} boxSize={4} />
                     <Text>View Students</Text>
                   </Flex>
@@ -128,14 +134,16 @@ const Sidebar = () => {
 
               <NavLink
                 to="/teacher/student_settings"
-                style={{ textDecoration: "none" }}>
+                style={{ textDecoration: "none" }}
+              >
                 {({ isActive }) => (
                   <Flex
                     gap={2}
                     align="center"
                     cursor="pointer"
                     color={isActive ? "primary" : "black"}
-                    _hover={{ color: "purple.400" }}>
+                    _hover={{ color: "purple.400" }}
+                  >
                     <Icon as={FaCog} boxSize={4} />
                     <Text>Settings</Text>
                   </Flex>
@@ -167,7 +175,8 @@ const Sidebar = () => {
                     align="center"
                     cursor="pointer"
                     color={isActive ? "primary" : "black"}
-                    _hover={{ color: "purple.400" }}>
+                    _hover={{ color: "purple.400" }}
+                  >
                     <Icon as={FaPlusSquare} boxSize={4} />
                     <Text>Add Questions</Text>
                   </Flex>
@@ -181,7 +190,8 @@ const Sidebar = () => {
                     align="center"
                     cursor="pointer"
                     color={isActive ? "primary" : "black"}
-                    _hover={{ color: "purple.400" }}>
+                    _hover={{ color: "purple.400" }}
+                  >
                     <Icon as={FaFileImport} boxSize={4} />
                     <Text>Import questions from Excel/CSV</Text>
                   </Flex>
@@ -195,7 +205,8 @@ const Sidebar = () => {
                     align="center"
                     cursor="pointer"
                     color={isActive ? "primary" : "black"}
-                    _hover={{ color: "purple.400" }}>
+                    _hover={{ color: "purple.400" }}
+                  >
                     <Icon as={FaEdit} boxSize={4} />
                     <Text>Preview and edit questions</Text>
                   </Flex>
@@ -227,7 +238,8 @@ const Sidebar = () => {
                     align="center"
                     cursor="pointer"
                     color={isActive ? "primary" : "black"}
-                    _hover={{ color: "purple.400" }}>
+                    _hover={{ color: "purple.400" }}
+                  >
                     <Icon as={FaFileAlt} boxSize={4} />
                     <Text>Create new exams</Text>
                   </Flex>
@@ -241,7 +253,8 @@ const Sidebar = () => {
                     align="center"
                     cursor="pointer"
                     color={isActive ? "primary" : "black"}
-                    _hover={{ color: "purple.400" }}>
+                    _hover={{ color: "purple.400" }}
+                  >
                     <Icon as={FaFileAlt} boxSize={4} />
                     <Text>Create new exams</Text>
                   </Flex>
@@ -255,7 +268,8 @@ const Sidebar = () => {
                     align="center"
                     cursor="pointer"
                     color={isActive ? "primary" : "black"}
-                    _hover={{ color: "purple.400" }}>
+                    _hover={{ color: "purple.400" }}
+                  >
                     <Icon as={FaCog} boxSize={4} /> <Text>Exam settings</Text>
                   </Flex>
                 )}
@@ -283,7 +297,8 @@ const Sidebar = () => {
                     align="center"
                     cursor="pointer"
                     color={isActive ? "primary" : "black"}
-                    _hover={{ color: "purple.400" }}>
+                    _hover={{ color: "purple.400" }}
+                  >
                     <Icon as={FaPoll} boxSize={4} />
                     <Text>View exam results</Text>
                   </Flex>
@@ -297,7 +312,8 @@ const Sidebar = () => {
                     align="center"
                     cursor="pointer"
                     color={isActive ? "primary" : "black"}
-                    _hover={{ color: "purple.400" }}>
+                    _hover={{ color: "purple.400" }}
+                  >
                     <Icon as={FaFileExport} boxSize={4} />
                     <Text>Export results</Text>
                   </Flex>
@@ -311,7 +327,8 @@ const Sidebar = () => {
                     align="center"
                     cursor="pointer"
                     color={isActive ? "primary" : "black"}
-                    _hover={{ color: "purple.400" }}>
+                    _hover={{ color: "purple.400" }}
+                  >
                     <Icon as={FaChartLine} boxSize={4} />
                     <Text>Student Performance</Text>
                   </Flex>
@@ -328,7 +345,8 @@ const Sidebar = () => {
               align="center"
               cursor="pointer"
               color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}>
+              _hover={{ color: "purple.400" }}
+            >
               <Icon as={FaCogs} boxSize={4} />
               <Text>Settings</Text>
             </Flex>

@@ -16,8 +16,9 @@ import { useNavigate } from "react-router-dom";
 export default function AddExam() {
   const [subject, setSubject] = useState("");
   const [year, setYear] = useState("");
+  const [selectedQuestionsIds, setSelectedQuestionsIds] = useState([]);
   const [questions, setQuestions] = useState([]);
-  const [selectedQuestions, setSelectedQuestions] = useState([]);
+  const [sections, setSections] = useState([]);
   const [examForm, setExamForm] = useState({
     examTitle: "",
     duration: "",
@@ -28,7 +29,8 @@ export default function AddExam() {
   const navigate = useNavigate();
 
   const fetchQuestions = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+
     if (!subject) {
       toaster.warning({
         title: "Subject is missing",
@@ -43,6 +45,7 @@ export default function AddExam() {
 
       if (res.success && res.data) {
         setQuestions(res.data);
+        setSelectedQuestionsIds([]);
         localStorage.setItem("QUES_TION", JSON.stringify(res.data));
         toaster.success({
           title: "Questions fetched successfully",
@@ -65,67 +68,108 @@ export default function AddExam() {
     }
   };
 
+  const toggleSelectQuestion = (qId) => {
+    setSelectedQuestionsIds((prev) =>
+      prev.includes(qId) ? prev.filter((id) => id !== qId) : [...prev, qId]
+    );
+  };
+
   const handleSelectAll = () => {
-    if (selectedQuestions.length === questions.length) {
-      // If all are selected, deselect all
-      setSelectedQuestions([]);
+    if (selectedQuestionsIds.length === questions.length) {
+      setSelectedQuestionsIds([]);
     } else {
-      // Otherwise select all
-      setSelectedQuestions(questions);
+      setSelectedQuestionsIds(questions);
     }
   };
 
-  const toggleSelectQuestion = (q) => {
-    if (selectedQuestions.some((item) => item.id === q.id)) {
-      setSelectedQuestions(
-        selectedQuestions.filter((item) => item.id !== q.id)
-      );
-    } else {
-      setSelectedQuestions([...selectedQuestions, q]);
+  const saveSection = () => {
+    if (!subject) {
+      toaster.create({
+        title: "Please enter a subject name",
+        type: "error",
+      });
+      return;
     }
-  };
 
-  const handleCreateExam = async (e) => {
-    e.preventDefault();
+    if (selectedQuestionsIds.length === 0) {
+      toaster.warning({
+        title: "Please select at least one question for this section",
+      });
+      return;
+    }
 
-    const examData = {
-      examTitle: examForm.examTitle,
-      duration: examForm.duration,
+    const selectedQuestions = questions.filter((q) =>
+      selectedQuestionsIds.includes(q.id).map((q) => ({
+        id: q.id,
+        question: q.questionText ?? q.question ?? q.questionText ?? `Q${q.id}`,
+        options: q.options ?? q.choices ?? q.opts ?? [],
+        correctAnswer: q.correctAnswer ?? q.answer ?? null,
+      }))
+    );
+
+    const newSection = {
+      section: subject,
+      year: year || null,
       questions: selectedQuestions,
     };
-    console.log("Exam Created:", examData);
 
-    if (!examData.duration) {
-      toaster.warning({ title: "Duration for exam is missing" });
-      setLoading(false);
-      return;
-    } else if (!examData.examTitle) {
-      toaster.warning({ title: "Exam title is missing" });
-      setLoading(false);
-      return;
-    } else if (examData.questions === 0) {
-      toaster.warning({
-        title: "No question selected",
-      });
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
+    setSections((prev) => [...prev, newSection]);
 
-    try {
-      localStorage.setItem("NEW_EXAM", JSON.stringify(examData));
-      const examDetails = localStorage.getItem("NEW_EXAM");
+    setSubject(""), setYear("");
+    setQuestions([]);
+    setSelectedQuestionsIds([]);
+    toaster.create({
+      title: `Section "${newSection.section}" saved`,
+      type: "success",
+    });
 
-      if (examDetails) {
-        navigate("/teacher/exams/edit");
+    const removeSection = (index) => {
+      setSections((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    const handleCreateExam = (e) => {
+      if (e && e.preventDefault) e.preventDefault();
+
+      // validations
+      if (!examForm.examTitle) {
+        showToast({ title: "Exam title is required", type: "warning" });
+        return;
       }
-    } catch (error) {
-      toaster.error({
-        title: "Something went wrong.Try again later.",
+      if (!examForm.duration) {
+        showToast({ title: "Duration is required", type: "warning" });
+        return;
+      }
+      if (!examForm.totalMarks || examForm.totalMarks <= 0) {
+        showToast({
+          title: "Total marks must be a positive number",
+          type: "warning",
+        });
+        return;
+      }
+      if (sections.length === 0) {
+        showToast({
+          title: "Please add at least one section to the exam",
+          type: "warning",
+        });
+        return;
+      }
+
+      const finalExam = {
+        examTitle: examForm.examTitle,
+        duration: Number(examForm.duration),
+        totalMarks: Number(examForm.totalMarks),
+        sections,
+      };
+
+      localStorage.setItem("NEW_EXAM", JSON.stringify(finalExam));
+      showToast({
+        title: "Exam created — continuing to editor",
+        type: "success",
       });
-    } finally {
-      setLoading(false);
-    }
+
+      // navigate to your edit page
+      navigate("/teacher/exams/edit");
+    };
   };
 
   return (
@@ -138,6 +182,9 @@ export default function AddExam() {
       minH="100vh"
       justifySelf="center"
     >
+      <Text fontSize="2xl" mb={2} mt={4} fontWeight={"bold"}>
+        Create Exam (multiple sections)
+      </Text>
       <Box p={4} boxShadow="md" borderRadius="md" bg="white">
         <Flex mt={6} mb={4}>
           <Field.Root required>
@@ -146,7 +193,7 @@ export default function AddExam() {
               <Field.RequiredIndicator />
             </Field.Label>
             <Input
-              placeholder="Enter exam title"
+              placeholder="Exam Title"
               borderColor="gray.500"
               _focus={{ borderColor: "primary" }}
               value={examForm.examTitle}
@@ -155,13 +202,13 @@ export default function AddExam() {
               }
             />
           </Field.Root>
-          <Field.Root required ml={4}>
+          <Field.Root required>
             <Field.Label>
               Duration (minutes) <Field.RequiredIndicator />
             </Field.Label>
             <Input
               type="number"
-              placeholder="e.g., 60"
+              placeholder="e.g. 60"
               borderColor="gray.500"
               _focus={{ borderColor: "primary" }}
               value={examForm.duration}
@@ -176,7 +223,7 @@ export default function AddExam() {
         </Flex>
 
         <Flex mb={4} align="center">
-          <Field.Root required mr={4}>
+          {/* <Field.Root required mr={4}>
             <Field.Label>
               Subject <Field.RequiredIndicator />
             </Field.Label>
@@ -186,8 +233,8 @@ export default function AddExam() {
               _focus={{ borderColor: "primary" }}
               onChange={(e) => setSubject(e.target.value)}
             />
-          </Field.Root>
-          <Field.Root required>
+          </Field.Root> */}
+          {/* <Field.Root required>
             <Field.Label>
               Year <Field.RequiredIndicator />
             </Field.Label>
@@ -197,15 +244,15 @@ export default function AddExam() {
               _focus={{ borderColor: "primary" }}
               onChange={(e) => setYear(e.target.value)}
             />
-          </Field.Root>
+          </Field.Root> */}
 
-          <Field.Root required ml={4}>
+          <Field.Root required>
             <Field.Label>
               Total Marks <Field.RequiredIndicator />
             </Field.Label>
             <Input
               type="number"
-              placeholder="e.g JAMB=400, WAEC=100"
+              placeholder="e.g Total Marks (e.g., 400)"
               borderColor="gray.500"
               value={examForm.totalMarks}
               onChange={(e) =>
@@ -215,29 +262,78 @@ export default function AddExam() {
           </Field.Root>
         </Flex>
 
-        <Button
-          onClick={fetchQuestions}
-          loading={loading}
-          spinnerPlacement="center"
-          bg="secondary"
-          mb={4}
-        >
-          Fetch Questions
-        </Button>
+        {/* current section builder */}
+        <Box mb={6}>
+          <Text fontSize={"lg"} fontWeight={"semibold"} mb={2}>
+            Add Section (subject)
+          </Text>
+
+          <Flex gap={3} mb={3} wrap="wrap" align="center">
+            <Field.Root required>
+              <Field.Label>
+                Subject <Field.RequiredIndicator />
+              </Field.Label>
+              <Input
+                placeholder="Subject  (e.g., English)"
+                value={subject}
+                borderColor="gray.500"
+                _focus={{ borderColor: "primary" }}
+                onChange={(e) => setSubject(e.target.value)}
+                w="260px"
+              />
+            </Field.Root>
+            <Field.Root required>
+              <Field.Label>
+                Year <Field.RequiredIndicator />
+              </Field.Label>
+              <Input
+                placeholder="Subject  (e.g., English)"
+                value={year}
+                borderColor="gray.500"
+                _focus={{ borderColor: "primary" }}
+                onChange={(e) => setYear(e.target.value)}
+                w="140px"
+              />
+            </Field.Root>
+
+            <Button
+              onClick={fetchQuestions}
+              loading={loading}
+              spinnerPlacement="center"
+              bg="secondary"
+              mb={4}
+            >
+              Fetch Questions
+            </Button>
+
+            <Button onClick={handleSelectAll} variant="outline">
+              {selectedQuestionsIds.length === questions.length &&
+              questions.length > 0
+                ? "Deselect All"
+                : "Select All"}
+            </Button>
+
+            <Button colorScheme="green" onClick={saveSection} ml="auto">
+              Save Section
+            </Button>
+          </Flex>
+        </Box>
 
         {/* Questions List */}
         <Box mb={4}>
           <Text fontSize="lg" mb={2}>
-            Questions
+            Fetched Questions
           </Text>
           {questions.length === 0 ? (
-            <Text color="gray.500">No questions fetched yet.</Text>
+            <Text color="gray.500">
+              No questions fetched for this subject yet.
+            </Text>
           ) : (
             <List.Root>
               {questions.map((q) => (
                 <List.Item key={q.id}>
                   <Checkbox.Root
-                    checked={selectedQuestions.includes(q)}
+                    checked={setSelectedQuestionsIds.includes(q)}
                     onCheckedChange={() => toggleSelectQuestion(q)}
                   >
                     <Checkbox.HiddenInput />
@@ -249,23 +345,25 @@ export default function AddExam() {
             </List.Root>
           )}
         </Box>
-        <Button onClick={handleSelectAll} mb={4}>
-          {selectedQuestions.length === questions.length
-            ? "Deselect All"
-            : "Select All"}
-        </Button>
 
-        {/* Selected Preview */}
-        <Box mb={4}>
-          <Text fontSize="lg" mb={2}>
-            Selected {subject} Questions ({selectedQuestions.length})
-          </Text>
-          {selectedQuestions.length === 0 ? (
-            <Text color="gray.500">No questions selected.</Text>
+        {/* saved sections preview */}
+        <Box mb={6}>
+          <Flex align="center" justify="space-between" mb={2}>
+            <Text fontSize="lg" fontWeight="semibold">
+              Saved Sections ({sections.length})
+            </Text>
+            <Text>
+              Total Questions in Exam:
+              {sections.reduce((s, sec) => s + sec.questions.length, 0)}
+            </Text>
+          </Flex>
+
+          {sections.length === 0 ? (
+            <Text color="gray.500">No sections saved yet</Text>
           ) : (
             <Accordion.Root collapsible multiple>
-              {selectedQuestions.map((q) => (
-                <Accordion.Item key={q.id} value={q.id}>
+              {sections.map((sec, idx) => (
+                <Accordion.Item key={idx} value={idx}>
                   <Accordion.ItemTrigger>
                     <Checkbox.Root
                       checked={selectedQuestions.some(
@@ -295,11 +393,27 @@ export default function AddExam() {
             </Accordion.Root>
           )}
         </Box>
-
-        <Button onClick={handleCreateExam} bg="secondary">
-          Next
-        </Button>
       </Box>
+      <Flex gap={3} justify="flex-end">
+        <Button
+          variant="outline"
+          onClick={() => {
+            // reset full form
+            setExamForm({ examTitle: "", duration: "", totalMarks: 400 });
+            setSubject("");
+            setYear("");
+            setQuestions([]);
+            setSelectedQuestionIds([]);
+            setSections([]);
+          }}
+        >
+          Reset
+        </Button>
+
+        <Button colorScheme="blue" onClick={handleCreateExam}>
+          Create Exam
+        </Button>
+      </Flex>
     </Box>
   );
 }

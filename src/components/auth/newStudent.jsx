@@ -9,8 +9,9 @@ import {
   Flex,
   SimpleGrid,
 } from "@chakra-ui/react";
-import { PasswordInput } from "../ui/password-input";
 import { useState } from "react";
+import { addStudent } from "../../api-endpoint/student/students";
+import { toaster } from "../ui/toaster";
 
 const NewStudent = () => {
   const [form, setForm] = useState({
@@ -18,7 +19,26 @@ const NewStudent = () => {
     lastName: "",
     studentemail: "",
   });
+  const [loading, setLoading] = useState(false);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
+    if (!form.firstName || !form.lastName || !form.studentemail) {
+      toaster.warning({ title: "All fields are required" });
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const res = await addStudent(form);
+
+    console.log("at res", res);
+
+    if (res.success && res.message === "Student Added Successfully") {
+      toaster.create({ title: "Student added successfully", type: "success" });
+      setLoading(false);
+    }
+  };
   return (
     <Flex
       rounded="md"
@@ -32,7 +52,7 @@ const NewStudent = () => {
       bg="gray.200"
     >
       <Fieldset.Root size="lg" maxW="4xl">
-        <form>
+        <form onSubmit={handleSubmit}>
           <Box>
             <Text fontSize="xl" fontWeight="bold">
               Add New Student
@@ -97,7 +117,15 @@ const NewStudent = () => {
               </Field.Root>
             </SimpleGrid>
           </Fieldset.Content>
-          <Button type="submit" w="full" mt={2} borderRadius="md" bg="primary">
+          <Button
+            type="submit"
+            w="full"
+            mt={2}
+            borderRadius="md"
+            bg="primary"
+            loading={loading}
+            spinnerPlacement="center"
+          >
             Apply
           </Button>
         </form>

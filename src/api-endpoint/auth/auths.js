@@ -45,7 +45,6 @@ export const loginUser = async (form) => {
       title: `${error?.message} || "Registration failed"`,
       type: "error",
     });
-    throw new Error(error.response?.data?.error);
   }
 };
 

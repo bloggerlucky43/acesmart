@@ -33,9 +33,7 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <ChakraProvider value={system}>
-        <ExamProvider>
-          <App />
-        </ExamProvider>
+        <App />
       </ChakraProvider>
     </BrowserRouter>
   </StrictMode>
