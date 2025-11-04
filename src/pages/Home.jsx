@@ -15,11 +15,15 @@ import ExamQuestionPage from "./teacher/exammanagement/examquestionpage";
 import { Toaster } from "../components/ui/toaster";
 import ScoreModal from "./TakeExam/component/ScoreModal";
 import { ExamProvider } from "./TakeExam/component/ExamContext";
+import StartExam from "./TakeExam/startExam";
 const Home = () => {
   return (
     <>
       <ExamProvider>
         <Routes>
+          {/* student take exam */}
+          <Route path="/exam/:id" element={<ExamLoginPage />} />
+          <Route path="/ex/:id" element={<StartExam />} />
           <Route path="/take_exam" element={<Dashboard />} />
           <Route path="/student_result" element={<ScoreModal />} />
         </Routes>
@@ -42,8 +46,6 @@ const Home = () => {
             path="/teacher/exam/questions"
             element={<ExamQuestionPage />}
           />
-          {/* student take exam */}
-          <Route path="/school/exam/:id" element={<ExamLoginPage />} />
         </Routes>
         <Toaster />
       </AuthProvider>

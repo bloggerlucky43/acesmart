@@ -10,7 +10,7 @@ import {
   defineConfig,
 } from "@chakra-ui/react";
 import { ExamProvider } from "./pages/TakeExam/component/ExamContext.jsx";
-
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 const config = defineConfig({
   theme: {
     tokens: {
@@ -27,13 +27,17 @@ const config = defineConfig({
   },
 });
 
+const queryClient = new QueryClient();
+
 const system = createSystem(defaultConfig, config);
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <ChakraProvider value={system}>
-        <App />
+        <QueryClientProvider client={queryClient}>
+          <App />
+        </QueryClientProvider>
       </ChakraProvider>
     </BrowserRouter>
   </StrictMode>

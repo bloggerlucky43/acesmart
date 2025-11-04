@@ -14,7 +14,7 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toaster } from "../../ui/toaster";
-import { createExam, fetchExam } from "../../../api-endpoint/exam/exams";
+import { createExam } from "../../../api-endpoint/exam/exams";
 export default function EditPage() {
   const [loading, setLoading] = useState(false);
 
@@ -24,14 +24,13 @@ export default function EditPage() {
   const [examDetails, setExamDetails] = useState({
     title: "WAEC 2024",
     description: "This is a sample exam description.",
-    subject: "Mathematics",
+
     duration: 60,
     startDate: "",
     endDate: "",
     totalMarks: 100,
-    passMarks: 50,
     negativeMarking: false,
-    questions: [],
+    sections: [],
     id: examId || null,
   });
   const navigate = useNavigate();
@@ -42,23 +41,23 @@ export default function EditPage() {
       if (examId) {
         setLoading(true);
 
-        try {
-          const res = await fetchExam(examId);
-          if (res.success && res.data) {
-            setExamDetails(res.data);
-          } else {
-            toaster.warning({ title: res.message || "Exam not found" });
-            navigate("/teacher/exams");
-          }
-        } catch (error) {
-          console.error("Error fetching exam:", error);
-          toaster.error({
-            title: "Failed to load exam details. Try again later.",
-          });
-          navigate("/teacher/exams");
-        } finally {
-          setLoading(false);
-        }
+        // try {
+        //   const res = await fetchExam(examId);
+        //   if (res.success && res.data) {
+        //     setExamDetails(res.data);
+        //   } else {
+        //     toaster.warning({ title: res.message || "Exam not found" });
+        //     navigate("/teacher/exams");
+        //   }
+        // } catch (error) {
+        //   console.error("Error fetching exam:", error);
+        //   toaster.error({
+        //     title: "Failed to load exam details. Try again later.",
+        //   });
+        //   navigate("/teacher/exams");
+        // } finally {
+        //   setLoading(false);
+        // }
       } else {
         const storedData = localStorage.getItem("NEW_EXAM");
 
@@ -69,7 +68,8 @@ export default function EditPage() {
           ...prev,
           title: parsedData.examTitle,
           duration: parsedData.duration,
-          questions: parsedData.questions,
+          sections: parsedData.sections,
+          totalMarks: parsedData.totalMarks,
         }));
       }
     };
@@ -97,7 +97,7 @@ export default function EditPage() {
       toaster.error({ title: "Exam description is required" });
       setLoading(false);
       return;
-    } else if (examDetails.questions.length === 0) {
+    } else if (examDetails.sections.length === 0) {
       toaster.error({ title: "Exam question is empty" });
       setLoading(false);
       return;
@@ -182,19 +182,6 @@ export default function EditPage() {
               </Field.Root>
 
               <Field.Root>
-                <Field.Label>Subject/Course</Field.Label>
-                <Input
-                  placeholder="e.g Mathematics,All"
-                  value={examDetails.subject}
-                  onChange={(e) =>
-                    setExamDetails({ ...examDetails, subject: e.target.value })
-                  }
-                  borderColor="gray.500"
-                  _focus={{ borderColor: "primary" }}
-                />
-              </Field.Root>
-
-              <Field.Root>
                 <Field.Label>Duration (minutes) </Field.Label>
                 <NumberInput.Root
                   placeholder="Enter duration in minutes"
@@ -254,24 +241,6 @@ export default function EditPage() {
                       setExamDetails({
                         ...examDetails,
                         totalMarks: e.target.value,
-                      })
-                    }
-                    _focus={{ borderColor: "primary" }}
-                    borderColor="gray.500"
-                  />
-                </NumberInput.Root>
-              </Field.Root>
-
-              <Field.Root>
-                <Field.Label>Pass Marks</Field.Label>
-                <NumberInput.Root>
-                  <NumberInput.Control />
-                  <NumberInput.Input
-                    value={examDetails.passMarks}
-                    onChange={(e) =>
-                      setExamDetails({
-                        ...examDetails,
-                        passMarks: e.target.value,
                       })
                     }
                     _focus={{ borderColor: "primary" }}

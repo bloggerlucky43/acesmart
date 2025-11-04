@@ -1,6 +1,15 @@
 import { Box, Flex, Text, Table, Button } from "@chakra-ui/react";
 import { List } from "./constants/lists";
+import { useEffect } from "react";
+import { fetchStudent } from "../../api-endpoint/student/students";
+import { useQuery } from "@tanstack/react-query";
 const ListOfStudent = () => {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["students"],
+    queryFn: fetchStudent,
+  });
+
+  const students = data?.students || [];
   return (
     <Box
       bg="gray.200"
@@ -22,16 +31,13 @@ const ListOfStudent = () => {
             <Table.Header>
               <Table.Row bg="primary">
                 <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
-                  ID
-                </Table.ColumnHeader>
-                <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
                   Student ID
                 </Table.ColumnHeader>
                 <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
-                  Name
+                  First Name
                 </Table.ColumnHeader>
                 <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
-                  Class
+                  Last Name
                 </Table.ColumnHeader>
                 <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
                   Department
@@ -39,12 +45,11 @@ const ListOfStudent = () => {
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {List.map((l) => (
+              {students.map((l) => (
                 <Table.Row bg="white">
-                  <Table.Cell textAlign="center">{l.id}</Table.Cell>
-                  <Table.Cell textAlign="center">{l.studentID}</Table.Cell>
+                  <Table.Cell textAlign="center">{l.studentId}</Table.Cell>
                   <Table.Cell textAlign="center">{l.firstName}</Table.Cell>
-                  <Table.Cell textAlign="center">{l.class}</Table.Cell>
+                  <Table.Cell textAlign="center">{l.lastName}</Table.Cell>
                   <Table.Cell textAlign="center">{l.department}</Table.Cell>
                 </Table.Row>
               ))}

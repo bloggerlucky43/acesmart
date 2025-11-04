@@ -14,7 +14,7 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toaster } from "../../../components/ui/toaster";
-import { createExam, fetchExam } from "../../../api-endpoint/exam/exams";
+import { createExam } from "../../../api-endpoint/exam/exams";
 export default function MobileEditExamDetails() {
   const [loading, setLoading] = useState(false);
 
@@ -42,23 +42,23 @@ export default function MobileEditExamDetails() {
       if (examId) {
         setLoading(true);
 
-        try {
-          const res = await fetchExam(examId);
-          if (res.success && res.data) {
-            setExamDetails(res.data);
-          } else {
-            toaster.warning({ title: res.message || "Exam not found" });
-            navigate("/teacher/exams");
-          }
-        } catch (error) {
-          console.error("Error fetching exam:", error);
-          toaster.error({
-            title: "Failed to load exam details. Try again later.",
-          });
-          navigate("/teacher/exams");
-        } finally {
-          setLoading(false);
-        }
+        // try {
+        //   const res = await fetchExam(examId);
+        //   if (res.success && res.data) {
+        //     setExamDetails(res.data);
+        //   } else {
+        //     toaster.warning({ title: res.message || "Exam not found" });
+        //     navigate("/teacher/exams");
+        //   }
+        // } catch (error) {
+        //   console.error("Error fetching exam:", error);
+        //   toaster.error({
+        //     title: "Failed to load exam details. Try again later.",
+        //   });
+        //   navigate("/teacher/exams");
+        // } finally {
+        //   setLoading(false);
+        // }
       } else {
         const storedData = localStorage.getItem("NEW_EXAM");
 

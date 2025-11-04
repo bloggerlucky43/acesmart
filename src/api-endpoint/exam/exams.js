@@ -52,17 +52,13 @@ export const createExam = async (examDetails) => {
     });
   }
 };
-export const fetchExam = async (examDetails) => {
+export const fetchExams = async () => {
   try {
-    console.log("At create exam", examDetails);
-
-    const response = await api.post(`/exams`, examDetails, {
+    const response = await api.get(`/exams`, {
       withCredentials: true,
     });
     const data = response.data;
-
-    console.log(data);
-
+    console.log("the response from fetchexams", data);
     if (!data.success) {
       toaster.create({
         title: data.message,
@@ -71,10 +67,51 @@ export const fetchExam = async (examDetails) => {
     }
     return data;
   } catch (error) {
-    console.error("Create exam failed:", error);
+    console.error("Fetch Exam Failed", error);
     toaster.create({
       title: error?.response?.data?.error || "Question fetch failed",
       type: "error",
     });
+  }
+};
+
+export const examLogin = async (examDetails) => {
+  try {
+    const response = await api.post(`/exams/login`, { examDetails });
+    const data = response.data;
+
+    console.log("data from the server", data);
+    if (!data.success) {
+      toaster.create({
+        title: data.message,
+        type: "error",
+      });
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Exam login failed:", error);
+    toaster.create({
+      title: error?.response?.data?.error || "Exam login failed",
+      type: "error",
+    });
+  }
+};
+
+export const fetchLiveExam = async ({ studentId, examId }) => {
+  try {
+    const response = await api.get(`/exams/${studentId}/${examId}`);
+
+    const data = response.data;
+    console.log("the response from fetchliveexams", data);
+    if (!data.success) {
+      toaster.create({
+        title: data.message,
+        type: "error",
+      });
+    }
+    return data;
+  } catch (error) {
+    console.error("Error fetching exam", error);
   }
 };

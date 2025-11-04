@@ -1,7 +1,6 @@
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Box,
-  Heading,
   Fieldset,
   Field,
   Flex,
@@ -15,13 +14,19 @@ import { PasswordInput } from "../../components/ui/password-input";
 import { FaBrain } from "react-icons/fa";
 import { useState } from "react";
 import { toaster } from "../../components/ui/toaster";
+import { examLogin } from "../../api-endpoint/exam/exams";
 const ExamLoginPage = () => {
-  const [examDetail, setExamDetail] = useState({ studentId: "", password: "" });
+  const [examDetail, setExamDetail] = useState({
+    studentId: "",
+    firstName: "",
+  });
   const [loading, setLoading] = useState(false);
   const { id } = useParams();
-
+  const navigate = useNavigate();
+  const isMobile = useBreakpointValue({ base: true, md: false });
+  const [error, setError] = useState("");
   console.log(examDetail);
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (window.innerWidth < 768) {
@@ -29,11 +34,27 @@ const ExamLoginPage = () => {
       return;
     }
 
-    if (!examDetail.password && !examDetail.studentId && !id) {
+    if (!examDetail.firstName && !examDetail.studentId && !id) {
       toaster.error({ title: "Exam key or student ID is invalid" });
       return;
     }
     setLoading(true);
+
+    try {
+      const res = await examLogin(examDetail);
+      if (res.success) {
+        toaster.create({
+          title: res.message,
+          type: "success",
+        });
+        localStorage.setItem("examStudent", JSON.stringify(res.student));
+        navigate(`/ex/${id}`);
+      }
+    } catch (error) {
+      setError("Invalid credentials. Please check your details");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -106,11 +127,11 @@ const ExamLoginPage = () => {
                     <PasswordInput
                       borderColor="gray.600"
                       _focus={{ outline: "none", borderColor: "primary" }}
-                      value={examDetail.password}
+                      value={examDetail.firstName}
                       onChange={(e) =>
                         setExamDetail({
                           ...examDetail,
-                          password: e.target.value,
+                          firstName: e.target.value,
                         })
                       }
                       required

@@ -1,20 +1,69 @@
-import {
-  Box,
-  Text,
-  Flex,
-  Table,
-  Input,
-  Button,
-  Fieldset,
-} from "@chakra-ui/react";
-import { AllExamsData } from "./dummyData";
+import { Box, Text, Flex, Table, Button, IconButton } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { fetchExams } from "../../../api-endpoint/exam/exams";
+import { FaCopy } from "react-icons/fa";
+import { Tooltip } from "../../ui/tooltip";
+import { toaster } from "../../ui/toaster";
 export default function Exams() {
+  const [allExams, setAllExams] = useState();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const fetchAllExams = async () => {
+      const res = await fetchExams();
+      console.log(res.data);
+      if (res.data) {
+        setAllExams(res.data);
+        console.log(res.data);
+      }
+    };
+
+    fetchAllExams();
+  }, []);
+
   const handleEdit = (examId) => navigate(`/teacher/exams/edit?exam=${examId}`);
+
+  const copyToClipboard = async (text) => {
+    const url = String(text);
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(url);
+        toaster.create({
+          title: "Copied URL to clipboard",
+          type: "success",
+        });
+        return;
+      } catch (error) {
+        console.warn("Clipboard API failed,using fallback", error);
+      }
+    }
+
+    try {
+      const tmp = document.createElement("textarea");
+      tmp.value = url;
+      tmp.style.position = "fixed";
+      tmp.style.left = "-9999px";
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand("copy");
+      document.body.removeChild(tmp);
+      toaster.create({
+        title: "Copied URL to clipboard",
+        type: "success",
+      });
+    } catch (error) {
+      toaster.create({
+        title: "Unable to copy url",
+        type: "error",
+      });
+      console.error("Fallback copy failed", error);
+    }
+  };
+
   return (
-    <Box bg="gray.200" p={4} w="50%" justifySelf="center" mt="12vh">
+    <Box bg="gray.200" ml="20vw" p={4} w="80%" justifySelf="center" mt="12vh">
       <Flex mb={4} justify="space-between" align="center">
         <Text>All Exams</Text>
       </Flex>
@@ -26,15 +75,11 @@ export default function Exams() {
                 <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
                   Exam Title
                 </Table.ColumnHeader>
-                <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
-                  Subject/Exam Type
-                </Table.ColumnHeader>
+
                 <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
                   Duration
                 </Table.ColumnHeader>
-                <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
-                  Status
-                </Table.ColumnHeader>
+
                 <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
                   Start Date
                 </Table.ColumnHeader>
@@ -42,39 +87,68 @@ export default function Exams() {
                   End Date
                 </Table.ColumnHeader>
                 <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
+                  Exam URL
+                </Table.ColumnHeader>
+                <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
                   Actions
                 </Table.ColumnHeader>
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {AllExamsData.map((exam) => (
-                <Table.Row bg="white" key={exam.id}>
-                  <Table.Cell textAlign="center">{exam.title}</Table.Cell>
-                  <Table.Cell textAlign="center">{exam.subject}</Table.Cell>
-                  <Table.Cell textAlign="center">{exam.duration}</Table.Cell>
-                  <Table.Cell textAlign="center">{exam.status}</Table.Cell>
-                  <Table.Cell textAlign="center">{exam.startDate}</Table.Cell>
-                  <Table.Cell textAlign="center">{exam.endDate}</Table.Cell>
-                  <Table.Cell textAlign="center">
-                    <Flex justify="center" align="center" gap={2}>
-                      <Button
-                        bg="secondary"
-                        _hover={{ transform: "scale(1.05)" }}
-                        onClick={() => handleEdit(exam.id)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        bg="danger"
-                        color="gray.900"
-                        _hover={{ transform: "scale(1.05)" }}
-                      >
-                        Delete
-                      </Button>
-                    </Flex>
-                  </Table.Cell>
-                </Table.Row>
-              ))}
+              {allExams?.map((exam) => {
+                const examUrl = `${window.location.origin}/exam/${exam.id}`;
+                return (
+                  <Table.Row bg="white" key={exam.id}>
+                    <Table.Cell textAlign="center">{exam.title}</Table.Cell>
+
+                    <Table.Cell textAlign="center">{exam.duration}</Table.Cell>
+
+                    <Table.Cell textAlign="center">{exam.startDate}</Table.Cell>
+                    <Table.Cell textAlign="center">{exam.endDate}</Table.Cell>
+                    <Table.Cell textAlign="center">
+                      <Flex align="center" justify="center">
+                        <Text
+                          as="span"
+                          cursor="pointer"
+                          onClick={() => copyToClipboard(examUrl)}
+                          title="Click to copy"
+                          maxWidth="420px"
+                          truncate
+                        >
+                          {examUrl}
+                        </Text>
+                        <Tooltip label="Copy URL" aria-label="Copy URL tooltip">
+                          <IconButton
+                            size="sm"
+                            onClick={() => copyToClipboard(examUrl)}
+                            aria-label={`Copy exam ${exam.title} URL`}
+                          >
+                            <FaCopy />
+                          </IconButton>
+                        </Tooltip>
+                      </Flex>
+                    </Table.Cell>
+                    <Table.Cell textAlign="center">
+                      <Flex justify="center" align="center" gap={2}>
+                        <Button
+                          bg="secondary"
+                          _hover={{ transform: "scale(1.05)" }}
+                          onClick={() => handleEdit(exam.id)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          bg="danger"
+                          color="gray.900"
+                          _hover={{ transform: "scale(1.05)" }}
+                        >
+                          Delete
+                        </Button>
+                      </Flex>
+                    </Table.Cell>
+                  </Table.Row>
+                );
+              })}
             </Table.Body>
           </Table.Root>
         </Table.ScrollArea>
