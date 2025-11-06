@@ -77,7 +77,10 @@ export const fetchExams = async () => {
 
 export const examLogin = async (examDetails) => {
   try {
-    const response = await api.post(`/exams/login`, { examDetails });
+    const response = await api.post(`/exams/login`, {
+      studentId: examDetails?.studentId,
+      firstName: examDetails?.firstName,
+    });
     const data = response.data;
 
     console.log("data from the server", data);
@@ -103,8 +106,8 @@ export const fetchLiveExam = async ({ studentId, examId }) => {
     const response = await api.get(`/exams/${studentId}/${examId}`);
 
     const data = response.data;
-    console.log("the response from fetchliveexams", data);
-    if (!data.success) {
+    console.log("the response from fetch live exams", data);
+    if (!data.exam) {
       toaster.create({
         title: data.message,
         type: "error",
@@ -113,5 +116,24 @@ export const fetchLiveExam = async ({ studentId, examId }) => {
     return data;
   } catch (error) {
     console.error("Error fetching exam", error);
+  }
+};
+
+export const saveExamResult = async (resultData) => {
+  try {
+    const response = await api.post(`/exam/save-result`, { resultData });
+
+    const data = response.data;
+    console.log("Response from backend ", response);
+
+    if (!data.exam) {
+      toaster.create({
+        title: data.message,
+        type: "error",
+      });
+    }
+    return data;
+  } catch (error) {
+    console.error("Error saving result", error);
   }
 };

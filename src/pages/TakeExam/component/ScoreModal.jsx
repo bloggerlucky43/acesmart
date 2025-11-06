@@ -1,16 +1,43 @@
 import { Flex, Text, Button } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { useExam } from "./ExamContext";
+import { useState } from "react";
+import { saveExamResult } from "../../../api-endpoint/exam/exams";
+import { toaster } from "../../../components/ui/toaster";
 
 export default function ScoreModal({ onClose }) {
   const { scores, examData, totalScore } = useExam();
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const totalMarks = examData.totalMarks || 400;
   const percentage = (totalScore / totalMarks) * 100;
 
-  const handleContinueButton = () => {
-    onClose();
-    navigate(-1);
+  const handleContinueButton = async () => {
+    setLoading(true);
+    try {
+      const student = localStorage?.getItem("examStudent");
+      const parsedStudent = JSON.parse(student);
+      const res = await saveExamResult({
+        scores,
+        studentId: parsedStudent?.studentId,
+        examId: examData?.id,
+        examTitle: examData?.title,
+      });
+      if (res.data) {
+        toaster.create({
+          title: "Exam result saved successfully",
+          type: "success",
+        });
+      }
+    } catch (error) {
+      console.error("failed to save exam", error);
+    } finally {
+      setLoading(false);
+      localStorage.removeItem("examData");
+      localStorage.removeItem("examStudent");
+      onClose();
+      navigate(`/take_exam?${examData?.id}`);
+    }
   };
   return (
     <Flex
@@ -57,7 +84,14 @@ export default function ScoreModal({ onClose }) {
           <Text> {percentage.toFixed(1)}%</Text>
         </Flex>
         <Flex mt={4}>
-          <Button bg="primary" onClick={handleContinueButton} mt={4}>
+          <Button
+            bg="primary"
+            loading={loading}
+            loadingText="Saving..."
+            spinnerPlacement="right"
+            onClick={handleContinueButton}
+            mt={4}
+          >
             Continue
           </Button>
         </Flex>

@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Landing from "./Landing";
 import { AuthProvider } from "../libs/AuthProvider";
 import Teacher from "./teacher/dashboard";

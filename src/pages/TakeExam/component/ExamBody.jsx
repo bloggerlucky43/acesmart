@@ -1,20 +1,36 @@
 import { Box, Flex, Text, Button, Tabs, RadioGroup } from "@chakra-ui/react";
 import { useExam } from "./ExamContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 export default function ExamBody() {
   const { examData, answers, saveAnswer, submitExam, scores, totalScore } =
     useExam();
 
-  const [tabValue, setTabValue] = useState(examData.sections[0]?.section || "");
+  const [tabValue, setTabValue] = useState("");
 
-  // Track question index for each section
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(
-    examData.sections.reduce((acc, section) => {
-      acc[section.section] = 0;
-      return acc;
-    }, {})
-  );
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState({});
 
+  useEffect(() => {
+    if (examData?.sections?.length > 0) {
+      setTabValue(examData.sections[0].section);
+      setCurrentQuestionIndex(
+        examData?.sections.reduce((acc, section) => {
+          acc[section.section] = 0;
+          return acc;
+        }, {})
+      );
+    }
+  }, [examData]);
+
+  //if data hasnt loaded yet
+  if (!examData || !examData.sections) {
+    return (
+      <Flex align="center" minH="70vh" justify="center">
+        <Text fontSize="lg" color="gray.600">
+          Loading exam...
+        </Text>
+      </Flex>
+    );
+  }
   return (
     <Box minH="70vh" mx="auto" mt={2} bg="white" maxW="8xl">
       <Flex p={2} direction={"column"} w="full">
@@ -27,7 +43,7 @@ export default function ExamBody() {
           w="full"
         >
           <Tabs.List w="full" bg="gray.200" borderRadius="none">
-            {examData.sections.map((section, idx) => (
+            {examData?.sections.map((section, idx) => (
               <Tabs.Trigger
                 key={idx}
                 color="black"
@@ -40,24 +56,38 @@ export default function ExamBody() {
               </Tabs.Trigger>
             ))}
           </Tabs.List>
-          {examData.sections.map((section) => {
-            const qIndex = currentQuestionIndex[section.section];
-            const question = section.questions[qIndex];
+          {examData?.sections?.map((section) => {
+            const qIndex = currentQuestionIndex[section?.section];
+            const question = section?.questions[qIndex];
             if (!question) return null;
             return (
               <Tabs.Content
-                key={section.section}
+                key={section?.section}
                 py={4}
-                value={section.section}
+                value={section?.section}
               >
                 {/* current question */}
                 <Flex direction="column" mb={4}>
-                  <Text mb={2} fontWeight="medium">
-                    {qIndex + 1}. {question.question}
-                  </Text>
+                  <Text
+                    ml={4}
+                    mb={2}
+                    dangerouslySetInnerHTML={{ __html: question?.topic }}
+                  />
+
+                  <Flex mb={2} gap={4}>
+                    <Text mb={2} fontWeight="medium">
+                      {qIndex + 1}.
+                    </Text>
+                    <Text
+                      dangerouslySetInnerHTML={{
+                        __html: question?.questionText,
+                      }}
+                    />
+                  </Flex>
+
                   <Flex direction="column" gap={4}>
-                    {question.options.map((opt, i) => {
-                      const inputName = `${section.section}-${question.id}`;
+                    {Object.entries(question.options).map(([key, opt], i) => {
+                      const inputName = `${section?.section}-${question.id}`;
 
                       return (
                         <label
@@ -156,13 +186,6 @@ export default function ExamBody() {
             );
           })}
         </Tabs.Root>
-
-        {/* Submit Exam */}
-        {/* {!submitted && (
-          <Button mt={6} colorScheme="teal" onClick={handleSubmit}>
-            Submit Exam
-          </Button>
-        )} */}
       </Flex>
     </Box>
   );

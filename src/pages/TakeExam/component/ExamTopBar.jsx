@@ -7,6 +7,14 @@ import { useExam } from "./ExamContext";
 export default function ExamTopBar() {
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const { formatTime } = useExam();
+  const [examUserDetails, setExamUserDetails] = useState("");
+
+  useEffect(() => {
+    const examUser = localStorage.getItem("examStudent");
+    if (examUser) {
+      setExamUserDetails(JSON.parse(examUser));
+    }
+  }, []);
 
   return (
     <>
@@ -22,16 +30,19 @@ export default function ExamTopBar() {
           <Flex gap={2}>
             <Flex gap={2} align="center">
               <Icon as={FaPen} boxSize={6} />
-              <Text>Examination:</Text>
+              <Text>EXAMINATION:</Text>
             </Flex>
-            <Text>JAMB CBT TEST</Text>
+            <Text>CBT TEST</Text>
           </Flex>
           <Flex gap={2}>
             <Flex gap={2} align="center">
               <Icon as={FaUser} boxSize={6} />
-              <Text>Candidate:</Text>
+              <Text>CANDIDATE:</Text>
             </Flex>
-            <Text>4757584848G- Feranmi Ayoola Jegede</Text>
+            <Text>
+              {examUserDetails?.firstName?.toUpperCase()}
+              {""}-{examUserDetails?.lastName?.toUpperCase()}
+            </Text>
           </Flex>
         </Box>
 

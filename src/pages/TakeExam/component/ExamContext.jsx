@@ -1,82 +1,49 @@
-// ExamContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
-
-// Simulated exam data with correct answers
-const examData = {
-  totalMarks: 400,
-  sections: [
-    {
-      section: "English",
-      questions: [
-        {
-          id: 1,
-          question: "Choose the correct synonym of 'Happy'.",
-          options: ["Sad", "Joyful", "Angry", "Worried"],
-          correctAnswer: "Joyful",
-        },
-        {
-          id: 2,
-          question: "Fill in the blank: She ____ to the market yesterday.",
-          options: ["go", "going", "went", "gone"],
-          correctAnswer: "went",
-        },
-      ],
-    },
-
-    {
-      section: "Mathematics",
-      questions: [
-        {
-          id: 3,
-          question: "Solve: 2x + 3 = 7. Find x.",
-          options: ["1", "2", "3", "4"],
-          correctAnswer: "2",
-        },
-        {
-          id: 4,
-          question: "What is the square root of 81?",
-          options: ["7", "8", "9", "10"],
-          correctAnswer: "9",
-        },
-      ],
-    },
-
-    {
-      section: "Physics",
-      questions: [
-        {
-          id: 5,
-          question: "What is the SI unit of Force?",
-          options: ["Pascal", "Newton", "Joule", "Watt"],
-          correctAnswer: "Newton",
-        },
-      ],
-    },
-  ],
-};
-
 const ExamContext = createContext();
 
 export const ExamProvider = ({ children }) => {
+  const [examData, setExamData] = useState(null);
   const [answers, setAnswers] = useState({});
   const [scores, setScores] = useState({});
   const [totalScore, setTotalScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(60 * 60);
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    const cachedExam = localStorage.getItem("examData");
+    if (cachedExam) setExamData(JSON.parse(cachedExam));
+  }, []);
+
+  useEffect(() => {
+    if (!examData?.duration) return;
+
+    setTimeLeft(examData.duration * 60);
+  }, [examData]);
 
   useEffect(() => {
     if (timeLeft <= 0) {
-      submitExam();
       return;
     }
 
     const interval = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          console.log("⏰ Time’s up! Auto-submitting exam...");
+          submitExam();
+
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timeLeft]);
+  }, [examData]);
 
-  // console.log("Total score", totalScore);
+  const loadExamData = (data) => {
+    setExamData(data);
+    localStorage.setItem("examData", JSON.stringify(data));
+  };
 
   const saveAnswer = (section, qid, value) => {
     setAnswers((prev) => ({
@@ -85,10 +52,9 @@ export const ExamProvider = ({ children }) => {
     }));
   };
 
-  // Auto-mark exam
   const submitExam = () => {
-    const totalMarks = examData.totalMarks || 100;
-    const numberOfSections = examData.sections.length;
+    const totalMarks = examData?.totalMarks || 100;
+    const numberOfSections = examData?.sections?.length;
     const marksPerSection = totalMarks / numberOfSections;
     console.log(
       "at submit exam,first three parameters",
@@ -100,12 +66,12 @@ export const ExamProvider = ({ children }) => {
     let newScores = {};
     let overall = 0;
 
-    examData.sections.forEach((section) => {
+    examData?.sections?.forEach((section) => {
       const marksPerQuestion = marksPerSection / section.questions.length;
 
       let sectionScore = 0;
 
-      section.questions.forEach((q) => {
+      section?.questions?.forEach((q) => {
         const ans = answers[`${section.section}-${q.id}`];
         console.log(
           `Checking ${section.section} → Q${q.id}: user="${ans}", correct="${q.correctAnswer}"`
@@ -151,6 +117,7 @@ export const ExamProvider = ({ children }) => {
         submitExam,
         timeLeft,
         formatTime,
+        loadExamData,
       }}
     >
       {children}
