@@ -121,7 +121,9 @@ export const fetchLiveExam = async ({ studentId, examId }) => {
 
 export const saveExamResult = async (resultData) => {
   try {
-    const response = await api.post(`/exam/save-result`, { resultData });
+    console.log("result data are", resultData);
+
+    const response = await api.post(`/exams/save-result`, { resultData });
 
     const data = response.data;
     console.log("Response from backend ", response);

@@ -4,11 +4,11 @@ import Navbar from "../components/teacher/navbar";
 
 const DashboardLayout = ({ children }) => {
   return (
-    <Box bg="gray.200">
+    <Box>
       <Box>
         <Sidebar />
         <Navbar />
-        <Box>{children}</Box>
+        <Box overflow={"hidden"}>{children}</Box>
       </Box>
     </Box>
   );

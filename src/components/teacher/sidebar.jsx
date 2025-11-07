@@ -2,7 +2,6 @@ import { Box, Flex, Text, Icon, Collapsible, VStack } from "@chakra-ui/react";
 import { useState } from "react";
 import {
   FaBrain,
-  FaAngleDown,
   FaTachometerAlt,
   FaUserPlus,
   FaUserEdit,
@@ -25,7 +24,7 @@ const Sidebar = () => {
       bg="gray.200"
       p={2}
       position="fixed"
-      minH="100vh"
+      h="100vh"
       top={0}
       left={0}
       borderRight="solid 2px"

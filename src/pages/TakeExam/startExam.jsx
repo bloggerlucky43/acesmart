@@ -68,7 +68,7 @@ export default function StartExam() {
           <Text>{userDetails?.studentId}</Text>
         </Flex>
 
-        <Flex bg="red" mt="6vh" w="50%" justifySelf="center">
+        <Flex bg="red" mt="6vh" w="70%" justifySelf="center">
           <Button
             onClick={handleStartExam}
             loading={isLoading}

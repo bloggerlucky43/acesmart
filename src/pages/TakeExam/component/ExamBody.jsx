@@ -1,4 +1,4 @@
-import { Box, Flex, Text, Button, Tabs, RadioGroup } from "@chakra-ui/react";
+import { Box, Flex, Text, Button, Tabs, Image } from "@chakra-ui/react";
 import { useExam } from "./ExamContext";
 import { useEffect, useState } from "react";
 export default function ExamBody() {
@@ -68,6 +68,7 @@ export default function ExamBody() {
               >
                 {/* current question */}
                 <Flex direction="column" mb={4}>
+                  <Image src={question?.imageUrl} w="40%" />
                   <Text
                     ml={4}
                     mb={2}

@@ -17,26 +17,30 @@ export default function ScoreModal({ onClose }) {
     try {
       const student = localStorage?.getItem("examStudent");
       const parsedStudent = JSON.parse(student);
+      console.log("the parsed stdebt is", student, parsedStudent);
+
       const res = await saveExamResult({
         scores,
-        studentId: parsedStudent?.studentId,
+        studentId: parsedStudent?.id,
+        studentCode: parsedStudent?.studentId,
         examId: examData?.id,
         examTitle: examData?.title,
+        totalMarks: examData?.duration,
       });
       if (res.data) {
         toaster.create({
           title: "Exam result saved successfully",
           type: "success",
         });
+        navigate(`/exam/${examData?.id}`);
+        onClose();
       }
     } catch (error) {
       console.error("failed to save exam", error);
     } finally {
-      setLoading(false);
       localStorage.removeItem("examData");
       localStorage.removeItem("examStudent");
-      onClose();
-      navigate(`/take_exam?${examData?.id}`);
+      setLoading(false);
     }
   };
   return (

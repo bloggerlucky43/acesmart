@@ -7,7 +7,8 @@ const Navbar = () => {
     <Flex
       bg="gray.200"
       p={4}
-      w="80%"
+      w={"80%"}
+      // w="calc(100%-10px)"
       justify="space-between"
       right={0}
       position="fixed"
@@ -15,6 +16,7 @@ const Navbar = () => {
       borderBottom="solid 2px"
       borderColor="primary"
       top={0}
+      // ml={"20%"}
     >
       <Flex align="center">
         <Text fontSize="xl">Welcome back,{user.username}</Text>
