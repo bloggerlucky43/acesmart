@@ -1,5 +1,5 @@
 import { Box, Table, Flex, Text, Input, Button } from "@chakra-ui/react";
-import { List } from "../../../../components/teacher/constants/lists";
+
 export const MStudentEditor = () => {
   return (
     <Box mt="5vh" minH="100vh" py={4}>

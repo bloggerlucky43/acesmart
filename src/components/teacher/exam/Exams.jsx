@@ -63,9 +63,19 @@ export default function Exams() {
   };
 
   return (
-    <Box bg="gray.200" ml="20vw" p={4} w="80%" justifySelf="center" mt="12vh">
-      <Flex mb={4} justify="space-between" align="center">
-        <Text>All Exams</Text>
+    <Box
+      bg="gray.200"
+      ml="200px"
+      p={4}
+      minH="100vh"
+      w="calc(100% - 200px)"
+      justifySelf="center"
+      mt="9vh"
+    >
+      <Flex mb={4} mt={4} justify="space-between" align="center">
+        <Text fontSize="xl" fontWeight="bold">
+          All Exams
+        </Text>
       </Flex>
       <Box align="start">
         <Table.ScrollArea borderWidth="1px" rounded="md">

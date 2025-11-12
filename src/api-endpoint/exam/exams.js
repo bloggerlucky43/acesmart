@@ -65,6 +65,8 @@ export const fetchExams = async () => {
         type: "error",
       });
     }
+    console.log("at fetch exams", data);
+
     return data;
   } catch (error) {
     console.error("Fetch Exam Failed", error);
@@ -116,6 +118,20 @@ export const fetchLiveExam = async ({ studentId, examId }) => {
     return data;
   } catch (error) {
     console.error("Error fetching exam", error);
+  }
+};
+
+export const fetchExamResults = async (examId) => {
+  try {
+    const res = await api.get(`/results/${examId}/all`, {
+      withCredentials: true,
+    });
+
+    console.log("the result is res", res.data, res);
+
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching exam results", error);
   }
 };
 

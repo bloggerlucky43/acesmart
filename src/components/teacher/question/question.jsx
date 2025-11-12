@@ -73,14 +73,14 @@ const Question = () => {
     <Box
       bg="gray.200"
       boxShadow="lg"
-      mt="12vh"
+      mt="9vh"
       borderRadius="md"
-      ml="18vw"
-      w="50%"
+      ml="200px"
+      w={"calc(100% - 200px)"}
       justifySelf="center"
       p={4}
     >
-      <Box p={2} mx="auto">
+      <Box p={2} mt={4} mx="auto">
         <Box bg="white" boxShadow="md" borderRadius="md" py={6} px={3}>
           <Field.Root display="flex" flexDir={"row"} required>
             <Input

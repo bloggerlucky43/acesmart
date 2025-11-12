@@ -42,10 +42,10 @@ const NewStudent = () => {
   return (
     <Flex
       rounded="md"
-      mt="12vh"
-      ml="18vw"
+      mt="9vh"
+      ml="200px"
       justifySelf={"center"}
-      w="70%"
+      w={"calc(100% - 200px)"}
       p={4}
       minH="100vh"
       color="gray.900"
@@ -54,7 +54,7 @@ const NewStudent = () => {
       <Fieldset.Root size="lg" maxW="4xl">
         <form onSubmit={handleSubmit}>
           <Box>
-            <Text fontSize="xl" fontWeight="bold">
+            <Text fontSize="xl" mt={4} fontWeight="bold">
               Add New Student
             </Text>
             <Text mb={4}>

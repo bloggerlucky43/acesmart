@@ -77,3 +77,9 @@ export const logoutUser = async () => {
     console.error(error);
   }
 };
+
+export const getDashboardStats = async () => {
+  const { data } = await api.get("/dashboard", { withCredentials: true });
+  console.log("At dashboard stats api", data);
+  return data;
+};

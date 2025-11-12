@@ -29,7 +29,7 @@ const Sidebar = () => {
       left={0}
       borderRight="solid 2px"
       borderColor="primary"
-      w="20%"
+      w={"200px"}
     >
       <Flex gap={2} align="center" justify="center" mt={2}>
         <Icon
@@ -45,7 +45,7 @@ const Sidebar = () => {
         </Text>
       </Flex>
 
-      <Box mt={8} p={4}>
+      <Box mt={8} p={2}>
         <NavLink to="/teacher_dashboard" style={{ textDecoration: "none" }}>
           {({ isActive }) => (
             <Flex
@@ -93,21 +93,6 @@ const Sidebar = () => {
           )}
         </NavLink>
 
-        <NavLink to="/teacher/view" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Flex
-              gap={2}
-              mt={2}
-              align="center"
-              cursor="pointer"
-              color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}
-            >
-              <Icon as={FaUsers} boxSize={4} />
-              <Text>View Students</Text>
-            </Flex>
-          )}
-        </NavLink>
         <NavLink to="/teacher/add_questions" style={{ textDecoration: "none" }}>
           {({ isActive }) => (
             <Flex
@@ -123,23 +108,7 @@ const Sidebar = () => {
             </Flex>
           )}
         </NavLink>
-
-        <NavLink to="/teacher/ed" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Flex
-              gap={2}
-              align="center"
-              mt={2}
-              cursor="pointer"
-              color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}
-            >
-              <Icon as={FaFileImport} boxSize={4} />
-              <Text>Import questions from Excel/CSV</Text>
-            </Flex>
-          )}
-        </NavLink>
-
+        {/* 
         <NavLink to="/teacher/edit" style={{ textDecoration: "none" }}>
           {({ isActive }) => (
             <Flex
@@ -151,10 +120,10 @@ const Sidebar = () => {
               _hover={{ color: "purple.400" }}
             >
               <Icon as={FaEdit} boxSize={4} />
-              <Text>Preview and edit questions</Text>
+              <Text>Edit questions</Text>
             </Flex>
           )}
-        </NavLink>
+        </NavLink> */}
 
         <NavLink to="/teacher/create_exam" style={{ textDecoration: "none" }}>
           {({ isActive }) => (
@@ -167,7 +136,7 @@ const Sidebar = () => {
               _hover={{ color: "purple.400" }}
             >
               <Icon as={FaFileAlt} boxSize={4} />
-              <Text>Create new exams</Text>
+              <Text>New exams</Text>
             </Flex>
           )}
         </NavLink>
@@ -188,7 +157,7 @@ const Sidebar = () => {
           )}
         </NavLink>
 
-        <NavLink to="/teacher/edit" style={{ textDecoration: "none" }}>
+        {/* <NavLink to="/teacher/edit" style={{ textDecoration: "none" }}>
           {({ isActive }) => (
             <Flex
               gap={2}
@@ -201,41 +170,9 @@ const Sidebar = () => {
               <Icon as={FaCog} boxSize={4} /> <Text>Exam settings</Text>
             </Flex>
           )}
-        </NavLink>
+        </NavLink> */}
 
-        <NavLink to="/teacher/edit" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Flex
-              gap={2}
-              align="center"
-              cursor="pointer"
-              mt={2}
-              color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}
-            >
-              <Icon as={FaPoll} boxSize={4} />
-              <Text>View exam results</Text>
-            </Flex>
-          )}
-        </NavLink>
-
-        <NavLink to="/teacher/edit" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Flex
-              gap={2}
-              mt={2}
-              align="center"
-              cursor="pointer"
-              color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}
-            >
-              <Icon as={FaFileExport} boxSize={4} />
-              <Text>Export results</Text>
-            </Flex>
-          )}
-        </NavLink>
-
-        <NavLink to="/teacher/edit" style={{ textDecoration: "none" }}>
+        <NavLink to="/teacher/exam_result" style={{ textDecoration: "none" }}>
           {({ isActive }) => (
             <Flex
               gap={2}
@@ -246,7 +183,7 @@ const Sidebar = () => {
               _hover={{ color: "purple.400" }}
             >
               <Icon as={FaChartLine} boxSize={4} />
-              <Text>Student Performance</Text>
+              <Text>Performance</Text>
             </Flex>
           )}
         </NavLink>
@@ -262,7 +199,7 @@ const Sidebar = () => {
               _hover={{ color: "purple.400" }}
             >
               <Icon as={FaCogs} boxSize={4} />
-              <Text>Settings</Text>
+              <Text>Logout</Text>
             </Flex>
           )}
         </NavLink>

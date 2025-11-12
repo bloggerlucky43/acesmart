@@ -1,6 +1,5 @@
 import { Box, Flex, Text, Table, Button } from "@chakra-ui/react";
-import { List } from "./constants/lists";
-import { useEffect } from "react";
+
 import { fetchStudent } from "../../api-endpoint/student/students";
 import { useQuery } from "@tanstack/react-query";
 const ListOfStudent = () => {
@@ -15,11 +14,11 @@ const ListOfStudent = () => {
       bg="gray.200"
       boxShadow="lg"
       borderRadius="md"
-      mt="12vh"
-      ml="18vw"
+      mt="9vh"
+      ml="200px"
       p={4}
-      justifySelf="center"
-      w="70%"
+      justify="center"
+      w={"calc(100% -200px)"}
     >
       <Flex mb={4} justify="space-between" align="center">
         <Text> List of Students</Text>

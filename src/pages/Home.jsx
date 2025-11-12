@@ -16,6 +16,8 @@ import { Toaster } from "../components/ui/toaster";
 import ScoreModal from "./TakeExam/component/ScoreModal";
 import { ExamProvider } from "./TakeExam/component/ExamContext";
 import StartExam from "./TakeExam/startExam";
+import Performance from "./teacher/exammanagement/Perfomance";
+import { ResultPage } from "./teacher/exammanagement/Perfomance/resultpage";
 const Home = () => {
   return (
     <>
@@ -46,6 +48,8 @@ const Home = () => {
             path="/teacher/exam/questions"
             element={<ExamQuestionPage />}
           />
+          <Route path="/teacher/exam_result" element={<Performance />} />
+          <Route path="/teacher/exam_results/:id" element={<ResultPage />} />
         </Routes>
         <Toaster />
       </AuthProvider>

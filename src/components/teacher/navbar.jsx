@@ -5,18 +5,19 @@ const Navbar = () => {
   const { user } = useAuth();
   return (
     <Flex
+      as="nav"
       bg="gray.200"
       p={4}
-      w={"80%"}
-      // w="calc(100%-10px)"
+      w={"calc(100% - 200px)"}
       justify="space-between"
+      align="center"
       right={0}
       position="fixed"
       zIndex={10}
       borderBottom="solid 2px"
       borderColor="primary"
       top={0}
-      // ml={"20%"}
+      ml={"200px"}
     >
       <Flex align="center">
         <Text fontSize="xl">Welcome back,{user.username}</Text>

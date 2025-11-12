@@ -37,3 +37,35 @@ export const addStudent = async (form) => {
     console.error("Add student failed:", error);
   }
 };
+
+export const activateStudent = async (studentId) => {
+  console.log("At activate student,", studentId);
+
+  const { data } = await api.put(
+    `/student/${studentId}/activate`,
+    {},
+    { withCredentials: true }
+  );
+  return data;
+};
+
+export const deactivateStudent = async (studentId) => {
+  console.log("At deactivate", studentId);
+
+  const { data } = await api.put(
+    `/student/${studentId}/deactivate`,
+    {},
+    { withCredentials: true }
+  );
+
+  return data;
+};
+
+export const deleteStudent = async (studentId) => {
+  console.log("At delete student", studentId);
+
+  const { data } = await api.delete(`/student/${studentId}`, {
+    withCredentials: true,
+  });
+  return data;
+};

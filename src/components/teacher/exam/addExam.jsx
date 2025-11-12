@@ -1,3 +1,174 @@
+// import React from "react";
+// import { useQuery } from "@tanstack/react-query";
+// import {
+//   Table,
+//   Thead,
+//   Tbody,
+//   Tr,
+//   Th,
+//   Td,
+//   TableContainer,
+//   Spinner,
+//   Box,
+//   Text,
+//   Center,
+//   Badge,
+// } from "@chakra-ui/react";
+// import api from "../utils/api"; // your axios instance
+
+// const ExamResults = ({ examId }) => {
+//   const { data, isLoading, isError } = useQuery({
+//     queryKey: ["examResults", examId],
+//     queryFn: async () => {
+//       const res = await api.get(`/exams/${examId}/results`);
+//       return res.data;
+//     },
+//   });
+
+//   if (isLoading)
+//     return (
+//       <Center h="60vh">
+//         <Spinner size="xl" color="blue.500" />
+//       </Center>
+//     );
+
+//   if (isError || !data?.success)
+//     return (
+//       <Center h="60vh">
+//         <Text color="red.500">Failed to load results.</Text>
+//       </Center>
+//     );
+
+//   const results = data.data;
+
+//   return (
+//     <Box p={6}>
+//       <Text fontSize="2xl" fontWeight="bold" mb={4}>
+//         Exam Results
+//       </Text>
+
+//       <TableContainer bg="white" rounded="xl" shadow="md">
+//         <Table variant="simple">
+//           <Thead bg="gray.100">
+//             <Tr>
+//               <Th>#</Th>
+//               <Th>Student ID</Th>
+//               <Th>Name</Th>
+//               <Th>Score</Th>
+//               <Th>Rank</Th>
+//             </Tr>
+//           </Thead>
+//           <Tbody>
+//             {results.map((result, index) => (
+//               <Tr key={result.id}>
+//                 <Td>{index + 1}</Td>
+//                 <Td>{result.Student?.studentId}</Td>
+//                 <Td>
+//                   {result.Student?.firstName} {result.Student?.lastName}
+//                 </Td>
+//                 <Td>
+//                   <Badge colorScheme={result.score >= 70 ? "green" : "red"}>
+//                     {result.score}
+//                   </Badge>
+//                 </Td>
+//                 <Td>{index + 1}</Td>
+//               </Tr>
+//             ))}
+//           </Tbody>
+//         </Table>
+//       </TableContainer>
+//     </Box>
+//   );
+// };
+
+// export default ExamResults;
+
+// } from "@chakra-ui/react";
+// import { useQuery } from "@tanstack/react-query";
+// import { fetchExams, fetchExamStudents, fetchStudentResult } from "../../api-endpoint/exams";
+// import { useState } from "react";
+
+// const ResultsPage = () => {
+//   const { isOpen, onOpen, onClose } = useDisclosure();
+//   const [selectedStudent, setSelectedStudent] = useState(null);
+//   const [selectedExamId, setSelectedExamId] = useState(null);
+//   const [result, setResult] = useState(null);
+
+//   // Fetch all exams
+//   const { data: exams } = useQuery(["exams"], fetchExams, {
+//     staleTime: 5 * 60 * 1000,
+//   });
+
+//   // Function to open modal and fetch student result
+//   const handleCheckResult = async (student, examId) => {
+//     setSelectedStudent(student);
+//     setSelectedExamId(examId);
+//     const res = await fetchStudentResult(student.studentID, examId);
+//     setResult(res);
+//     onOpen();
+//   };
+
+//       <Accordion allowMultiple>
+//         {exams?.map((exam) => (
+//           <AccordionItem key={exam.id} mb={2}>
+//             <AccordionButton>
+//               <Box flex="1" textAlign="left">
+//                 {exam.title}
+//               </Box>
+//               <AccordionIcon />
+//             </AccordionButton>
+
+//             <AccordionPanel>
+//               {exam.students?.map((student) => (
+//                 <Flex
+//                   key={student.studentID}
+//                   justify="space-between"
+//                   align="center"
+//                   p={2}
+//                   borderBottom="1px solid #ccc"
+//                 >
+//                   <Text>{student.firstName} {student.lastName}</Text>
+//                   <Text>ID: {student.studentID}</Text>
+//                   <Button
+//                     colorScheme="blue"
+//                     onClick={() => handleCheckResult(student, exam.id)}
+//                   >
+//                     Check Result
+//                   </Button>
+//                 </Flex>
+//               ))}
+//             </AccordionPanel>
+//           </AccordionItem>
+//         ))}
+//       </Accordion>
+
+//       {/* Modal for student result */}
+//       <Modal isOpen={isOpen} onClose={onClose} size="lg">
+//         <ModalOverlay />
+//         <ModalContent>
+//           <ModalHeader>
+//             {selectedStudent?.firstName} {selectedStudent?.lastName} - Result
+//           </ModalHeader>
+//           <ModalCloseButton />
+//           <ModalBody>
+//             {result ? (
+//               <Box>
+//                 <Text>Score: {result.score}</Text>
+//                 <Text>Grade: {result.grade}</Text>
+//                 <Text>Remarks: {result.remarks}</Text>
+//               </Box>
+//             ) : (
+//               <Text>Loading result...</Text>
+//             )}
+//           </ModalBody>
+//         </ModalContent>
+//       </Modal>
+//     </Box>
+//   );
+// };
+
+// export default ResultsPage;
+
 import {
   Box,
   Flex,
@@ -198,8 +369,8 @@ export default function AddExam() {
     <Box
       p={6}
       bg="gray.200"
-      w="80%"
-      ml="20vw"
+      w={"calc(100% - 200px)"}
+      ml="200px"
       mt="9vh"
       minH="100vh"
       justifySelf="center"
@@ -317,9 +488,20 @@ export default function AddExam() {
 
         {/* Questions List */}
         <Box mb={4}>
-          <Text fontSize="lg" mb={2}>
-            Fetched Questions
-          </Text>
+          <Flex justify="space-between" align="center">
+            <Text fontSize="lg" mb={2}>
+              Fetched Questions
+            </Text>
+            <Text
+              color="white"
+              fontSize="lg"
+              borderRadius="full"
+              bg="secondary"
+              p={2}
+            >
+              {selectedQuestionsIds?.length}
+            </Text>
+          </Flex>
           {questions.length === 0 ? (
             <Text color="gray.500">
               No questions fetched for this subject yet.

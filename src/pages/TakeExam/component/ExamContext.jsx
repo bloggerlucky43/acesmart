@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 const ExamContext = createContext();
 
 export const ExamProvider = ({ children }) => {
@@ -7,6 +8,7 @@ export const ExamProvider = ({ children }) => {
   const [scores, setScores] = useState({});
   const [totalScore, setTotalScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const cachedExam = localStorage.getItem("examData");
@@ -30,6 +32,7 @@ export const ExamProvider = ({ children }) => {
           clearInterval(interval);
           console.log("⏰ Time’s up! Auto-submitting exam...");
           submitExam();
+          navigate(`/exams/${examData?.id}`);
 
           return 0;
         }

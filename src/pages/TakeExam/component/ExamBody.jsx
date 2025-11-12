@@ -1,9 +1,9 @@
 import { Box, Flex, Text, Button, Tabs, Image } from "@chakra-ui/react";
 import { useExam } from "./ExamContext";
 import { useEffect, useState } from "react";
+import { toaster } from "../../../components/ui/toaster";
 export default function ExamBody() {
-  const { examData, answers, saveAnswer, submitExam, scores, totalScore } =
-    useExam();
+  const { examData, answers, saveAnswer } = useExam();
 
   const [tabValue, setTabValue] = useState("");
 
@@ -31,6 +31,67 @@ export default function ExamBody() {
       </Flex>
     );
   }
+
+  useEffect(() => {
+    //Tab switch
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        alert("You have switched tabs! This will be reported.");
+        toaster.create({
+          title: "Tab Switch Detected",
+          type: "warning",
+        });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    //Disable right clikc/copy
+    const disableRightClick = (e) => e.preventDefault();
+    const disableCopy = (e) => e.preventDefault();
+
+    document.addEventListener("contextmenu", disableRightClick);
+    document.addEventListener("copy", disableCopy);
+    document.addEventListener("cut", disableCopy);
+    document.addEventListener("paste", disableCopy);
+
+    //full screen enforcement
+    const enforceFullScreen = async () => {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch (error) {
+        console.warn("Fullscreen request failed:", error);
+      }
+    };
+
+    enforceFullScreen();
+
+    //Detect exit from fullscreen
+
+    const handleFullScreenChange = () => {
+      if (!document.fullscreenElement) {
+        alert("You exited fullscreen please return to fullscreen mode.");
+        toaster.create({
+          title: "Fullscreen Mode Required",
+          type: "warning",
+        });
+        enforceFullScreen();
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullScreenChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("contextmenu", disableRightClick);
+      document.removeEventListener("copy", disableCopy);
+      document.removeEventListener("cut", disableCopy);
+      document.removeEventListener("paste", disableCopy);
+      document.removeEventListener("fullscreenchange", handleFullScreenChange);
+    };
+  }, []);
   return (
     <Box minH="70vh" mx="auto" mt={2} bg="white" maxW="8xl">
       <Flex p={2} direction={"column"} w="full">
