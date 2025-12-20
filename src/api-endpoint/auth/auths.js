@@ -41,10 +41,6 @@ export const loginUser = async (form) => {
     return data;
   } catch (error) {
     console.error(error);
-    toaster.create({
-      title: `${error?.message} || "Registration failed"`,
-      type: "error",
-    });
   }
 };
 

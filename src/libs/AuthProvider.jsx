@@ -7,7 +7,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     const storedUser = localStorage.getItem("USER_KEY");
-    return storedUser !== undefined ? JSON?.parse(storedUser) : null;
+    return storedUser ? JSON?.parse(storedUser) : null;
   });
 
   console.log("user at authprovider", user);
@@ -34,14 +34,24 @@ export const AuthProvider = ({ children }) => {
 
       setUser(res.data);
     } catch (error) {
-      setUser(null);
+      if (error.response?.status === 401) {
+        setUser(null);
+        localStorage.removeItem("USER_KEY");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUser();
+    const storedUser = localStorage.getItem("USER_KEY");
+
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+      setLoading(false);
+    } else {
+      fetchUser();
+    }
   }, []);
 
   useEffect(() => {

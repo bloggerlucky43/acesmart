@@ -24,8 +24,9 @@ const Login = () => {
         toaster.success({
           title: "Login successful" || data.message,
         });
-        setUser(res.data);
+
         localStorage.setItem("USER_KEY", JSON.stringify(res.data));
+        setUser(res.data);
         navigate("/teacher_dashboard");
       }
     } catch (error) {

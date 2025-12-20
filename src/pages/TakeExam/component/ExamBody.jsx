@@ -21,7 +21,6 @@ export default function ExamBody() {
     }
   }, [examData]);
 
-  //if data hasnt loaded yet
   if (!examData || !examData.sections) {
     return (
       <Flex align="center" minH="70vh" justify="center">
