@@ -16,35 +16,34 @@ export const ExamProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    if (!examData?.duration) return;
+    if (!examData?.duration || timeLeft > 0) return;
 
     setTimeLeft(examData.duration * 60);
   }, [examData]);
 
   useEffect(() => {
-    if (timeLeft <= 0) {
-      return;
-    }
+    if (timeLeft <= 0) return;
 
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          console.log("⏰ Time’s up! Auto-submitting exam...");
-          submitExam();
-          navigate(`/exams/${examData?.id}`);
-
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimeLeft((prev) => prev - 1);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [examData]);
+  }, [timeLeft]);
+
+  useEffect(() => {
+    if (timeLeft === 0 && examData) {
+      console.log("⏰ Time’s up! Auto-submitting exam...");
+      submitExam();
+      navigate(`/exams/${examData.id}`);
+    }
+  }, [timeLeft]);
 
   const loadExamData = (data) => {
     setExamData(data);
+    setAnswers({});
+    setScores({});
+    setTotalScore(0);
     localStorage.setItem("examData", JSON.stringify(data));
   };
 
@@ -59,12 +58,6 @@ export const ExamProvider = ({ children }) => {
     const totalMarks = examData?.totalMarks || 100;
     const numberOfSections = examData?.sections?.length;
     const marksPerSection = totalMarks / numberOfSections;
-    console.log(
-      "at submit exam,first three parameters",
-      totalMarks,
-      numberOfSections,
-      marksPerSection
-    );
 
     let newScores = {};
     let overall = 0;
@@ -76,9 +69,7 @@ export const ExamProvider = ({ children }) => {
 
       section?.questions?.forEach((q) => {
         const ans = answers[`${section.section}-${q.id}`];
-        console.log(
-          `Checking ${section.section} → Q${q.id}: user="${ans}", correct="${q.correctAnswer}"`
-        );
+
         if (ans === q.correctAnswer) {
           sectionScore += marksPerQuestion;
         }
@@ -91,9 +82,11 @@ export const ExamProvider = ({ children }) => {
     const roundedOverall = parseFloat(overall.toFixed(2));
     setScores(newScores);
     setTotalScore(roundedOverall);
-    console.log("== MARKING COMPLETE ==");
-    console.log("Section scores:", newScores);
-    console.log("Total score:", roundedOverall);
+    // console.log("== MARKING COMPLETE ==");
+    // console.log("Section scores:", newScores);
+    // console.log("Total score:", roundedOverall);
+    setAnswers({});
+    localStorage.removeItem("examData");
     return { sectionScores: newScores, total: roundedOverall };
   };
 
