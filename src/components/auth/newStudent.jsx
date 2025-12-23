@@ -2,7 +2,6 @@ import {
   Box,
   Text,
   Fieldset,
-  NativeSelect,
   Input,
   Button,
   Field,

@@ -1,18 +1,11 @@
-import { Box, Flex, Text, Icon, Collapsible, VStack } from "@chakra-ui/react";
-import { useState } from "react";
+import { Box, Flex, Text, Icon } from "@chakra-ui/react";
 import {
   FaBrain,
   FaTachometerAlt,
   FaUserPlus,
   FaUserEdit,
-  FaUsers,
-  FaCog,
   FaPlusSquare,
-  FaFileImport,
-  FaEdit,
   FaFileAlt,
-  FaPoll,
-  FaFileExport,
   FaChartLine,
   FaCogs,
 } from "react-icons/fa";
@@ -156,21 +149,6 @@ const Sidebar = () => {
             </Flex>
           )}
         </NavLink>
-
-        {/* <NavLink to="/teacher/edit" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Flex
-              gap={2}
-              align="center"
-              mt={2}
-              cursor="pointer"
-              color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}
-            >
-              <Icon as={FaCog} boxSize={4} /> <Text>Exam settings</Text>
-            </Flex>
-          )}
-        </NavLink> */}
 
         <NavLink to="/teacher/exam_result" style={{ textDecoration: "none" }}>
           {({ isActive }) => (

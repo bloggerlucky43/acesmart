@@ -13,14 +13,12 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import { fetchExamResults } from "../../../../../api-endpoint/exam/exams";
+import { fetchExamResults } from "../../../../api-endpoint/exam/exams";
 
-export default function ResultDetails() {
+export const MResultPage = () => {
   const { id } = useParams();
   const [results, setResult] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // console.log("Exam id is", id);
 
   useEffect(() => {
     if (!id) {
@@ -124,18 +122,17 @@ export default function ResultDetails() {
       </Center>
     );
   }
+
   return (
-    <Box
-      w={"calc(100% -200px)"}
-      mt="9vh"
-      ml="200px"
-      p={4}
-      bg="gray.200"
-      minH="100vh"
-      cursor="pointer"
-    >
-      <Flex mb={6} justify="space-between" align="center" mt={4}>
-        <Text fontSize="2xl" fontWeight={"semibold"}>
+    <Box mt="7vh" p={4} bg="gray.200" minH="100vh" cursor="pointer">
+      <Flex
+        mb={6}
+        direction="column"
+        justify="space-between"
+        align="center"
+        mt={4}
+      >
+        <Text fontSize="xl" mb={4} fontWeight={"semibold"}>
           {results[0]?.examTitle} Results
         </Text>
         <Flex gap={4}>
@@ -221,4 +218,4 @@ export default function ResultDetails() {
       )}
     </Box>
   );
-}
+};

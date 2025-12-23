@@ -1,10 +1,78 @@
 import { Box, Text, Flex, Table, Button } from "@chakra-ui/react";
-import { AllExamsData } from "../../../components/teacher/exam/dummyData";
+import { useEffect } from "react";
+import { useState } from "react";
+
 import { useNavigate } from "react-router-dom";
+import { fetchExams } from "../../../api-endpoint/exam/exams";
 export default function MobileExams() {
+  const [allExams, setAllExams] = useState(null);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const fetchAllExams = async () => {
+      const res = await fetchExams();
+
+      if (res.data) {
+        setAllExams(res.data);
+        console.log(res.data);
+      }
+    };
+
+    fetchAllExams();
+  }, []);
+
   const handleEdit = (examId) => navigate(`/teacher/exams/edit?exam=${examId}`);
+
+  const copyToClipboard = async (text) => {
+    const url = String(text);
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(url);
+        toaster.create({
+          title: "Copied URL to clipboard",
+          type: "success",
+        });
+        return;
+      } catch (error) {
+        console.warn("Clipboard API failed,using fallback", error);
+      }
+    }
+
+    try {
+      const tmp = document.createElement("textarea");
+      tmp.value = url;
+      tmp.style.position = "fixed";
+      tmp.style.left = "-9999px";
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand("copy");
+      document.body.removeChild(tmp);
+      toaster.create({
+        title: "Copied URL to clipboard",
+        type: "success",
+      });
+    } catch (error) {
+      toaster.create({
+        title: "Unable to copy url",
+        type: "error",
+      });
+      console.error("Fallback copy failed", error);
+    }
+  };
+
+  // Helper function to format date nicely
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   return (
     <Box
       bg="gray.200"
@@ -30,9 +98,7 @@ export default function MobileExams() {
                   <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
                     Duration
                   </Table.ColumnHeader>
-                  <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
-                    Status
-                  </Table.ColumnHeader>
+
                   <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
                     Start Date
                   </Table.ColumnHeader>
@@ -45,14 +111,18 @@ export default function MobileExams() {
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {AllExamsData.map((exam) => (
+                {allExams?.map((exam) => (
                   <Table.Row bg="white" key={exam.id}>
                     <Table.Cell textAlign="center">{exam.title}</Table.Cell>
 
                     <Table.Cell textAlign="center">{exam.duration}</Table.Cell>
-                    <Table.Cell textAlign="center">{exam.status}</Table.Cell>
-                    <Table.Cell textAlign="center">{exam.startDate}</Table.Cell>
-                    <Table.Cell textAlign="center">{exam.endDate}</Table.Cell>
+
+                    <Table.Cell textAlign="center">
+                      {formatDate(exam?.startDate)}
+                    </Table.Cell>
+                    <Table.Cell textAlign="center">
+                      {formatDate(exam?.endDate)}
+                    </Table.Cell>
                     <Table.Cell textAlign="center">
                       <Flex justify="center" align="center" gap={2}>
                         <Button

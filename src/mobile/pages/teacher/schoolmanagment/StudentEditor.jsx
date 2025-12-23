@@ -1,27 +1,60 @@
 import { Box, Table, Flex, Text, Input, Button } from "@chakra-ui/react";
-
+import {
+  activateStudent,
+  deactivateStudent,
+  fetchStudent,
+  deleteStudent,
+} from "../../../../api-endpoint/student/students";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 export const MStudentEditor = () => {
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["students"],
+    queryFn: fetchStudent,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: activateStudent,
+    onSuccess: () => queryClient.invalidateQueries(["students"]),
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: deactivateStudent,
+    onSuccess: () => queryClient.invalidateQueries(["students"]),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteStudent,
+    onSuccess: () => queryClient.invalidateQueries(["students"]),
+  });
+
+  if (isLoading) {
+    return <Text textAlign={"center"}>Loading students...</Text>;
+  }
+
+  if (isError) {
+    return (
+      <Text color="danger" textAlign="center">
+        Error fetching Students
+      </Text>
+    );
+  }
+  const students = data?.students || [];
+
   return (
     <Box mt="5vh" minH="100vh" py={4}>
-      <Box
-        bg="gray.200"
-        boxShadow="md"
-        borderRadius="md"
-        p={4}
-        justifySelf="center"
-        w="98%"
-      >
+      <Box bg="gray.200" borderRadius="md" p={4} justifySelf="center" w="98%">
         <Flex mt={4} mb={2} justify="space-between" align="center">
-          <Text> List of Students</Text>
+          <Text fontSize="lg"> List of Students</Text>
         </Flex>
         <Box>
           <Table.ScrollArea h="70vh" borderWidth="1px" rounded="md">
             <Table.Root size="sm" stickyHeader>
               <Table.Header>
                 <Table.Row bg="primary">
-                  <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
-                    ID
-                  </Table.ColumnHeader>
                   <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
                     Student ID
                   </Table.ColumnHeader>
@@ -32,66 +65,22 @@ export const MStudentEditor = () => {
                     Last Name
                   </Table.ColumnHeader>
                   <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
-                    Class
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader color="whiteAlpha.950" textAlign="center">
-                    Department
+                    Status
                   </Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {List.map((l) => (
+                {students?.map((l) => (
                   <Table.Row bg="white">
-                    <Table.Cell textAlign="center">{l.id}</Table.Cell>
-                    <Table.Cell textAlign="center">{l.studentID}</Table.Cell>
+                    <Table.Cell textAlign="center">{l.studentId}</Table.Cell>
                     <Table.Cell textAlign="center">
-                      <Input
-                        type="text"
-                        name="name"
-                        value={l.firstName}
-                        _focus={{
-                          outline: "none",
-                          border: "solid 1px ",
-                          borderColor: "primary",
-                        }}
-                      />
+                      <Table.Cell textAlign={"center"}>
+                        {l.firstName}
+                      </Table.Cell>
                     </Table.Cell>
+                    <Table.Cell textAlign="center">{l.lastName}</Table.Cell>
                     <Table.Cell textAlign="center">
-                      <Input
-                        type="text"
-                        name="name"
-                        value={l.lastName}
-                        _focus={{
-                          outline: "none",
-                          border: "solid 1px ",
-                          borderColor: "primary",
-                        }}
-                      />
-                    </Table.Cell>
-                    <Table.Cell textAlign="center">
-                      <Input
-                        name="class"
-                        type="text"
-                        value={l.class}
-                        _focus={{
-                          outline: "none",
-                          border: "solid 1px ",
-                          borderColor: "primary",
-                        }}
-                      />
-                    </Table.Cell>
-                    <Table.Cell textAlign="center">
-                      <Input
-                        name="department"
-                        type="text"
-                        value={l.department}
-                        _focus={{
-                          outline: "none",
-                          border: "solid 1px ",
-                          borderColor: "primary",
-                        }}
-                      />
-                      {/* {l.department} */}
+                      {l?.active === true ? "Active" : "Inactive"}
                     </Table.Cell>
                   </Table.Row>
                 ))}

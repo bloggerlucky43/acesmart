@@ -12,7 +12,7 @@ export default function Exams() {
   useEffect(() => {
     const fetchAllExams = async () => {
       const res = await fetchExams();
-      console.log(res.data);
+      // console.log(res.data);
       if (res.data) {
         setAllExams(res.data);
         console.log(res.data);
@@ -60,6 +60,18 @@ export default function Exams() {
       });
       console.error("Fallback copy failed", error);
     }
+  };
+
+  // Helper function to format date nicely
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
   };
 
   return (
@@ -113,8 +125,12 @@ export default function Exams() {
 
                     <Table.Cell textAlign="center">{exam.duration}</Table.Cell>
 
-                    <Table.Cell textAlign="center">{exam.startDate}</Table.Cell>
-                    <Table.Cell textAlign="center">{exam.endDate}</Table.Cell>
+                    <Table.Cell textAlign="center">
+                      {formatDate(exam?.startDate)}
+                    </Table.Cell>
+                    <Table.Cell textAlign="center">
+                      {formatDate(exam?.endDate)}
+                    </Table.Cell>
                     <Table.Cell textAlign="center">
                       <Flex align="center" justify="center">
                         <Text

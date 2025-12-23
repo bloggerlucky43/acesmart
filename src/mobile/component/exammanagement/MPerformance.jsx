@@ -1,0 +1,42 @@
+import { Flex, Text, Box } from "@chakra-ui/react";
+import { fetchExams } from "../../../api-endpoint/exam/exams";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+export const MPerformance = () => {
+  const navigate = useNavigate();
+  const { data } = useQuery({
+    queryKey: ["exams"],
+    queryFn: fetchExams,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
+  });
+
+  const exams = data?.data || [];
+  return (
+    <Box bg="gray.200" mt={"7vh"} p={6} minH="100vh" cursor="pointer">
+      <Text mt={4} mb={4} fontSize="lg">
+        Check Exam Results
+      </Text>
+      <Flex bg="white" p={4} boxShadow={"md"} direction="column">
+        <Text>Select an exam to view student results.</Text>
+        {exams?.map((exam) => (
+          <Flex mt={4} direction="column" key={exam.id} p={2} bg="gray.100">
+            <Text
+              onClick={() => {
+                console.log("exam id", exam.id);
+                navigate(`/teacher/exam_results/${exam.id}`);
+              }}
+              fontSize="lg"
+              fontWeight={"semibold"}
+            >
+              {exam?.title}
+            </Text>
+            <Text color="gray.600" fontSize="sm">
+              {exam?.description}
+            </Text>
+          </Flex>
+        ))}
+      </Flex>
+    </Box>
+  );
+};
