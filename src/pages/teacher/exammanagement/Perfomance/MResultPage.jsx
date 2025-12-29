@@ -219,3 +219,7 @@ export const MResultPage = () => {
     </Box>
   );
 };
+
+{
+  /* <Flex gap={8} align="flex-start" wrap="wrap"> */
+}

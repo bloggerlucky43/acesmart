@@ -5,45 +5,107 @@ import {
   Button,
   Field,
   Flex,
-  Table,
   Fieldset,
   SimpleGrid,
+  Image,
 } from "@chakra-ui/react";
 import { addStudent } from "../../../../api-endpoint/student/students";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { toaster } from "../../../../components/ui/toaster";
+import imageCompression from "browser-image-compression";
+import CropModal from "../../../../components/CropModal";
+import { getCroppedImg } from "../../../../components/CropImage";
+
 const MNewStudent = () => {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     studentemail: "",
   });
+  const [image, setImage] = useState(null);
+  const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [rawImage, setRawImage] = useState(null);
+  const [showCrop, setShowCrop] = useState(false);
+
+  const fileInputRef = useRef(null);
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toaster.warning({ title: "Please select an image file" });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setRawImage(reader.result); // base64
+      setShowCrop(true); // open crop modal
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = async (pixelCrop) => {
+    try {
+      // Crop
+      if (!rawImage || !pixelCrop) return;
+
+      const croppedFile = await getCroppedImg(rawImage, pixelCrop);
+
+      // Compress
+      const compressed = await imageCompression(croppedFile, {
+        maxSizeMB: 0.3,
+        maxWidthOrHeight: 800,
+        useWebWorker: true,
+      });
+
+      setImage(compressed); // this is what gets uploaded
+      setPreview(URL.createObjectURL(compressed));
+
+      setShowCrop(false);
+      setRawImage(null);
+
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+      setPreview(URL.createObjectURL(compressed));
+    } catch (err) {
+      toaster.error({ title: "Image processing failed" });
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    try {
-      if (!form.firstName || !form.lastName || !form.studentemail) {
-        toaster.warning({ title: "All fields are required" });
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      const res = await addStudent(form);
-      if (res.success && res.message === "Student Added Successfully") {
-        toaster.create({
-          title: "Student added successfully",
-          type: "success",
-        });
-        setForm({});
-      }
-    } catch (error) {
-      console.error("Error adding student", error);
-    } finally {
+    if (!form.firstName || !form.lastName || !form.studentemail) {
+      toaster.warning({ title: "All fields are required" });
       setLoading(false);
+      return;
     }
+
+    const formData = new FormData();
+    formData.append("firstName", form.firstName);
+    formData.append("lastName", form.lastName);
+    formData.append("studentEmail", form.studentemail);
+
+    if (image) {
+      formData.append("face", image);
+    }
+
+    setLoading(true);
+    const res = await addStudent(formData);
+
+    console.log("at res", res);
+
+    if (res.success && res.message === "Student Added Successfully") {
+      toaster.create({ title: "Student added successfully", type: "success" });
+
+      setForm({ firstName: "", lastName: "", studentemail: "" });
+      setImage(null);
+      setPreview(null);
+    }
+    setLoading(false);
   };
 
   return (
@@ -76,7 +138,53 @@ const MNewStudent = () => {
               </Text>
             </Box>
             <Fieldset.Content>
-              <SimpleGrid columns={1} gap={4}>
+              <Flex gap={4} align="flex-start" wrap="wrap">
+                <Box mt={6}>
+                  <Text fontSize="sm" mb={2}>
+                    Student Image
+                  </Text>
+
+                  {/* Clickable Upload Box */}
+                  <Box
+                    w="180px"
+                    h="180px"
+                    border="2px dashed"
+                    borderColor="gray.400"
+                    borderRadius="md"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    bg="gray.100"
+                    _hover={{ borderColor: "primary" }}
+                    onClick={() => fileInputRef.current.click()}
+                    overflow="hidden"
+                  >
+                    {preview ? (
+                      <Image
+                        src={preview}
+                        alt="Student preview"
+                        w="100%"
+                        h="100%"
+                        objectFit="cover"
+                      />
+                    ) : (
+                      <Text fontSize="sm" color="gray.500" textAlign="center">
+                        Click to upload image
+                      </Text>
+                    )}
+                  </Box>
+
+                  {/* Hidden File Input */}
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    display="none"
+                    onChange={handleImageChange}
+                  />
+                </Box>
+
                 <Field.Root required>
                   <Field.Label>
                     First name
@@ -129,7 +237,7 @@ const MNewStudent = () => {
                     required
                   />
                 </Field.Root>
-              </SimpleGrid>
+              </Flex>
             </Fieldset.Content>
             <Button
               type="submit"
@@ -144,6 +252,14 @@ const MNewStudent = () => {
             </Button>
           </form>
         </Fieldset.Root>
+
+        {showCrop && (
+          <CropModal
+            image={rawImage}
+            onComplete={handleCropComplete}
+            onClose={() => setShowCrop(false)}
+          />
+        )}
       </Flex>
     </Box>
   );

@@ -18,9 +18,9 @@ export const fetchStudent = async () => {
     console.error("Fetch student failed", error);
   }
 };
-export const addStudent = async (form) => {
+export const addStudent = async (formData) => {
   try {
-    const response = await api.post("/student", form, {
+    const response = await api.post("/student", formData, {
       withCredentials: true,
     });
 

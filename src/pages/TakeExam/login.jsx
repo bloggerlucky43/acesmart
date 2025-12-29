@@ -15,6 +15,8 @@ import { FaBrain } from "react-icons/fa";
 import { useState } from "react";
 import { toaster } from "../../components/ui/toaster";
 import { examLogin } from "../../api-endpoint/exam/exams";
+import FaceVerificationModal from "./component/face/CaptureImage";
+
 const ExamLoginPage = () => {
   const [examDetail, setExamDetail] = useState({
     studentId: "",
@@ -25,7 +27,9 @@ const ExamLoginPage = () => {
   const navigate = useNavigate();
   const isMobile = useBreakpointValue({ base: true, md: false });
   const [error, setError] = useState("");
-  console.log(examDetail);
+  const [examStudent, setExamStudent] = useState(null);
+  const [showFaceModal, setShowFaceModal] = useState(false);
+  console.log(examDetail, id);
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -47,8 +51,9 @@ const ExamLoginPage = () => {
           title: res.message,
           type: "success",
         });
-        localStorage.setItem("examStudent", JSON.stringify(res.student));
-        navigate(`/ex/${id}`);
+
+        setExamStudent(res.student);
+        setShowFaceModal(true);
       }
     } catch (error) {
       setError("Invalid credentials. Please check your details");
@@ -155,6 +160,18 @@ const ExamLoginPage = () => {
           </Fieldset.Root>
         </Flex>
       </Flex>
+
+      {showFaceModal && (
+        <FaceVerificationModal
+          isOpen={showFaceModal}
+          studentId={examDetail.studentId}
+          onClose={() => setShowFaceModal(false)}
+          onSuccess={() => {
+            localStorage.setItem("examStudent", JSON.stringify(examStudent));
+            navigate(`/ex/${id}`);
+          }}
+        />
+      )}
     </Box>
   );
 };

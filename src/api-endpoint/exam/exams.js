@@ -85,7 +85,6 @@ export const examLogin = async (examDetails) => {
     });
     const data = response.data;
 
-    console.log("data from the server", data);
     if (!data.success) {
       toaster.create({
         title: data.message,
