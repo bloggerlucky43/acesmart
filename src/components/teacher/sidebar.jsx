@@ -9,9 +9,25 @@ import {
   FaChartLine,
   FaCogs,
 } from "react-icons/fa";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { logoutUser } from "../../api-endpoint/auth/auths";
+import { useAuth } from "../../libs/AuthProvider";
 
 const Sidebar = () => {
+  const { setUser } = useAuth();
+  const navigate = useNavigate();
+  const logout = async () => {
+    try {
+      await logoutUser();
+    } catch (error) {
+      console.error("Backend logout failed:", error);
+    } finally {
+      setUser(null);
+      localStorage.removeItem("USER_KEY");
+
+      navigate("/");
+    }
+  };
   return (
     <Box
       bg="gray.200"
@@ -166,21 +182,18 @@ const Sidebar = () => {
           )}
         </NavLink>
 
-        <NavLink to="/teacher/edit" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Flex
-              gap={2}
-              mt={2}
-              align="center"
-              cursor="pointer"
-              color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}
-            >
-              <Icon as={FaCogs} boxSize={4} />
-              <Text>Logout</Text>
-            </Flex>
-          )}
-        </NavLink>
+        <Flex
+          gap={2}
+          mt={2}
+          align="center"
+          cursor="pointer"
+          color={"black"}
+          _hover={{ color: "purple.400" }}
+          onClick={logout}
+        >
+          <Icon as={FaCogs} boxSize={4} />
+          <Text>Logout</Text>
+        </Flex>
       </Box>
     </Box>
   );

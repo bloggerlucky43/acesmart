@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { toaster } from "../../../components/ui/toaster";
 export default function ExamBody() {
   const { examData, answers, saveAnswer } = useExam();
-
   const [tabValue, setTabValue] = useState("");
-
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState({});
+  const [isFullscreen, setIsFullscreen] = useState(
+    !!document.fullscreenElement
+  );
 
   useEffect(() => {
     if (examData?.sections?.length > 0) {
@@ -54,33 +55,18 @@ export default function ExamBody() {
     document.addEventListener("cut", disableCopy);
     document.addEventListener("paste", disableCopy);
 
-    //full screen enforcement
-    const enforceFullScreen = async () => {
-      try {
-        if (!document.fullscreenElement) {
-          await document.documentElement.requestFullscreen();
-        }
-      } catch (error) {
-        console.warn("Fullscreen request failed:", error);
-      }
-    };
-
-    enforceFullScreen();
-
-    //Detect exit from fullscreen
-
-    const handleFullScreenChange = () => {
-      if (!document.fullscreenElement) {
-        alert("You exited fullscreen please return to fullscreen mode.");
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
         toaster.create({
-          title: "Fullscreen Mode Required",
+          title: "Fullscreen Required",
           type: "warning",
         });
         enforceFullScreen();
       }
     };
 
-    document.addEventListener("fullscreenchange", handleFullScreenChange);
+    document.addEventListener("keydown", handleKeyDown);
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -88,7 +74,8 @@ export default function ExamBody() {
       document.removeEventListener("copy", disableCopy);
       document.removeEventListener("cut", disableCopy);
       document.removeEventListener("paste", disableCopy);
-      document.removeEventListener("fullscreenchange", handleFullScreenChange);
+      document.removeEventListener("keydown", handleKeyDown);
+      // document.removeEventListener("fullscreenchange", handleFullScreenChange);
     };
   }, []);
   return (

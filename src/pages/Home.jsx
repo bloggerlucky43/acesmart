@@ -1,23 +1,29 @@
+import { Suspense, lazy } from "react";
 import { Routes, Route } from "react-router-dom";
 import Landing from "./Landing";
 import { AuthProvider } from "../libs/AuthProvider";
-import Teacher from "./teacher/dashboard";
-import AddStudent from "./teacher/schoolmanagement/addStudent";
-import Dashboard from "./TakeExam/pages/exampage";
-import ViewStudent from "./teacher/schoolmanagement/Liststudent";
-import EditStudent from "./teacher/schoolmanagement/editStudent";
-import AddQuestion from "./teacher/questionbank/addQuestion";
-import ExamLoginPage from "./TakeExam/login";
-import CreateExam from "./teacher/exammanagement/createExam";
-import AllExams from "./teacher/exammanagement/AllExams";
-import EditSettings from "./teacher/exammanagement/examSettings";
-import ExamQuestionPage from "./teacher/exammanagement/examquestionpage";
+import {
+  Teacher,
+  AddStudent,
+  Dashboard,
+  EditStudent,
+  AddQuestion,
+  ExamLoginPage,
+  CreateExam,
+  AllExams,
+  EditSettings,
+  ExamQuestionPage,
+  StartExam,
+  Performance,
+  ResultPage,
+  ScoreModal,
+  ViewStudent,
+} from ".";
+
 import { Toaster } from "../components/ui/toaster";
-import ScoreModal from "./TakeExam/component/ScoreModal";
 import { ExamProvider } from "./TakeExam/component/ExamContext";
-import StartExam from "./TakeExam/startExam";
-import Performance from "./teacher/exammanagement/Perfomance";
-import { ResultPage } from "./teacher/exammanagement/Perfomance/resultpage";
+import PageLoader from "../components/ui/pageloader";
+
 const Home = () => {
   return (
     <>
@@ -31,26 +37,28 @@ const Home = () => {
         </Routes>
       </ExamProvider>
       <AuthProvider>
-        <Routes>
-          <Route path="/" element={<Landing />} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<Landing />} />
 
-          {/* student routes */}
+            {/* student routes */}
 
-          <Route path="/teacher_dashboard" element={<Teacher />} />
-          <Route path="/teacher/add_student" element={<AddStudent />} />
-          <Route path="/teacher/view" element={<ViewStudent />} />
-          <Route path="/teacher/edit" element={<EditStudent />} />
-          <Route path="/teacher/add_questions" element={<AddQuestion />} />
-          <Route path="/teacher/create_exam" element={<CreateExam />} />
-          <Route path="/teacher/exams" element={<AllExams />} />
-          <Route path="/teacher/exams/edit" element={<EditSettings />} />
-          <Route
-            path="/teacher/exam/questions"
-            element={<ExamQuestionPage />}
-          />
-          <Route path="/teacher/exam_result" element={<Performance />} />
-          <Route path="/teacher/exam_results/:id" element={<ResultPage />} />
-        </Routes>
+            <Route path="/teacher_dashboard" element={<Teacher />} />
+            <Route path="/teacher/add_student" element={<AddStudent />} />
+            <Route path="/teacher/view" element={<ViewStudent />} />
+            <Route path="/teacher/edit" element={<EditStudent />} />
+            <Route path="/teacher/add_questions" element={<AddQuestion />} />
+            <Route path="/teacher/create_exam" element={<CreateExam />} />
+            <Route path="/teacher/exams" element={<AllExams />} />
+            <Route path="/teacher/exams/edit" element={<EditSettings />} />
+            <Route
+              path="/teacher/exam/questions"
+              element={<ExamQuestionPage />}
+            />
+            <Route path="/teacher/exam_result" element={<Performance />} />
+            <Route path="/teacher/exam_results/:id" element={<ResultPage />} />
+          </Routes>
+        </Suspense>
         <Toaster />
       </AuthProvider>
     </>

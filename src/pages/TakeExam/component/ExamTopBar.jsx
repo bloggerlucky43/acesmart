@@ -3,17 +3,52 @@ import { useEffect, useState } from "react";
 import { FaClock, FaPen, FaUser } from "react-icons/fa";
 import SubmitModal from "./SubmitModal";
 import { useExam } from "./ExamContext";
-
+import { toaster } from "../../../components/ui/toaster";
 export default function ExamTopBar() {
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const { formatTime } = useExam();
   const [examUserDetails, setExamUserDetails] = useState("");
+  const [isFullscreen, setIsFullscreen] = useState(
+    !!document.fullscreenElement
+  );
 
   useEffect(() => {
     const examUser = localStorage.getItem("examStudent");
     if (examUser) {
       setExamUserDetails(JSON.parse(examUser));
     }
+  }, []);
+
+  useEffect(() => {
+    const enforceFullScreen = async () => {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch (error) {
+        console.warn("Fullscreen request failed:", error);
+      }
+    };
+
+    enforceFullScreen();
+
+    const handleFullScreenChange = () => {
+      const isFs = !!document.fullscreenElement;
+      setIsFullscreen(isFs);
+
+      if (!isFs) {
+        toaster.create({
+          title: "You exited fullscreen! Click the button to return.",
+          type: "warning",
+        });
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullScreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullScreenChange);
+    };
   }, []);
 
   return (
@@ -65,6 +100,22 @@ export default function ExamTopBar() {
             >
               Submit
             </Button>
+            {!isFullscreen && (
+              <Button
+                size="sm"
+                bg="blue.600"
+                onClick={async () => {
+                  try {
+                    await document.documentElement.requestFullscreen();
+                    setIsFullscreen(true);
+                  } catch (err) {
+                    console.warn("Fullscreen request failed", err);
+                  }
+                }}
+              >
+                Fullscreen
+              </Button>
+            )}
           </Flex>
         </Flex>
       </Flex>
