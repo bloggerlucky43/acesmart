@@ -3,7 +3,7 @@ import ResultDetails from "./component/resultDetails";
 import { Box, useBreakpointValue } from "@chakra-ui/react";
 import MobileLayout from "../../../../mobile/constant/mobilelayout";
 import { MResultPage } from "./MResultPage";
-export const ResultPage = () => {
+const ResultPage = () => {
   const isMobile = useBreakpointValue({ base: true, lg: false });
 
   return (
@@ -20,3 +20,5 @@ export const ResultPage = () => {
     </Box>
   );
 };
+
+export default ResultPage;

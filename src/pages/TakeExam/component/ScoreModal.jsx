@@ -4,8 +4,7 @@ import { useExam } from "./ExamContext";
 import { useState } from "react";
 import { saveExamResult } from "../../../api-endpoint/exam/exams";
 import { toaster } from "../../../components/ui/toaster";
-
-export default function ScoreModal({ onClose }) {
+function ScoreModal({ onClose }) {
   const { scores, examData, totalScore } = useExam();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -103,3 +102,5 @@ export default function ScoreModal({ onClose }) {
     </Flex>
   );
 }
+
+export default ScoreModal;

@@ -1,9 +1,5 @@
 import { Flex, Text, Box, Accordion, useDisclosure } from "@chakra-ui/react";
-import { useState } from "react";
-import {
-  fetchExamResults,
-  fetchExams,
-} from "../../../../../api-endpoint/exam/exams";
+import { fetchExams } from "../../../../../api-endpoint/exam/exams";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 export default function Results() {

@@ -1,4 +1,12 @@
-import { Box, Text, Flex, Table, Button, IconButton } from "@chakra-ui/react";
+import {
+  Box,
+  Text,
+  Flex,
+  Table,
+  Button,
+  IconButton,
+  Spinner,
+} from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { fetchExams } from "../../../api-endpoint/exam/exams";
@@ -7,20 +15,42 @@ import { Tooltip } from "../../ui/tooltip";
 import { toaster } from "../../ui/toaster";
 export default function Exams() {
   const [allExams, setAllExams] = useState();
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchAllExams = async () => {
-      const res = await fetchExams();
-      // console.log(res.data);
-      if (res.data) {
-        setAllExams(res.data);
-        console.log(res.data);
+      try {
+        const res = await fetchExams();
+        setAllExams(res?.data ?? []);
+      } catch (error) {
+        toaster.create({
+          title: "Failed to load exams",
+          type: "error",
+        });
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchAllExams();
   }, []);
+
+  if (loading) {
+    return (
+      <Flex minH="100vh" justify="center" align="center">
+        <Spinner size="xl" color="primary" />
+      </Flex>
+    );
+  }
+
+  if (!allExams.length) {
+    return (
+      <Flex minH="100vh" justify="center" align="center">
+        <Text>No exams available</Text>
+      </Flex>
+    );
+  }
 
   const handleEdit = (examId) => navigate(`/teacher/exams/edit?exam=${examId}`);
 

@@ -14,36 +14,22 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { fetchExamResults } from "../../../../../api-endpoint/exam/exams";
-
+import { useQuery } from "@tanstack/react-query";
+import PageLoader from "../../../../../components/ui/pageloader";
 export default function ResultDetails() {
   const { id } = useParams();
-  const [results, setResult] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  // console.log("Exam id is", id);
-
-  useEffect(() => {
-    if (!id) {
-      return;
-    }
-
-    const fetchStudentResults = async () => {
-      try {
-        setLoading(true);
-        const response = await fetchExamResults(id);
-        console.log("Student results data:", response);
-        if (response?.data) {
-          setResult(response.data);
-        }
-      } catch (error) {
-        console.error("Error fetching student results:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStudentResults();
-  }, [id]);
+  const {
+    data: results = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["exam-results", id],
+    queryFn: () => fetchExamResults(id).then((res) => res.data),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  });
 
   //dynamically extracting all subject keys from scores
   const subjects = useMemo(() => {
@@ -63,9 +49,11 @@ export default function ResultDetails() {
     const dataForExcel = results.map((res) => {
       const base = {
         "Student ID": res?.studentCode || res?.studentId,
-        Name: `${res?.Student.firstName} ${res?.Student.lastName}`,
+        Name: `${res?.Student?.firstName ?? ""} ${
+          res?.Student?.lastName ?? ""
+        }`,
         "Total Score": res?.totalScore,
-        Percentage: `${res.percentage}%`,
+        Percentage: `${Number(res?.percentage ?? 0).toFixed(2)}%`,
       };
 
       //add each subject score dynamicalaly
@@ -117,13 +105,24 @@ export default function ResultDetails() {
     });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <Center minH="100vh">
-        <Spinner size="xl" color="primary" />
+      <Flex minH="100vh" justify="center" align="center">
+        <Spinner size="lg" color="primary" />
+      </Flex>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Center minH="50vh">
+        <Text color="red.500">
+          Failed to load results: {String(error?.message ?? "Unknown error")}
+        </Text>
       </Center>
     );
   }
+
   return (
     <Box
       w={"calc(100% -200px)"}
@@ -136,7 +135,7 @@ export default function ResultDetails() {
     >
       <Flex mb={6} justify="space-between" align="center" mt={4}>
         <Text fontSize="2xl" fontWeight={"semibold"}>
-          {results[0]?.examTitle} Results
+          {String(results[0]?.examTitle ?? "Exam")} Results
         </Text>
         <Flex gap={4}>
           <Button bg="primary" onClick={handleDownload}>
@@ -148,11 +147,7 @@ export default function ResultDetails() {
         </Flex>
       </Flex>
 
-      {loading ? (
-        <Center h="50vh">
-          <Spinner size="xl" color="primary" />
-        </Center>
-      ) : results.length === 0 ? (
+      {results.length === 0 ? (
         <Center h="50vh">
           <Text>No student results found for this exam.</Text>
         </Center>
@@ -197,13 +192,13 @@ export default function ResultDetails() {
                   </Table.Cell>
                   <Table.Cell textAlign={"center"}>
                     {res?.Student
-                      ? `${res?.Student.firstName} ${res.Student?.lastName}`
+                      ? `${res?.Student?.firstName} ${res?.Student?.lastName}`
                       : "N/A"}
                   </Table.Cell>
 
                   {subjects.map((subject) => (
                     <Table.Cell key={subject} textAlign={"center"}>
-                      {res.scores?.[subject] ?? "-"}
+                      {res?.scores?.[subject] ?? "-"}
                     </Table.Cell>
                   ))}
 
@@ -211,7 +206,10 @@ export default function ResultDetails() {
                     {res?.totalScore}
                   </Table.Cell>
                   <Table.Cell textAlign={"center"}>
-                    {res?.percentage?.toFixed(2)}%
+                    {typeof res?.percentage === "number"
+                      ? res?.percentage.toFixed(2)
+                      : Number(res?.percentage || 0).toFixed(2)}
+                    %
                   </Table.Cell>
                 </Table.Row>
               ))}

@@ -1,5 +1,4 @@
-import { Box, Table, Flex, Text, Button } from "@chakra-ui/react";
-
+import { Box, Table, Flex, Text, Button, Spinner } from "@chakra-ui/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   activateStudent,
@@ -7,6 +6,7 @@ import {
   deleteStudent,
   fetchStudent,
 } from "../../api-endpoint/student/students";
+
 const StudentEditor = () => {
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
@@ -33,7 +33,11 @@ const StudentEditor = () => {
   });
 
   if (isLoading) {
-    return <Text textAlign={"center"}>Loading students...</Text>;
+    return (
+      <Flex minH="100vh" justify="center" align="center">
+        <Spinner size="lg" color="primary" />
+      </Flex>
+    );
   }
 
   if (isError) {

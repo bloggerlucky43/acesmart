@@ -5,7 +5,7 @@ import { fetchLiveExam } from "../../api-endpoint/exam/exams";
 import { useEffect } from "react";
 import { useExam } from "../TakeExam/component/ExamContext";
 import { toaster } from "../../components/ui/toaster";
-export default function StartExam() {
+function StartExam() {
   const [isLoading, setIsLoading] = useState(false);
   const { id } = useParams();
   const [userDetails, setUserDetails] = useState({});
@@ -82,3 +82,5 @@ export default function StartExam() {
     </Flex>
   );
 }
+
+export default StartExam;
