@@ -1,4 +1,4 @@
-import { Box, Text, SimpleGrid, Icon } from "@chakra-ui/react";
+import { Box, Text, SimpleGrid, Icon, Spinner, Flex } from "@chakra-ui/react";
 import {
   FaUsers,
   FaBook,
@@ -7,11 +7,10 @@ import {
   FaPlusSquare,
 } from "react-icons/fa";
 import { getDashboardStats } from "../../api-endpoint/auth/auths";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 const Cards = () => {
-  const queryClient = useQueryClient();
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["dashboardStats"],
     queryFn: getDashboardStats,
     staleTime: 5 * 60 * 1000,
@@ -20,6 +19,15 @@ const Cards = () => {
   });
 
   const dashboardStats = data?.data || [];
+
+  if (isLoading) {
+    return (
+      <Flex minH="100vh" justify="center" align="center">
+        <Spinner size="lg" color="primary" />
+      </Flex>
+    );
+  }
+
   return (
     <Box
       ml="200px"

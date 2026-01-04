@@ -1,65 +1,46 @@
-import { Box, Text, Flex, Table, Button } from "@chakra-ui/react";
+import { Box, Text, Flex, Table, Button, Spinner } from "@chakra-ui/react";
 import { useEffect } from "react";
 import { useState } from "react";
 
 import { useNavigate } from "react-router-dom";
 import { fetchExams } from "../../../api-endpoint/exam/exams";
+import { toaster } from "../../../components/ui/toaster";
 export default function MobileExams() {
   const [allExams, setAllExams] = useState(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchAllExams = async () => {
-      const res = await fetchExams();
+      try {
+        const res = await fetchExams();
 
-      if (res.data) {
-        setAllExams(res.data);
-        console.log(res.data);
+        if (res.data) {
+          setAllExams(res.data);
+          console.log(res.data);
+        }
+      } catch (error) {
+        toaster.create({
+          title: "Failed to load exams",
+          type: "error",
+        });
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchAllExams();
   }, []);
 
+  if (loading) {
+    return (
+      <Flex minH="100vh" justify="center" align="center">
+        <Spinner size="lg" color="primary" />
+      </Flex>
+    );
+  }
+
   const handleEdit = (examId) => navigate(`/teacher/exams/edit?exam=${examId}`);
-
-  const copyToClipboard = async (text) => {
-    const url = String(text);
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      try {
-        await navigator.clipboard.writeText(url);
-        toaster.create({
-          title: "Copied URL to clipboard",
-          type: "success",
-        });
-        return;
-      } catch (error) {
-        console.warn("Clipboard API failed,using fallback", error);
-      }
-    }
-
-    try {
-      const tmp = document.createElement("textarea");
-      tmp.value = url;
-      tmp.style.position = "fixed";
-      tmp.style.left = "-9999px";
-      document.body.appendChild(tmp);
-      tmp.select();
-      document.execCommand("copy");
-      document.body.removeChild(tmp);
-      toaster.create({
-        title: "Copied URL to clipboard",
-        type: "success",
-      });
-    } catch (error) {
-      toaster.create({
-        title: "Unable to copy url",
-        type: "error",
-      });
-      console.error("Fallback copy failed", error);
-    }
-  };
 
   // Helper function to format date nicely
   const formatDate = (dateString) => {

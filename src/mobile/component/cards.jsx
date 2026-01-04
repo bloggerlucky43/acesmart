@@ -6,7 +6,36 @@ import {
   FaTrophy,
   FaPlusSquare,
 } from "react-icons/fa";
+import { useQuery } from "@tanstack/react-query";
+import { getDashboardStats } from "../../api-endpoint/auth/auths";
 const MCards = () => {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["dashboardStats"],
+    queryFn: getDashboardStats,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const dashboardStats = data?.data || [];
+
+  if (isLoading) {
+    return (
+      <Flex minH="100vh" justify="center" align="center">
+        <Spinner size="lg" color="primary" />
+      </Flex>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Center minH="50vh">
+        <Text color="red.500">
+          Failed to load dashboard {String(error?.message ?? "Unknown error")}
+        </Text>
+      </Center>
+    );
+  }
   return (
     <Box
       p={4}
@@ -34,7 +63,7 @@ const MCards = () => {
         >
           <Icon as={FaUsers} boxSize={8} color="purple.900" />
           <Text mt={4}>Total Students</Text>
-          <Text mt={2}>90</Text>
+          <Text mt={2}>{dashboardStats?.studentCount}</Text>
         </Box>
         <Box
           as="button"
@@ -51,7 +80,7 @@ const MCards = () => {
         >
           <Icon as={FaBook} boxSize={8} color="green.900" />
           <Text mt={4}>Questions Uploaded</Text>
-          <Text mt={2}>240</Text>
+          <Text mt={2}>{dashboardStats?.questionCount}</Text>
         </Box>
         <Box
           as="button"
@@ -68,7 +97,7 @@ const MCards = () => {
         >
           <Icon as={FaChartBar} boxSize={8} color="pink.900" />
           <Text mt={4}>Tests Conducted</Text>
-          <Text mt={2}>4</Text>
+          <Text mt={2}>{dashboardStats?.examCount}</Text>
         </Box>
         <Box
           as="button"

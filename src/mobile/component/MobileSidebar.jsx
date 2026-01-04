@@ -82,12 +82,12 @@ const MobileSideBar = ({ onClose }) => {
               _hover={{ color: "purple.400" }}
             >
               <Icon as={FaUserEdit} boxSize={5} />
-              <Text>Edit Student</Text>
+              <Text>View Student</Text>
             </Flex>
           )}
         </NavLink>
 
-        <NavLink to="/teacher/add_questions" style={{ textDecoration: "none" }}>
+        {/* <NavLink to="/teacher/add_questions" style={{ textDecoration: "none" }}>
           {({ isActive }) => (
             <Flex
               gap={2}
@@ -101,7 +101,7 @@ const MobileSideBar = ({ onClose }) => {
               <Text>Add Questions</Text>
             </Flex>
           )}
-        </NavLink>
+        </NavLink> */}
 
         <NavLink to="/teacher/create_exam" style={{ textDecoration: "none" }}>
           {({ isActive }) => (

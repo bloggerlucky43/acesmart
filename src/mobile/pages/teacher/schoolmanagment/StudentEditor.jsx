@@ -1,13 +1,7 @@
-import { Box, Table, Flex, Text, Input, Button } from "@chakra-ui/react";
-import {
-  activateStudent,
-  deactivateStudent,
-  fetchStudent,
-  deleteStudent,
-} from "../../../../api-endpoint/student/students";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Box, Table, Flex, Text, Spinner } from "@chakra-ui/react";
+import { fetchStudent } from "../../../../api-endpoint/student/students";
+import { useQuery } from "@tanstack/react-query";
 export const MStudentEditor = () => {
-  const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["students"],
     queryFn: fetchStudent,
@@ -16,23 +10,12 @@ export const MStudentEditor = () => {
     refetchOnWindowFocus: false,
   });
 
-  const activateMutation = useMutation({
-    mutationFn: activateStudent,
-    onSuccess: () => queryClient.invalidateQueries(["students"]),
-  });
-
-  const deactivateMutation = useMutation({
-    mutationFn: deactivateStudent,
-    onSuccess: () => queryClient.invalidateQueries(["students"]),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteStudent,
-    onSuccess: () => queryClient.invalidateQueries(["students"]),
-  });
-
   if (isLoading) {
-    return <Text textAlign={"center"}>Loading students...</Text>;
+    return (
+      <Flex justify={"center"} align="center">
+        <Spinner size="lg" color="primary" />
+      </Flex>
+    );
   }
 
   if (isError) {

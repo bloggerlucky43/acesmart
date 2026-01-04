@@ -15,7 +15,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { fetchExamResults } from "../../../../../api-endpoint/exam/exams";
 import { useQuery } from "@tanstack/react-query";
-import PageLoader from "../../../../../components/ui/pageloader";
+
 export default function ResultDetails() {
   const { id } = useParams();
 
