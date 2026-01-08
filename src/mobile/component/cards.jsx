@@ -1,4 +1,4 @@
-import { Box, Flex, Text, SimpleGrid, Icon } from "@chakra-ui/react";
+import { Box, Flex, Text, Spinner, SimpleGrid, Icon } from "@chakra-ui/react";
 import {
   FaUsers,
   FaBook,

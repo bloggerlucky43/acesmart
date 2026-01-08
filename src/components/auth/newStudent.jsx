@@ -39,20 +39,18 @@ const NewStudent = () => {
 
     const reader = new FileReader();
     reader.onload = () => {
-      setRawImage(reader.result); // base64
-      setShowCrop(true); // open crop modal
+      setRawImage(reader.result);
+      setShowCrop(true);
     };
     reader.readAsDataURL(file);
   };
 
   const handleCropComplete = async (pixelCrop) => {
     try {
-      // Crop
       if (!rawImage || !pixelCrop) return;
 
       const croppedFile = await getCroppedImg(rawImage, pixelCrop);
 
-      // Compress
       const compressed = await imageCompression(croppedFile, {
         maxSizeMB: 0.3,
         maxWidthOrHeight: 800,
@@ -83,28 +81,35 @@ const NewStudent = () => {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("firstName", form.firstName);
-    formData.append("lastName", form.lastName);
-    formData.append("studentEmail", form.studentemail);
+    try {
+      const formData = new FormData();
+      formData.append("firstName", form.firstName);
+      formData.append("lastName", form.lastName);
+      formData.append("studentEmail", form.studentemail);
 
-    if (image) {
-      formData.append("face", image);
+      if (image) {
+        formData.append("face", image);
+      }
+
+      setLoading(true);
+      const res = await addStudent(formData);
+      console.log("at res", res);
+
+      if (res?.success && res?.message === "Student Added Successfully") {
+        toaster.create({
+          title: "Student added successfully",
+          type: "success",
+        });
+
+        setForm({ firstName: "", lastName: "", studentemail: "" });
+        setImage(null);
+        setPreview(null);
+      }
+    } catch (error) {
+      console.error("Error querying server", error);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(true);
-    const res = await addStudent(formData);
-
-    console.log("at res", res);
-
-    if (res.success && res.message === "Student Added Successfully") {
-      toaster.create({ title: "Student added successfully", type: "success" });
-
-      setForm({ firstName: "", lastName: "", studentemail: "" });
-      setImage(null);
-      setPreview(null);
-    }
-    setLoading(false);
   };
   return (
     <Flex

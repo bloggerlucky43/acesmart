@@ -22,12 +22,12 @@ const Login = () => {
 
       if (res.success) {
         toaster.success({
-          title: "Login successful" || data.message,
+          title: "Login successful" || res?.message,
         });
 
         localStorage.setItem("USER_KEY", JSON.stringify(res.data));
         setUser(res.data);
-        navigate("/teacher_dashboard");
+        navigate("/teacher_dashboard", { replace: true });
       }
     } catch (error) {
       toaster.create({

@@ -23,8 +23,8 @@ export default function FaceVerificationModal({
   const blinkCounterRef = useRef(0);
 
   const detectorOptions = new faceapi.TinyFaceDetectorOptions({
-    inputSize: 416,
-    scoreThreshold: 0.5, // easier to detect faces
+    inputSize: 160,
+    scoreThreshold: 0.5,
   });
 
   //load models

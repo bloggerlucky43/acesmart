@@ -20,7 +20,8 @@ const Features = ({ aboutRef }) => {
           p={6}
           boxShadow="lg"
           borderRadius="lg"
-          _hover={{ boxShadow: "2xl", transform: "translateY(-10px)" }}>
+          _hover={{ boxShadow: "2xl", transform: "translateY(-10px)" }}
+        >
           <Icon
             as={FaQuestion}
             boxSize={14}
@@ -39,7 +40,8 @@ const Features = ({ aboutRef }) => {
           p={6}
           boxShadow="lg"
           borderRadius="lg"
-          _hover={{ boxShadow: "2xl", transform: "translateY(-10px)" }}>
+          _hover={{ boxShadow: "2xl", transform: "translateY(-10px)" }}
+        >
           <Icon
             as={MdOutlineSchool}
             boxSize={14}
@@ -61,7 +63,8 @@ const Features = ({ aboutRef }) => {
           p={6}
           boxShadow="lg"
           borderRadius="lg"
-          _hover={{ boxShadow: "2xl", transform: "translateY(-10px)" }}>
+          _hover={{ boxShadow: "2xl", transform: "translateY(-10px)" }}
+        >
           <Icon
             as={RiBookOpenLine}
             boxSize={14}
@@ -78,34 +81,14 @@ const Features = ({ aboutRef }) => {
             stay exam-ready.
           </Text>
         </Box>
+
         <Box
           bg="off"
           p={6}
           boxShadow="lg"
           borderRadius="lg"
-          _hover={{ boxShadow: "2xl", transform: "translateY(-10px)" }}>
-          <Icon
-            as={FaGamepad}
-            boxSize={14}
-            borderRadius="md"
-            p={4}
-            color="blue"
-            bg="blue.300"
-          />
-          <Text mt={8} fontSize="xl" fontWeight="bold">
-            Gamified Learning
-          </Text>
-          <Text>
-            Earn points, badges, and rewards for completing study sessions and
-            challenges.
-          </Text>
-        </Box>
-        <Box
-          bg="off"
-          p={6}
-          boxShadow="lg"
-          borderRadius="lg"
-          _hover={{ boxShadow: "2xl", transform: "translateY(-10px)" }}>
+          _hover={{ boxShadow: "2xl", transform: "translateY(-10px)" }}
+        >
           <Icon
             as={FiBarChart2}
             boxSize={14}
@@ -127,7 +110,8 @@ const Features = ({ aboutRef }) => {
           p={6}
           boxShadow="lg"
           borderRadius="lg"
-          _hover={{ boxShadow: "2xl", transform: "translateY(-10px)" }}>
+          _hover={{ boxShadow: "2xl", transform: "translateY(-10px)" }}
+        >
           <Icon
             as={BiGroup}
             boxSize={14}
@@ -149,7 +133,8 @@ const Features = ({ aboutRef }) => {
           p={6}
           boxShadow="lg"
           borderRadius="lg"
-          _hover={{ boxShadow: "2xl", transform: "translateY(-10px)" }}>
+          _hover={{ boxShadow: "2xl", transform: "translateY(-10px)" }}
+        >
           <Icon
             as={MdSecurity}
             boxSize={14}

@@ -41,8 +41,6 @@ const Home = () => {
           <Routes>
             <Route path="/" element={<Landing />} />
 
-            {/* student routes */}
-
             <Route path="/teacher_dashboard" element={<Teacher />} />
             <Route path="/teacher/add_student" element={<AddStudent />} />
             <Route path="/teacher/view" element={<ViewStudent />} />

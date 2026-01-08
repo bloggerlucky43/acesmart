@@ -1,15 +1,17 @@
 import { Box, Flex, Text, Button, Tabs, Image } from "@chakra-ui/react";
 import { useExam } from "./ExamContext";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toaster } from "../../../components/ui/toaster";
+import { saveExamResult } from "../../../api-endpoint/exam/exams";
+import { useNavigate } from "react-router-dom";
 export default function ExamBody() {
-  const { examData, answers, saveAnswer } = useExam();
+  const { examData, answers, saveAnswer, scores, totalScore } = useExam();
   const [tabValue, setTabValue] = useState("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState({});
-  const [isFullscreen, setIsFullscreen] = useState(
-    !!document.fullscreenElement
-  );
-
+  const violationCount = useRef(0);
+  const totalMarks = examData?.totalMarks || 400;
+  const percentage = (totalScore / totalMarks) * 100;
+  const navigate = useNavigate();
   useEffect(() => {
     if (examData?.sections?.length > 0) {
       setTabValue(examData.sections[0].section);
@@ -22,21 +24,48 @@ export default function ExamBody() {
     }
   }, [examData]);
 
-  if (!examData || !examData.sections) {
-    return (
-      <Flex align="center" minH="70vh" justify="center">
-        <Text fontSize="lg" color="gray.600">
-          Loading exam...
-        </Text>
-      </Flex>
-    );
-  }
+  // Full screen enforcement
+  useEffect(() => {
+    const enterFullscreen = async () => {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch (error) {
+        toaster.create({
+          title: "FullScreen is required to take this exam",
+          type: "warning",
+        });
+      }
+    };
+    enterFullscreen();
+  }, []);
+
+  //Violation handler
+  const reportViolation = (reason) => {
+    violationCount.current += 1;
+
+    toaster.create({
+      title: "Exam Violation Detected",
+      description: reason,
+      type: "error",
+    });
+
+    if (violationCount.current >= 3) {
+      toaster.create({
+        title: "Exam terminated due to multiple violations",
+        type: "error",
+      });
+
+      AutoSubmit();
+    }
+  };
 
   useEffect(() => {
     //Tab switch
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        alert("You have switched tabs! This will be reported.");
+        reportViolation("Tab switch detected");
         toaster.create({
           title: "Tab Switch Detected",
           type: "warning",
@@ -44,7 +73,12 @@ export default function ExamBody() {
       }
     };
 
+    const handleBlur = () => {
+      reportViolation("Window focus lost");
+    };
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleBlur);
 
     //Disable right clikc/copy
     const disableRightClick = (e) => e.preventDefault();
@@ -75,9 +109,65 @@ export default function ExamBody() {
       document.removeEventListener("cut", disableCopy);
       document.removeEventListener("paste", disableCopy);
       document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("blur", handleBlur);
       // document.removeEventListener("fullscreenchange", handleFullScreenChange);
     };
   }, []);
+
+  const AutoSubmit = async () => {
+    try {
+      const student = localStorage?.getItem("examStudent");
+      const parsedStudent = JSON?.parse(student);
+      console.log("The parsed student is ", student, parsedStudent);
+
+      const res = await saveExamResult({
+        scores,
+        studentId: parsedStudent?.id,
+        studentCode: parsedStudent?.studentId,
+        examId: examData?.id,
+        examTitle: examData?.title,
+        totalMarks: examData?.duration,
+      });
+
+      if (res.data) {
+        toaster.create({
+          title: "Exam result saved successfully",
+          type: "success",
+        });
+
+        navigate(`/exam/${examData?.id}`);
+      }
+    } catch (error) {
+      console.error("Failed to save exam", error);
+    } finally {
+      localStorage.removeItem("examData");
+      localStorage.removeItem("examStudent");
+    }
+  };
+
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      if (!document.fullscreenElement) {
+        reportViolation("Exited fullscreen mode");
+        document.documentElement.requestFullscreen();
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullScreenChange);
+
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullScreenChange);
+  });
+
+  if (!examData || !examData.sections) {
+    return (
+      <Flex align="center" minH="70vh" justify="center">
+        <Text fontSize="lg" color="gray.600">
+          Loading exam...
+        </Text>
+      </Flex>
+    );
+  }
   return (
     <Box minH="70vh" mx="auto" mt={2} bg="white" maxW="8xl">
       <Flex p={2} direction={"column"} w="full">

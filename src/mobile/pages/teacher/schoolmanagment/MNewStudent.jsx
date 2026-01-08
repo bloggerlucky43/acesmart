@@ -84,28 +84,35 @@ const MNewStudent = () => {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("firstName", form.firstName);
-    formData.append("lastName", form.lastName);
-    formData.append("studentEmail", form.studentemail);
+    try {
+      const formData = new FormData();
+      formData.append("firstName", form.firstName);
+      formData.append("lastName", form.lastName);
+      formData.append("studentEmail", form.studentemail);
 
-    if (image) {
-      formData.append("face", image);
+      if (image) {
+        formData.append("face", image);
+      }
+
+      setLoading(true);
+      const res = await addStudent(formData);
+
+      console.log("at res", res);
+
+      if (res?.success && res?.message === "Student Added Successfully") {
+        toaster.create({
+          title: "Student added successfully",
+          type: "success",
+        });
+
+        setForm({ firstName: "", lastName: "", studentemail: "" });
+        setImage(null);
+        setPreview(null);
+      }
+    } catch (error) {
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(true);
-    const res = await addStudent(formData);
-
-    console.log("at res", res);
-
-    if (res.success && res.message === "Student Added Successfully") {
-      toaster.create({ title: "Student added successfully", type: "success" });
-
-      setForm({ firstName: "", lastName: "", studentemail: "" });
-      setImage(null);
-      setPreview(null);
-    }
-    setLoading(false);
   };
 
   return (

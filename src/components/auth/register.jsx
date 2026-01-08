@@ -11,6 +11,7 @@ const Register = () => {
     email: "",
     role: "teacher",
     phoneNumber: "",
+
     username: "",
     password: "",
     confirmPassword: "",

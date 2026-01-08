@@ -12,7 +12,7 @@ export const MStudentEditor = () => {
 
   if (isLoading) {
     return (
-      <Flex justify={"center"} align="center">
+      <Flex bg="gray.200" minH="100vh" justify={"center"} align="center">
         <Spinner size="lg" color="primary" />
       </Flex>
     );
