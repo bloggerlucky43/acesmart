@@ -76,8 +76,6 @@ export default function FaceVerificationModal({
         await faceapi.tf.setBackend("cpu");
         await faceapi.tf.ready();
 
-        // await faceapi.nets.tinyFaceDetector.loadFromUri("/models/weights");
-        // await faceapi.nets.faceLandmark68Net.loadFromUri("/models/weights");
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri("/models/weights"),
           faceapi.nets.faceLandmark68Net.loadFromUri("/models/weights"),
@@ -147,13 +145,13 @@ export default function FaceVerificationModal({
       const ear = (eye) =>
         Math.abs(eye[1].y - eye[5].y) / Math.abs(eye[0].x - eye[3].x);
 
-      if (ear(leftEye) < 0.27 || ear(rightEye) < 0.27) {
+      if (ear(leftEye) < 0.42 || ear(rightEye) < 0.42) {
         blinkCounterRef.current += 1;
       } else {
-        if (blinkCounterRef.current > 1) setBlinkDetected(true);
+        if (blinkCounterRef.current >= 1) setBlinkDetected(true);
         blinkCounterRef.current = 0;
       }
-    }, 2000);
+    }, 100);
 
     return () => clearInterval(interval);
   }, [modelReady, blinkDetected]);
