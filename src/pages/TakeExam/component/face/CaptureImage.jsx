@@ -13,94 +13,30 @@ export default function FaceVerificationModal({
   onSuccess,
 }) {
   const videoRef = useRef(null);
-  const [loadingModels, setLoadingModels] = useState(true);
   const [cameraReady, setCameraReady] = useState(false);
   const [blinkDetected, setBlinkDetected] = useState(false);
   const [storedDescriptor, setStoredDescriptor] = useState(null);
   const [verifying, setVerifying] = useState(false);
-
+  const [modelReady, setModelsReady] = useState(false);
   const descriptorsRef = useRef([]);
   const blinkCounterRef = useRef(0);
+  const streamRef = useRef(null);
 
   const detectorOptions = new faceapi.TinyFaceDetectorOptions({
     inputSize: 160,
-    scoreThreshold: 0.5,
+    scoreThreshold: 0.6,
   });
-
-  //load models
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const loadModels = async () => {
-      try {
-        await faceapi.tf.setBackend("webgl");
-        await faceapi.tf.ready();
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri("/models/weights"),
-          faceapi.nets.faceLandmark68Net.loadFromUri("/models/weights"),
-          faceapi.nets.faceRecognitionNet.loadFromUri("/models/weights"),
-        ]);
-        console.log("Models loaded successfully");
-
-        setLoadingModels(false);
-      } catch (error) {
-        console.error("Failed to load models:", error);
-        toaster.create({
-          type: "error",
-          title: "Failed to load face models",
-        });
-      }
-    };
-    loadModels();
-  }, [isOpen]);
-
-  // load stored faces
-  useEffect(() => {
-    if (!isOpen || !studentId || loadingModels) return;
-
-    const loadStoredFace = async () => {
-      try {
-        const res = await api.get(`/student/face/${studentId}`);
-        const img = await faceapi.fetchImage(res.data.faceImageUrl);
-
-        console.log("Detecting stored face descriptor...");
-        const detection = await faceapi
-          .detectSingleFace(img, detectorOptions)
-          .withFaceLandmarks()
-          .withFaceDescriptor();
-
-        if (!detection) {
-          toaster.error({ title: "Stored face not detectable" });
-          return;
-        }
-        console.log("Stored face descriptor loaded");
-        setStoredDescriptor(detection.descriptor);
-      } catch (error) {
-        console.error("Failed to load reference face:", error);
-        toaster.error({ title: "Failed to load reference face" });
-      }
-    };
-
-    loadStoredFace();
-  }, [isOpen, studentId, loadingModels]);
 
   // start camera
   useEffect(() => {
-    if (!isOpen || loadingModels || cameraReady) return;
-    console.log("trying to log videoref", videoRef.current);
-
-    if (!videoRef.current) return;
-
-    console.log("Trying to start camera");
-
-    let stream;
+    if (!isOpen) return;
 
     const startCamera = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
+        const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user" },
         });
-
+        streamRef.current = stream;
         videoRef.current.srcObject = stream;
 
         videoRef.current.onloadedmetadata = async () => {
@@ -122,70 +58,111 @@ export default function FaceVerificationModal({
     startCamera();
 
     return () => {
-      if (stream) stream.getTracks().forEach((t) => t.stop());
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
       setCameraReady(false);
       setBlinkDetected(false);
       descriptorsRef.current = [];
       console.log("Camera stopped, cleanup done");
     };
-  }, [isOpen, loadingModels]);
+  }, [isOpen]);
+
+  //load light models
+  useEffect(() => {
+    if (!cameraReady) return;
+
+    const loadModels = async () => {
+      try {
+        await faceapi.tf.setBackend("cpu");
+        await faceapi.tf.ready();
+
+        // await faceapi.nets.tinyFaceDetector.loadFromUri("/models/weights");
+        // await faceapi.nets.faceLandmark68Net.loadFromUri("/models/weights");
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri("/models/weights"),
+          faceapi.nets.faceLandmark68Net.loadFromUri("/models/weights"),
+          faceapi.nets.faceRecognitionNet.loadFromUri("/models/weights"),
+        ]);
+        console.log("Models loaded successfully");
+        setModelsReady(true);
+        // setLoadingModels(false);
+      } catch (error) {
+        console.error("Failed to load models:", error);
+        toaster.create({
+          type: "error",
+          title: "Failed to load face models",
+        });
+      }
+    };
+    loadModels();
+  }, [cameraReady]);
+
+  // load stored faces
+  useEffect(() => {
+    if (!modelReady || !studentId) return;
+
+    const loadStoredFace = async () => {
+      try {
+        const res = await api.get(`/student/face/${studentId}`);
+        const img = await faceapi.fetchImage(res.data.faceImageUrl);
+
+        console.log("Detecting stored face descriptor...");
+
+        const detection = await faceapi
+          .detectSingleFace(img, detectorOptions)
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+
+        if (!detection) {
+          toaster.error({ title: "Stored face not detectable" });
+          return;
+        }
+        console.log("Stored face descriptor loaded");
+        setStoredDescriptor(detection.descriptor);
+      } catch (error) {
+        console.error("Failed to load reference face:", error);
+        toaster.error({ title: "Failed to load reference face" });
+      }
+    };
+
+    loadStoredFace();
+  }, [studentId, modelReady]);
 
   // Blink liveness
   useEffect(() => {
-    if (!cameraReady || blinkDetected) return;
+    if (!modelReady || blinkDetected) return;
 
-    let rafId;
-
-    const runDetection = async () => {
+    const interval = setInterval(async () => {
       if (!videoRef.current) return;
 
       const detection = await faceapi
         .detectSingleFace(videoRef.current, detectorOptions)
         .withFaceLandmarks();
 
-      // console.log("Face detection", detection);
+      if (!detection) return;
 
-      if (detection) {
-        const leftEye = detection.landmarks.getLeftEye();
-        const rightEye = detection.landmarks.getRightEye();
+      const leftEye = detection.landmarks.getLeftEye();
+      const rightEye = detection.landmarks.getRightEye();
 
-        const eyeAspectRatio = (eye) => {
-          const vertical = Math.abs(eye[1].y - eye[5].y);
-          const horizontal = Math.abs(eye[0].x - eye[3].x);
-          return vertical / horizontal;
-        };
+      const ear = (eye) =>
+        Math.abs(eye[1].y - eye[5].y) / Math.abs(eye[0].x - eye[3].x);
 
-        const EAR_THRESHOLD = 0.27;
-
-        if (
-          eyeAspectRatio(leftEye) < EAR_THRESHOLD ||
-          eyeAspectRatio(rightEye) < EAR_THRESHOLD
-        ) {
-          blinkCounterRef.current += 1;
-        } else {
-          if (blinkCounterRef.current > 2) {
-            setBlinkDetected(true);
-          }
-          blinkCounterRef.current = 0;
-        }
+      if (ear(leftEye) < 0.27 || ear(rightEye) < 0.27) {
+        blinkCounterRef.current += 1;
+      } else {
+        if (blinkCounterRef.current > 1) setBlinkDetected(true);
+        blinkCounterRef.current = 0;
       }
+    }, 2000);
 
-      rafId = requestAnimationFrame(runDetection);
-    };
+    return () => clearInterval(interval);
+  }, [modelReady, blinkDetected]);
 
-    runDetection();
-
-    return () => cancelAnimationFrame(rafId);
-  }, [cameraReady, blinkDetected]);
-
+  //Face collection
   useEffect(() => {
-    if (!cameraReady) return;
+    if (!modelReady) return;
 
-    let rafId;
-
-    const runFaceCollection = async () => {
-      if (!videoRef.current) return;
-
+    const interval = setInterval(async () => {
       const detection = await faceapi
         .detectSingleFace(videoRef.current, detectorOptions)
         .withFaceLandmarks()
@@ -193,17 +170,12 @@ export default function FaceVerificationModal({
 
       if (detection) {
         descriptorsRef.current.push(detection.descriptor);
-
-        if (descriptorsRef.current.length > 10) descriptorsRef.current.shift();
+        if (descriptorsRef.current.length > 8) descriptorsRef.current.shift();
       }
+    }, 2000);
 
-      rafId = requestAnimationFrame(runFaceCollection);
-    };
-
-    runFaceCollection();
-
-    return () => cancelAnimationFrame(rafId);
-  }, [cameraReady]);
+    return () => clearInterval(interval);
+  }, [modelReady]);
 
   //verify face
   const verifyFace = async () => {
@@ -216,6 +188,7 @@ export default function FaceVerificationModal({
     console.log("Starting face verification...");
 
     try {
+      await faceapi.nets.faceRecognitionNet.loadFromUri("/models/weights");
       const matcher = new faceapi.FaceMatcher(
         [new faceapi.LabeledFaceDescriptors("user", [storedDescriptor])],
         FACE_MATCH_THRESHOLD
@@ -231,8 +204,6 @@ export default function FaceVerificationModal({
 
       const bestMatches = matcher.findBestMatch(avgDescriptor);
 
-      // console.log("FaceMatcher result:", bestMatches);
-      // console.log("Distance:", bestMatches.distance);
       if (bestMatches.label === "unknown") {
         toaster.error({ title: "Face does not match" });
       } else {
@@ -240,7 +211,7 @@ export default function FaceVerificationModal({
         onSuccess();
       }
     } catch (err) {
-      // console.error("Verification failed:", err);
+      console.error("Verification failed:", err);
       toaster.error({ title: "Verification failed" });
     } finally {
       setVerifying(false);
