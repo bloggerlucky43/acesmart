@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import api from "../../../../libs/axios";
 import { toaster } from "../../../../components/ui/toaster";
 
-const FACE_MATCH_THRESHOLD = 0.37;
+// const FACE_MATCH_THRESHOLD = 0.39;
+const FACE_MATCH_THRESHOLD = 0.45;
 
 export default function FaceVerificationModal({
   isOpen,
@@ -14,17 +15,17 @@ export default function FaceVerificationModal({
 }) {
   const videoRef = useRef(null);
   const [cameraReady, setCameraReady] = useState(false);
-  const [blinkDetected, setBlinkDetected] = useState(false);
+  // const [blinkDetected, setBlinkDetected] = useState(false);
   const [storedDescriptor, setStoredDescriptor] = useState(null);
   const [verifying, setVerifying] = useState(false);
   const [modelReady, setModelsReady] = useState(false);
   const descriptorsRef = useRef([]);
-  const blinkCounterRef = useRef(0);
+  const collectedRef = useRef(0);
   const streamRef = useRef(null);
 
   const detectorOptions = new faceapi.TinyFaceDetectorOptions({
-    inputSize: 160,
-    scoreThreshold: 0.6,
+    inputSize: 128,
+    scoreThreshold: 0.5,
   });
 
   // start camera
@@ -36,6 +37,7 @@ export default function FaceVerificationModal({
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user" },
         });
+
         streamRef.current = stream;
         videoRef.current.srcObject = stream;
 
@@ -61,9 +63,8 @@ export default function FaceVerificationModal({
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
       setCameraReady(false);
-      setBlinkDetected(false);
       descriptorsRef.current = [];
-      console.log("Camera stopped, cleanup done");
+      // console.log("Camera stopped, cleanup done");
     };
   }, [isOpen]);
 
@@ -126,59 +127,45 @@ export default function FaceVerificationModal({
     loadStoredFace();
   }, [studentId, modelReady]);
 
-  // Blink liveness
-  useEffect(() => {
-    if (!modelReady || blinkDetected) return;
-
-    const interval = setInterval(async () => {
-      if (!videoRef.current) return;
-
-      const detection = await faceapi
-        .detectSingleFace(videoRef.current, detectorOptions)
-        .withFaceLandmarks();
-
-      if (!detection) return;
-
-      const leftEye = detection.landmarks.getLeftEye();
-      const rightEye = detection.landmarks.getRightEye();
-
-      const ear = (eye) =>
-        Math.abs(eye[1].y - eye[5].y) / Math.abs(eye[0].x - eye[3].x);
-
-      if (ear(leftEye) < 0.42 || ear(rightEye) < 0.42) {
-        blinkCounterRef.current += 1;
-      } else {
-        if (blinkCounterRef.current >= 1) setBlinkDetected(true);
-        blinkCounterRef.current = 0;
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [modelReady, blinkDetected]);
-
   //Face collection
   useEffect(() => {
-    if (!modelReady) return;
+    if (!modelReady || !cameraReady || !storedDescriptor) return;
+
+    collectedRef.current = 0;
+
+    descriptorsRef.current = [];
 
     const interval = setInterval(async () => {
+      if (!videoRef.current || videoRef.current.readyState !== 4) return;
+
       const detection = await faceapi
         .detectSingleFace(videoRef.current, detectorOptions)
         .withFaceLandmarks()
         .withFaceDescriptor();
 
-      if (detection) {
+      console.log("detection", detection);
+
+      if (detection && detection.detection.score > 0.45) {
         descriptorsRef.current.push(detection.descriptor);
-        if (descriptorsRef.current.length > 8) descriptorsRef.current.shift();
+        collectedRef.current++;
+
+        if (collectedRef.current >= 3) {
+          clearInterval(interval);
+          verifyFace();
+        }
       }
-    }, 2000);
+    }, 300);
 
     return () => clearInterval(interval);
-  }, [modelReady]);
+  }, [modelReady, cameraReady, storedDescriptor]);
 
   //verify face
   const verifyFace = async () => {
-    if (!storedDescriptor || descriptorsRef.current.length === 0) {
-      toaster.error({ title: "Face not ready for verification" });
+    // console.log("storedDescriptor", storedDescriptor);
+    console.log("descriptorref length", descriptorsRef.current.length);
+
+    if (!storedDescriptor || descriptorsRef.current.length < 3) {
+      toaster.error({ title: "Face not ready" });
       return;
     }
 
@@ -186,7 +173,6 @@ export default function FaceVerificationModal({
     console.log("Starting face verification...");
 
     try {
-      await faceapi.nets.faceRecognitionNet.loadFromUri("/models/weights");
       const matcher = new faceapi.FaceMatcher(
         [new faceapi.LabeledFaceDescriptors("user", [storedDescriptor])],
         FACE_MATCH_THRESHOLD
@@ -205,8 +191,9 @@ export default function FaceVerificationModal({
       if (bestMatches.label === "unknown") {
         toaster.error({ title: "Face does not match" });
       } else {
-        toaster.success({ title: "Face verified sucessfullly" });
+        toaster.success({ title: "Face verified successfully" });
         onSuccess();
+        return;
       }
     } catch (err) {
       console.error("Verification failed:", err);
@@ -254,20 +241,15 @@ export default function FaceVerificationModal({
 
         {cameraReady && (
           <>
-            <Text mt={3} textAlign="center">
-              {blinkDetected
-                ? "Blink detected ✔"
-                : "Please blink to confirm liveness"}
-            </Text>
-
+            <Text textAlign={"center"}>Hold still, verifying your face</Text>
             <Flex justify="flex-end" mt={4} gap={2}>
               <Button
                 bg="primary"
-                disabled={!blinkDetected || verifying}
+                disabled={verifying}
                 loading={verifying}
                 onClick={verifyFace}
               >
-                Verify & Continue
+                Verify
               </Button>
 
               <Button variant="ghost" onClick={onClose}>
