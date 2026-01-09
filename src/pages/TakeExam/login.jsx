@@ -15,7 +15,7 @@ import { FaBrain } from "react-icons/fa";
 import { useState } from "react";
 import { toaster } from "../../components/ui/toaster";
 import { examLogin } from "../../api-endpoint/exam/exams";
-import FaceVerificationModal from "./component/face/CaptureImage";
+// import FaceVerificationModal from "./component/face/CaptureImage";
 
 const ExamLoginPage = () => {
   const [examDetail, setExamDetail] = useState({
@@ -28,7 +28,7 @@ const ExamLoginPage = () => {
   const isMobile = useBreakpointValue({ base: true, md: false });
   const [error, setError] = useState("");
   const [examStudent, setExamStudent] = useState(null);
-  const [showFaceModal, setShowFaceModal] = useState(false);
+  // const [showFaceModal, setShowFaceModal] = useState(false);
   console.log(examDetail, id);
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,8 +52,12 @@ const ExamLoginPage = () => {
           type: "success",
         });
 
+        console.log(res);
+
         setExamStudent(res.student);
-        setShowFaceModal(true);
+        localStorage.setItem("examStudent", JSON.stringify(res.student));
+        navigate(`/ex/${id}`);
+        // setShowFaceModal(true);
       }
     } catch (error) {
       setError("Invalid credentials. Please check your details");
@@ -161,7 +165,7 @@ const ExamLoginPage = () => {
         </Flex>
       </Flex>
 
-      {showFaceModal && (
+      {/* {showFaceModal && (
         <FaceVerificationModal
           isOpen={showFaceModal}
           studentId={examDetail.studentId}
@@ -171,7 +175,7 @@ const ExamLoginPage = () => {
             navigate(`/ex/${id}`);
           }}
         />
-      )}
+      )} */}
     </Box>
   );
 };
