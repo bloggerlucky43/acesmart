@@ -42,6 +42,7 @@ function Landing() {
           onDrawerOpen={() => setShowDrawer(true)}
           onMenuOpen={() => setShowMenu(true)}
         />
+
         <Heading homeRef={headingRef} />
         <Features aboutRef={featureRef} />
         <Numbers numberRef={numberRef} />
@@ -120,6 +121,10 @@ function Landing() {
                 mt={2}
                 _active={{ color: "primary" }}
                 cursor="pointer"
+                onClick={(e) => {
+                  setShowMenu(false);
+                  scrollToSection(contactRef, e);
+                }}
               >
                 Contact
               </Text>
