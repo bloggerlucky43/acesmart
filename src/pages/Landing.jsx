@@ -8,6 +8,8 @@ import Testimonial from "../components/ui/landing/testimonial";
 import Register from "../components/auth/register";
 import { FaBrain, FaTimes } from "react-icons/fa";
 import Login from "../components/auth/login";
+import Contact from "../components/ui/landing/contact";
+import Footer from "../components/ui/landing/Footer";
 
 function Landing() {
   const [isOpenLogin, setIsOpenLogin] = useState(false);
@@ -17,6 +19,7 @@ function Landing() {
   const featureRef = useRef(null);
   const numberRef = useRef(null);
   const testimonialRef = useRef(null);
+  const contactRef = useRef(null);
   const isMobile = useBreakpointValue({ base: true, md: false });
 
   const scrollToSection = (ref, e) => {
@@ -33,6 +36,7 @@ function Landing() {
             about: featureRef,
             number: numberRef,
             testimonials: testimonialRef,
+            contact: contactRef,
           }}
           onLoginOpen={() => setIsOpenLogin(true)}
           onDrawerOpen={() => setShowDrawer(true)}
@@ -42,6 +46,8 @@ function Landing() {
         <Features aboutRef={featureRef} />
         <Numbers numberRef={numberRef} />
         <Testimonial testimonialsRef={testimonialRef} />
+        <Contact contactRef={contactRef} />
+        <Footer />
       </Box>
 
       {showMenu && (
@@ -54,7 +60,8 @@ function Landing() {
             shadow={"xl"}
             w="80%"
             h="100vh"
-            p={6}>
+            p={6}
+          >
             <Flex align="center" justifyContent="space-between" mb={4}>
               <Flex gap={2} align="center">
                 <Icon
@@ -86,7 +93,8 @@ function Landing() {
                 onClick={(e) => {
                   setShowMenu(false);
                   scrollToSection(headingRef, e);
-                }}>
+                }}
+              >
                 Home
               </Text>
               <Text
@@ -94,7 +102,8 @@ function Landing() {
                 mt={2}
                 _active={{ color: "primary" }}
                 cursor="pointer"
-                onClick={(e) => scrollToSection(featureRef, e)}>
+                onClick={(e) => scrollToSection(featureRef, e)}
+              >
                 Features
               </Text>
               <Text
@@ -102,14 +111,16 @@ function Landing() {
                 mt={2}
                 _active={{ color: "primary" }}
                 cursor="pointer"
-                onClick={(e) => scrollToSection(testimonialRef, e)}>
+                onClick={(e) => scrollToSection(testimonialRef, e)}
+              >
                 Testimonial
               </Text>
               <Text
                 fontSize="xl"
                 mt={2}
                 _active={{ color: "primary" }}
-                cursor="pointer">
+                cursor="pointer"
+              >
                 Contact
               </Text>
               <Text
@@ -120,7 +131,8 @@ function Landing() {
                 onClick={() => {
                   setShowMenu(false);
                   setShowDrawer(true);
-                }}>
+                }}
+              >
                 Sign up
               </Text>
               <Text
@@ -131,7 +143,8 @@ function Landing() {
                 onClick={() => {
                   setShowMenu(false);
                   setIsOpenLogin(true);
-                }}>
+                }}
+              >
                 Login
               </Text>
               <Text cursor="pointer"></Text>
@@ -139,11 +152,9 @@ function Landing() {
           </Box>
         </Box>
       )}
-      {/* overlay for both sidebars */}
 
       {showDrawer && (
         <Box position={"fixed"} top={0} left={0} zIndex={110}>
-          {/* login sidebar */}
           <Box
             position="fixed"
             top={0}
@@ -154,7 +165,8 @@ function Landing() {
             h="100vh"
             p={6}
             transform={showDrawer ? "translateX(0)" : "translateX(100%)"}
-            transition="transform 0.3s ease-in-out">
+            transition="transform 0.3s ease-in-out"
+          >
             <Flex justify={"space-between"} align={"center"}>
               <Text fontSize="xl" fontWeight={"bold"} mb={2}>
                 Sign Up
@@ -183,7 +195,8 @@ function Landing() {
             h="100vh"
             p={6}
             transform={isOpenLogin ? "translateX(0)" : "translateX(100%)"}
-            transition="transform 0.3s ease-in-out">
+            transition="transform 0.3s ease-in-out"
+          >
             <Flex justify={"space-between"} align={"center"} mb={4}>
               <Text fontSize="xl" fontWeight={"bold"}>
                 Welcome back

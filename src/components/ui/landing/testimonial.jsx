@@ -3,25 +3,33 @@ import Marquee from "react-fast-marquee";
 
 const testimonials = [
   {
-    name: "Chiamaka O.",
-    role: "Data Analyst",
+    name: "Mr. Adewale T.",
+    role: "Secondary School Teacher",
     feedback:
-      "MPAC ICT HUB transformed my career! Hands-on training in Python and Data Analytics gave me the confidence to land my first tech job within months.",
+      "AceSmart makes setting CBT exams extremely easy. I can create JAMB-style tests for my students, schedule them, and get results instantly without stress.",
     avatar: "https://i.pravatar.cc/150?img=47",
   },
   {
-    name: "David O.",
-    role: "Cybersecurity Enthusiast",
+    name: "Miss Zainab K.",
+    role: "WAEC Candidate",
     feedback:
-      "From Cybersecurity to AI, MPAC offers diverse courses with real-world projects that helped me build my portfolio.",
+      "Practicing on AceSmart feels exactly like the real exam. The timer, question format, and navigation helped me stay confident during my CBT exams.",
     avatar: "https://i.pravatar.cc/150?img=32",
   },
   {
-    name: "Amaka A.",
-    role: "UI/UX Designer",
+    name: "Mr Samuel O.",
+    role: "Private Lesson Tutor",
     feedback:
-      "I never imagined I could design my own app until I joined MPAC. Creative, fun, and supportive environment!",
+      "With thousands of questions available, I can easily set different exams for each class. Auto-grading saves me hours every week.",
+
     avatar: "https://i.pravatar.cc/150?img=12",
+  },
+  {
+    name: "Deborah A.",
+    role: "JAMB Aspirant",
+    feedback:
+      "AceSmart helped me practice past questions under real exam conditions. I improved my speed and accuracy before the actual CBT.",
+    avatar: "https://i.pravatar.cc/150?img=18",
   },
 ];
 
@@ -35,20 +43,24 @@ const Testimonial = ({ testimonialsRef }) => {
         fontWeight="bold"
         textAlign="center"
         color="white"
-        mb={6}>
-        What Our Students Say
+        mb={6}
+      >
+        Trusted by Teachers and Students
       </Text>
 
       <Marquee pauseOnHover gradient={false} speed={50}>
         {testimonials.map((t, index) => (
           <Box
             key={index}
-            bg="whiteAlpha.400"
+            bg="whiteAlpha.300"
+            backdropFilter="blur(10px)"
+            border="1px solid rgba(255,255,255,0.2)"
             p={6}
             mx={4}
             minW="300px"
             rounded="lg"
-            shadow="md">
+            shadow="md"
+          >
             <Stack spacing={4} align="center" textAlign="center">
               <Avatar.Root>
                 <Avatar.Fallback name={t.name} />
