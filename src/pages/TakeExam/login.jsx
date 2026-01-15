@@ -164,8 +164,8 @@ const ExamLoginPage = () => {
           </Fieldset.Root>
         </Flex>
       </Flex>
-
-      {/* {showFaceModal && (
+      {/* 
+      {showFaceModal && (
         <FaceVerificationModal
           isOpen={showFaceModal}
           studentId={examDetail.studentId}

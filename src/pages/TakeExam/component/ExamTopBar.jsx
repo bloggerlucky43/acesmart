@@ -1,9 +1,11 @@
 import { Box, Flex, Text, Icon, Button } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
-import { FaClock, FaPen, FaUser } from "react-icons/fa";
+import { FaClock, FaPen, FaUser, FaCalculator } from "react-icons/fa";
 import SubmitModal from "./SubmitModal";
 import { useExam } from "./ExamContext";
 import { toaster } from "../../../components/ui/toaster";
+import Calculator from "./calculator/calculator";
+
 export default function ExamTopBar() {
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const { formatTime } = useExam();
@@ -11,6 +13,7 @@ export default function ExamTopBar() {
   const [isFullscreen, setIsFullscreen] = useState(
     !!document.fullscreenElement
   );
+  const [showCalculator, setShowCalculator] = useState(false);
 
   useEffect(() => {
     const examUser = localStorage.getItem("examStudent");
@@ -90,8 +93,13 @@ export default function ExamTopBar() {
             {formatTime()}
           </Text>
           <Flex mt={2} gap={2}>
-            <Button size="sm" variant="outline">
-              Instructions
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowCalculator((prev) => !prev)}
+            >
+              <Icon as={FaCalculator} boxSize={5} />
+              <Text>Calculator</Text>
             </Button>
             <Button
               size="sm"
@@ -119,6 +127,10 @@ export default function ExamTopBar() {
           </Flex>
         </Flex>
       </Flex>
+
+      {showCalculator && (
+        <Calculator onClose={() => setShowCalculator(false)} />
+      )}
 
       {isSubmitModalOpen && (
         <Flex>

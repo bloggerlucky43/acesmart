@@ -14,18 +14,18 @@ export default function FaceVerificationModal({
   onSuccess,
 }) {
   const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
   const [cameraReady, setCameraReady] = useState(false);
-  // const [blinkDetected, setBlinkDetected] = useState(false);
   const [storedDescriptor, setStoredDescriptor] = useState(null);
   const [verifying, setVerifying] = useState(false);
   const [modelReady, setModelsReady] = useState(false);
-  const descriptorsRef = useRef([]);
-  const collectedRef = useRef(0);
-  const streamRef = useRef(null);
+  // const descriptorsRef = useRef([]);
+  // const collectedRef = useRef(0);
 
   const detectorOptions = new faceapi.TinyFaceDetectorOptions({
-    inputSize: 128,
-    scoreThreshold: 0.5,
+    inputSize: 224,
+    scoreThreshold: 0.4,
   });
 
   // start camera
@@ -63,7 +63,9 @@ export default function FaceVerificationModal({
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
       setCameraReady(false);
-      descriptorsRef.current = [];
+      setModelsReady(false);
+      setStoredDescriptor(null);
+      // descriptorsRef.current = [];
       // console.log("Camera stopped, cleanup done");
     };
   }, [isOpen]);
@@ -74,7 +76,7 @@ export default function FaceVerificationModal({
 
     const loadModels = async () => {
       try {
-        await faceapi.tf.setBackend("cpu");
+        // await faceapi.tf.setBackend("cpu");
         await faceapi.tf.ready();
 
         await Promise.all([
@@ -161,7 +163,9 @@ export default function FaceVerificationModal({
 
   //verify face
   const verifyFace = async () => {
-    // console.log("storedDescriptor", storedDescriptor);
+    if (verifying) return;
+
+    console.log("storedDescriptor", storedDescriptor);
     console.log("descriptorref length", descriptorsRef.current.length);
 
     if (!storedDescriptor || descriptorsRef.current.length < 3) {

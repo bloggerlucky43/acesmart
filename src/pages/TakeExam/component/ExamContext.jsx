@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { saveExamResult } from "../../../api-endpoint/exam/exams";
+import { toaster } from "../../../components/ui/toaster";
 const ExamContext = createContext();
 
 export const ExamProvider = ({ children }) => {
@@ -35,7 +37,6 @@ export const ExamProvider = ({ children }) => {
     if (timeLeft === 0 && examData) {
       console.log("⏰ Time’s up! Auto-submitting exam...");
       submitExam();
-      navigate(`/exams/${examData.id}`);
     }
   }, [timeLeft]);
 
@@ -83,7 +84,6 @@ export const ExamProvider = ({ children }) => {
     setScores(newScores);
     setTotalScore(roundedOverall);
     // console.log("== MARKING COMPLETE ==");
-    // console.log("Section scores:", newScores);
     // console.log("Total score:", roundedOverall);
     setAnswers({});
     localStorage.removeItem("examData");
