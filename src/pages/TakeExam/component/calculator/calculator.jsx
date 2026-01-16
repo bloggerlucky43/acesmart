@@ -19,8 +19,8 @@ const Calculator = ({ onClose }) => {
   const clear = () => setValue("");
   return (
     <Box
-      top="70px"
-      right="20px"
+      top="120px"
+      right="100px"
       bg="white"
       position="absolute"
       boxShadow="lg"
@@ -68,9 +68,6 @@ const Calculator = ({ onClose }) => {
       <Flex mt={2} gap={2}>
         <Button size="sm" color="orange.400" w="full" onClick={clear}>
           AC
-        </Button>
-        <Button size="sm" w="full" variant="outline" onClick={onClose}>
-          Close
         </Button>
       </Flex>
     </Box>

@@ -23,27 +23,12 @@ export default function ExamTopBar() {
   }, []);
 
   useEffect(() => {
-    const enforceFullScreen = async () => {
-      try {
-        if (!document.fullscreenElement) {
-          await document.documentElement.requestFullscreen();
-        }
-      } catch (error) {
-        console.warn("Fullscreen request failed:", error);
-      }
-    };
-
-    enforceFullScreen();
-
     const handleFullScreenChange = () => {
       const isFs = !!document.fullscreenElement;
       setIsFullscreen(isFs);
 
       if (!isFs) {
-        toaster.create({
-          title: "You exited fullscreen! Click the button to return.",
-          type: "warning",
-        });
+        setIsFullscreen(false);
       }
     };
 
@@ -53,6 +38,20 @@ export default function ExamTopBar() {
       document.removeEventListener("fullscreenchange", handleFullScreenChange);
     };
   }, []);
+
+  const enterFullscreen = () => {
+    if (!document.fullscreenElement) {
+      try {
+        document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } catch (err) {
+        toaster.create({
+          title: "Fullscreen blocked by browser",
+          type: "warning",
+        });
+      }
+    }
+  };
 
   return (
     <>
@@ -92,7 +91,7 @@ export default function ExamTopBar() {
           <Text color="danger" fontSize="2xl">
             {formatTime()}
           </Text>
-          <Flex mt={2} gap={2}>
+          <Flex mt={2} gap={3}>
             <Button
               size="sm"
               variant="outline"
@@ -109,18 +108,7 @@ export default function ExamTopBar() {
               Submit
             </Button>
             {!isFullscreen && (
-              <Button
-                size="sm"
-                bg="blue.600"
-                onClick={async () => {
-                  try {
-                    await document.documentElement.requestFullscreen();
-                    setIsFullscreen(true);
-                  } catch (err) {
-                    console.warn("Fullscreen request failed", err);
-                  }
-                }}
-              >
+              <Button size="sm" bg="blue.600" onClick={enterFullscreen}>
                 Fullscreen
               </Button>
             )}

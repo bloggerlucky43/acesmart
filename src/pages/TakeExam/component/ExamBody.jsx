@@ -2,8 +2,12 @@ import { Box, Flex, Text, Button, Tabs, Image } from "@chakra-ui/react";
 import { useExam } from "./ExamContext";
 import { useEffect, useRef, useState } from "react";
 import { toaster } from "../../../components/ui/toaster";
-import { saveExamResult } from "../../../api-endpoint/exam/exams";
+import {
+  saveExamResult,
+  checkResultExisting,
+} from "../../../api-endpoint/exam/exams";
 import { useNavigate } from "react-router-dom";
+
 export default function ExamBody() {
   const { examData, answers, saveAnswer, scores, totalScore } = useExam();
   const [tabValue, setTabValue] = useState("");
@@ -11,6 +15,7 @@ export default function ExamBody() {
   const violationCount = useRef(0);
   const totalMarks = examData?.totalMarks || 400;
   const percentage = (totalScore / totalMarks) * 100;
+  const hasProcessedRef = useRef(false);
   const navigate = useNavigate();
   useEffect(() => {
     if (examData?.sections?.length > 0) {
@@ -23,6 +28,14 @@ export default function ExamBody() {
       );
     }
   }, [examData]);
+
+  const enforceFullScreen = async () => {
+    if (!document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen();
+      } catch {}
+    }
+  };
 
   // Full screen enforcement
   useEffect(() => {
@@ -51,7 +64,7 @@ export default function ExamBody() {
       type: "error",
     });
 
-    if (violationCount.current >= 3) {
+    if (violationCount.current >= 5) {
       toaster.create({
         title: "Exam terminated due to multiple violations",
         type: "error",
@@ -114,31 +127,53 @@ export default function ExamBody() {
     };
   }, []);
 
-  const AutoSubmit = async () => {
-    try {
-      const student = localStorage?.getItem("examStudent");
-      const parsedStudent = JSON?.parse(student);
-      console.log("The parsed student is ", student, parsedStudent);
+  const student = localStorage?.getItem("examStudent");
+  const parsedStudent = JSON?.parse(student);
+  // console.log("The parsed student is ", student, parsedStudent);
 
-      const res = await saveExamResult({
+  const AutoSubmit = async () => {
+    if (hasProcessedRef.current) return;
+    hasProcessedRef.current = true;
+
+    try {
+      //Check if result already exists
+      const checkRes = await checkResultExisting({
+        studentId: parsedStudent?.studentId,
+        examId: examData?.id,
+      });
+
+      if (checkRes?.exists) {
+        toaster.create({
+          title: "Exam already submitted",
+          type: "warning",
+        });
+
+        navigate(`/exam/${examData?.id}`);
+        return;
+      }
+
+      //save exam results
+      await saveExamResult({
         scores,
         studentId: parsedStudent?.id,
         studentCode: parsedStudent?.studentId,
         examId: examData?.id,
         examTitle: examData?.title,
-        totalMarks: examData?.duration,
+        totalMarks: examData?.totalMarks,
       });
 
-      if (res.data) {
-        toaster.create({
-          title: "Exam result saved successfully",
-          type: "success",
-        });
+      toaster.create({
+        title: "Exam auto-submitted due to violations",
+        type: "error",
+      });
 
-        navigate(`/exam/${examData?.id}`);
-      }
+      navigate(`/exam/${examData?.id}`);
     } catch (error) {
-      console.error("Failed to save exam", error);
+      console.error("Auto-submit failed", error);
+      toaster.create({
+        title: "Failed to auto submit exam",
+        type: "error",
+      });
     } finally {
       localStorage.removeItem("examData");
       localStorage.removeItem("examStudent");
@@ -157,7 +192,7 @@ export default function ExamBody() {
 
     return () =>
       document.removeEventListener("fullscreenchange", handleFullScreenChange);
-  });
+  }, []);
 
   if (!examData || !examData.sections) {
     return (

@@ -133,6 +133,21 @@ export const fetchExamResults = async (examId) => {
     console.error("Error fetching exam results", error);
   }
 };
+export const checkResultExisting = async ({ studentId, examId }) => {
+  try {
+    const response = await api.get(`/exams/result/${studentId}/${examId}`, {
+      withCredentials: true,
+    });
+
+    const data = response.data;
+    console.log(data);
+
+    return data;
+    // if()
+  } catch (error) {
+    console.error("Error checking result existence", error);
+  }
+};
 
 export const saveExamResult = async (resultData) => {
   try {

@@ -1,7 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { saveExamResult } from "../../../api-endpoint/exam/exams";
-import { toaster } from "../../../components/ui/toaster";
 const ExamContext = createContext();
 
 export const ExamProvider = ({ children }) => {

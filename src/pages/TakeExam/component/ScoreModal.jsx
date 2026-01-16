@@ -1,46 +1,116 @@
 import { Flex, Text, Button } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { useExam } from "./ExamContext";
-import { useState } from "react";
-import { saveExamResult } from "../../../api-endpoint/exam/exams";
+import { useRef, useState } from "react";
+import {
+  checkResultExisting,
+  saveExamResult,
+} from "../../../api-endpoint/exam/exams";
 import { toaster } from "../../../components/ui/toaster";
+import { useEffect } from "react";
 function ScoreModal({ onClose }) {
   const { scores, examData, totalScore } = useExam();
-  const [loading, setLoading] = useState(false);
+  const [resultExists, setResultExists] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  const hasProcessedRef = useRef(false);
   const navigate = useNavigate();
-  const totalMarks = examData.totalMarks || 400;
+  const totalMarks = examData?.totalMarks || 400;
   const percentage = (totalScore / totalMarks) * 100;
 
-  const handleContinueButton = async () => {
-    setLoading(true);
-    try {
-      const student = localStorage?.getItem("examStudent");
-      const parsedStudent = JSON.parse(student);
-      console.log("the parsed stdebt is", student, parsedStudent);
+  const student = localStorage.getItem("examStudent");
+  const parsedStudent = JSON.parse(student);
 
-      const res = await saveExamResult({
-        scores,
-        studentId: parsedStudent?.id,
-        studentCode: parsedStudent?.studentId,
-        examId: examData?.id,
-        examTitle: examData?.title,
-        totalMarks: examData?.duration,
-      });
-      if (res.data) {
-        toaster.create({
-          title: "Exam result saved successfully",
-          type: "success",
+  //Check if result already exists
+  useEffect(() => {
+    const CheckExistingResult = async () => {
+      //Prevent rerun after save
+      if (hasProcessedRef.current) return;
+      hasProcessedRef.current = true;
+
+      try {
+        console.log("The parsed student at the useeffect is ", parsedStudent);
+
+        const res = await checkResultExisting({
+          studentId: parsedStudent?.studentId,
+          examId: examData?.id,
         });
-        navigate(`/exam/${examData?.id}`);
-        onClose();
+
+        if (res?.exists) {
+          setResultExists(true);
+
+          toaster.create({
+            title: "Result already exists for this exam",
+            type: "warning",
+          });
+
+          //Navigate back after short delay
+          setTimeout(() => {
+            navigate(`/exam/${examData?.id}`);
+            onClose();
+          }, 1500);
+        } else {
+          try {
+            const res = await saveExamResult({
+              scores,
+              studentId: parsedStudent?.id,
+              studentCode: parsedStudent?.studentId,
+              examId: examData?.id,
+              examTitle: examData?.title,
+              totalMarks: examData?.totalMarks,
+            });
+            if (res.data) {
+              toaster.create({
+                title: "Exam result saved successfully",
+                type: "success",
+              });
+            }
+          } catch (error) {
+            console.error("failed to save exam", error);
+          } finally {
+            localStorage.removeItem("examData");
+            localStorage.removeItem("examStudent");
+          }
+        }
+      } catch (error) {
+        console.error("Error checking result existence", error);
+      } finally {
+        setChecking(false);
       }
-    } catch (error) {
-      console.error("failed to save exam", error);
-    } finally {
-      localStorage.removeItem("examData");
-      localStorage.removeItem("examStudent");
-      setLoading(false);
+    };
+
+    if (student && examData?.id) {
+      CheckExistingResult();
     }
+  }, [student, examData?.id, navigate, onClose]);
+
+  //Do not render scores if result exists or still checking
+
+  if (checking || resultExists) {
+    return (
+      <Flex
+        position="fixed"
+        top="50%"
+        left="50%"
+        transform="translate(-50%, -50%)"
+        zIndex={2000}
+        bg="white"
+        boxShadow={"lg"}
+        borderRadius={"md"}
+        minH="40vh"
+        minW="50vw"
+        justify="center"
+      >
+        <Text fontSize="lg" color="red.500">
+          Finalizing your exam result...
+        </Text>
+      </Flex>
+    );
+  }
+
+  const handleContinueButton = () => {
+    navigate(`/exam/${examData?.id}`);
+    onClose();
   };
   return (
     <Flex
@@ -76,25 +146,16 @@ function ScoreModal({ onClose }) {
 
         <Flex mt={4} justify={"space-between"}>
           <Text>Total Score</Text>
-          <Text>{examData.totalMarks}</Text>
+          <Text>{totalMarks}</Text>
         </Flex>
 
         <Flex mt={4} justify="space-between">
           <Text>Accuracy</Text>
-          {/* <Button mt={4} bg="danger" onClick={onClose} borderRadius="full" px={6}>
-          Close
-        </Button> */}
+
           <Text> {percentage.toFixed(1)}%</Text>
         </Flex>
         <Flex mt={4}>
-          <Button
-            bg="primary"
-            loading={loading}
-            loadingText="Saving..."
-            spinnerPlacement="right"
-            onClick={handleContinueButton}
-            mt={4}
-          >
+          <Button bg="primary" onClick={handleContinueButton} mt={4}>
             Continue
           </Button>
         </Flex>
