@@ -12,6 +12,8 @@ export const ExamProvider = ({ children }) => {
 
   useEffect(() => {
     const cachedExam = localStorage.getItem("examData");
+    console.log("cached exam is", cachedExam);
+
     if (cachedExam) setExamData(JSON.parse(cachedExam));
   }, []);
 
