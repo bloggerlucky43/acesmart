@@ -9,7 +9,7 @@ import Calculator from "./calculator/calculator";
 export default function ExamTopBar() {
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const { formatTime } = useExam();
-  const [examUserDetails, setExamUserDetails] = useState("");
+  const [examUserDetails, setExamUserDetails] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(
     !!document.fullscreenElement
   );

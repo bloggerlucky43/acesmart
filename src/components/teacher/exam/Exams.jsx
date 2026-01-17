@@ -22,7 +22,12 @@ export default function Exams() {
     const fetchAllExams = async () => {
       try {
         const res = await fetchExams();
-        setAllExams(res?.data ?? []);
+
+        const sortedExams = [...(res?.data ?? []).sort(
+          (a,b)=> new Date(b.createdAt)- new Date(a.createdAt)
+        )]
+
+        setAllExams(sortedExams);
       } catch (error) {
         toaster.create({
           title: "Failed to load exams",

@@ -20,4 +20,5 @@ const AllExams = () => {
   );
 };
 
+
 export default AllExams;

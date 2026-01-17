@@ -1,0 +1,1 @@
+export const getStorageKey=(examId,userId)=> `exam_${examId}_user_${userId}`

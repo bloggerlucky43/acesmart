@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { getStorageKey } from "../../../libs/helper";
 const ExamContext = createContext();
 
 export const ExamProvider = ({ children }) => {
@@ -8,21 +8,28 @@ export const ExamProvider = ({ children }) => {
   const [scores, setScores] = useState({});
   const [totalScore, setTotalScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
-  const navigate = useNavigate();
+ 
 
+
+   useEffect(() => {
+      const raw = localStorage.getItem("activeExamKey");
+      if (!raw) return;
+  
+      const cached = localStorage.getItem(raw);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        setExamData(parsed);
+      }
+   }, []);
+  
+  //RESET TIMER WHEN EXAM LOADS
   useEffect(() => {
-    const cachedExam = localStorage.getItem("examData");
-    console.log("cached exam is", cachedExam);
-
-    if (cachedExam) setExamData(JSON.parse(cachedExam));
-  }, []);
-
-  useEffect(() => {
-    if (!examData?.duration || timeLeft > 0) return;
+    if (!examData?.duration) return;
 
     setTimeLeft(examData.duration * 60);
   }, [examData]);
 
+  //TIMER COUNTDOWN
   useEffect(() => {
     if (timeLeft <= 0) return;
 
@@ -33,20 +40,32 @@ export const ExamProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [timeLeft]);
 
+
+  //AUTO SUBMIT WHEN TIME IS UP
+
   useEffect(() => {
     if (timeLeft === 0 && examData) {
-      console.log("⏰ Time’s up! Auto-submitting exam...");
       submitExam();
     }
   }, [timeLeft]);
 
-  const loadExamData = (data) => {
-    setExamData(data);
+  const loadExamData = (data, userId) => {
+    const enrichedExam = {
+      ...data,
+      userId,
+    }
+
+    const key = getStorageKey(data?.id, userId)
+    console.log("The key at loading exam is ",key);
+    
+    setExamData(enrichedExam);
     setAnswers({});
     setScores({});
     setTotalScore(0);
-    localStorage.setItem("examData", JSON.stringify(data));
+    localStorage.setItem("activeExamKey", JSON.stringify(enrichedExam));
   };
+
+  //SAVE ANSWERS
 
   const saveAnswer = (section, qid, value) => {
     setAnswers((prev) => ({
@@ -55,7 +74,11 @@ export const ExamProvider = ({ children }) => {
     }));
   };
 
+
+  //SUBMIT EXAM
   const submitExam = () => {
+    if (!examData) return;
+
     const totalMarks = examData?.totalMarks || 100;
     const numberOfSections = examData?.sections?.length;
     const marksPerSection = totalMarks / numberOfSections;
@@ -83,10 +106,9 @@ export const ExamProvider = ({ children }) => {
     const roundedOverall = parseFloat(overall.toFixed(2));
     setScores(newScores);
     setTotalScore(roundedOverall);
-    // console.log("== MARKING COMPLETE ==");
-    // console.log("Total score:", roundedOverall);
+   
     setAnswers({});
-    localStorage.removeItem("examData");
+    localStorage.removeItem("activeExamKey");
     return { sectionScores: newScores, total: roundedOverall };
   };
 

@@ -31,9 +31,9 @@ function StartExam() {
         examId: id,
       });
       if (res.success) {
-        loadExamData(res.exam);
+        loadExamData(res.exam,userDetails?.studentId);
         toaster.success({ title: "Exam loaded successfully" });
-        navigate(`/take_exam?${id}`);
+        navigate(`/take_exam?examId=${id}`);
       } else {
         toaster.error({ title: res.message || "Exam not found" });
       }

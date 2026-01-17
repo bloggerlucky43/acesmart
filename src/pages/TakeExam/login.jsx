@@ -55,7 +55,7 @@ const ExamLoginPage = () => {
         console.log(res);
 
         setExamStudent(res.student);
-        localStorage.setItem("examStudent", JSON.stringify(res.student));
+        localStorage.setItem("examStudent", JSON.stringify({...res.student,examId: id}));
         navigate(`/ex/${id}`);
         // setShowFaceModal(true);
       }
