@@ -289,7 +289,10 @@ export default function ExamBody() {
                               );
                             }}
                           />
-                          <Text>{opt}</Text>
+                          <Text dangerouslySetInnerHTML={{
+                            __html: opt
+                          }} />
+             
                         </label>
                       );
                     })}

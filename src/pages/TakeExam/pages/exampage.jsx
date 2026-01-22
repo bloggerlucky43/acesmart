@@ -1,5 +1,5 @@
 import StudentLayout from "../../../constants/studentLayout";
-import { Box, Text } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 import ExamTopBar from "../component/ExamTopBar";
 import ExamBody from "../component/ExamBody";
 

@@ -1,4 +1,4 @@
-import { Box, Flex, Text, Button } from "@chakra-ui/react";
+import { Flex, Text, Button } from "@chakra-ui/react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { fetchLiveExam } from "../../api-endpoint/exam/exams";
@@ -14,8 +14,16 @@ function StartExam() {
 
   useEffect(() => {
     const storedUser = localStorage?.getItem("examStudent");
+    if (!storedUser) {
+      toaster.create({
+        title: "Session expired, Please login again",
+        type: "error",
+      });
+      navigate(-1);
+      return;
+    }
 
-    if (storedUser) setUserDetails(JSON.parse(storedUser));
+    setUserDetails(JSON.parse(storedUser));
   }, []);
 
   const handleStartExam = async () => {
@@ -31,7 +39,7 @@ function StartExam() {
         examId: id,
       });
       if (res.success) {
-        loadExamData(res.exam,userDetails?.studentId);
+        loadExamData(res.exam, userDetails.studentId);
         toaster.success({ title: "Exam loaded successfully" });
         navigate(`/take_exam?examId=${id}`);
       } else {

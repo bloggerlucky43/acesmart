@@ -40,24 +40,6 @@ export default function EditPage() {
     const loadExam = async () => {
       if (examId) {
         setLoading(true);
-
-        // try {
-        //   const res = await fetchExam(examId);
-        //   if (res.success && res.data) {
-        //     setExamDetails(res.data);
-        //   } else {
-        //     toaster.warning({ title: res.message || "Exam not found" });
-        //     navigate("/teacher/exams");
-        //   }
-        // } catch (error) {
-        //   console.error("Error fetching exam:", error);
-        //   toaster.error({
-        //     title: "Failed to load exam details. Try again later.",
-        //   });
-        //   navigate("/teacher/exams");
-        // } finally {
-        //   setLoading(false);
-        // }
       } else {
         const storedData = localStorage.getItem("NEW_EXAM");
 
