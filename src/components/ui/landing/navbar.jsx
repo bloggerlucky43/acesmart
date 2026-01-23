@@ -29,7 +29,8 @@ const Navbar = ({
       p={4}
       zIndex={10}
       boxShadow="md"
-      color="gray.900">
+      color="gray.900"
+    >
       <Flex gap={2} align="center">
         <Icon
           as={FaBrain}
@@ -47,13 +48,15 @@ const Navbar = ({
         <Text
           cursor="pointer"
           onClick={(e) => onNavClick(refs.home, e)}
-          _hover={{ color: "primary" }}>
+          _hover={{ color: "primary" }}
+        >
           Home
         </Text>
         <Text
           cursor="pointer"
           onClick={(e) => onNavClick(refs.about, e)}
-          _hover={{ color: "primary" }}>
+          _hover={{ color: "primary" }}
+        >
           Features
         </Text>
         <Text cursor="pointer" _hover={{ color: "primary" }}>
@@ -62,7 +65,8 @@ const Navbar = ({
         <Text
           cursor="pointer"
           onClick={(e) => onNavClick(refs.testimonials, e)}
-          _hover={{ color: "primary" }}>
+          _hover={{ color: "primary" }}
+        >
           Testimonial
         </Text>
         <Text cursor="pointer" _hover={{ color: "primary" }}>
@@ -91,7 +95,8 @@ const Navbar = ({
               color: "white",
             }}
             color="primary"
-            onClick={onLoginOpen}>
+            onClick={onLoginOpen}
+          >
             Login
           </Button>
           <Button
@@ -99,7 +104,8 @@ const Navbar = ({
             borderRadius="md"
             color="text"
             _hover={{ transform: "scale(1.1)" }}
-            onClick={onDrawerOpen}>
+            // onClick={onDrawerOpen}
+          >
             Get Started
           </Button>
         </Flex>
