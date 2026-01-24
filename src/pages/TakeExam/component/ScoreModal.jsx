@@ -4,15 +4,17 @@ import { useExam } from "./ExamContext";
 import { useRef, useState } from "react";
 import {
   checkResultExisting,
-  saveExamResult,
+  // saveExamResult,
 } from "../../../api-endpoint/exam/exams";
 import { toaster } from "../../../components/ui/toaster";
 import { useEffect } from "react";
+import { saveWithRetry } from "../../../libs/helper";
 function ScoreModal({ onClose }) {
   const { scores, examData, totalScore } = useExam();
   const [resultExists, setResultExists] = useState(false);
   const [checking, setChecking] = useState(true);
-
+  const [saveStatus, setSaveStatus] = useState("loading");
+  const [retryCount, setRetryCount] = useState(0);
   const hasProcessedRef = useRef(false);
   const navigate = useNavigate();
   const totalMarks = examData?.totalMarks || 400;
@@ -45,13 +47,12 @@ function ScoreModal({ onClose }) {
           });
 
           //Navigate back after short delay
-          setTimeout(() => {
-            navigate(`/exam/${examData?.id}`);
-            onClose();
-          }, 1500);
+          navigate(`/exam/${examData?.id}`, { replace: true });
+          onClose();
+          return;
         } else {
           try {
-            const res = await saveExamResult({
+            const res = await saveWithRetry({
               scores,
               studentId: parsedStudent?.id,
               studentCode: parsedStudent?.studentId,
@@ -64,12 +65,22 @@ function ScoreModal({ onClose }) {
                 title: "Exam result saved successfully",
                 type: "success",
               });
+
+              setSaveStatus("success");
+
+              localStorage.removeItem("examData");
+              localStorage.removeItem("examStudent");
             }
           } catch (error) {
             console.error("failed to save exam", error);
-          } finally {
-            localStorage.removeItem("examData");
-            localStorage.removeItem("examStudent");
+            setSaveStatus("error");
+
+            toaster.create({
+              title: "Failed to save exam result after multiple attempts.",
+              description:
+                "Please check your internet connection and try again.",
+              type: "error",
+            });
           }
         }
       } catch (error) {
@@ -82,11 +93,11 @@ function ScoreModal({ onClose }) {
     if (student && examData?.id) {
       CheckExistingResult();
     }
-  }, [student, examData?.id, navigate, onClose]);
+  }, [student, examData?.id, navigate, onClose, retryCount]);
 
   //Do not render scores if result exists or still checking
 
-  if (checking || resultExists) {
+  if (checking || resultExists || saveStatus !== "success") {
     return (
       <Flex
         position="fixed"
@@ -100,10 +111,31 @@ function ScoreModal({ onClose }) {
         minH="40vh"
         minW="50vw"
         justify="center"
+        align="center"
       >
-        <Text fontSize="lg" color="red.500">
-          Finalizing your exam result...
-        </Text>
+        {checking && (
+          <Text fontSize="lg" color="gray.900">
+            Finalizing your exam result...
+          </Text>
+        )}
+
+        {saveStatus === "error" && (
+          <>
+            <Text color="red.500" mb={4}>
+              Unable to save result after multiple attempts
+            </Text>
+            <Button
+              bg="primary"
+              onClick={() => {
+                hasProcessedRef.current = false;
+                setSaveStatus("loading");
+                setRetryCount((c) => c + 1);
+              }}
+            >
+              Retry
+            </Button>
+          </>
+        )}
       </Flex>
     );
   }
