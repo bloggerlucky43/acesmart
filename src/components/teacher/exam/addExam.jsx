@@ -22,7 +22,7 @@ export default function AddExam() {
   const [examForm, setExamForm] = useState({
     examTitle: "",
     duration: "",
-    totalMarks: 10,
+    totalMarks: 40,
   });
 
   console.log(subject, selectedQuestionsIds, examForm);
@@ -44,7 +44,7 @@ export default function AddExam() {
     setLoading(true);
 
     try {
-      const res = await getQuestions(subject?.trim(), year?.trim());
+      const res = await getQuestions(subject?.toLowerCase().trim(), year?.trim());
 
       if (res.success && res.data && Array.isArray(res.data)) {
         setQuestions(res.data);
@@ -274,7 +274,7 @@ export default function AddExam() {
                 Subject <Field.RequiredIndicator />
               </Field.Label>
               <Input
-                placeholder="Subject  (e.g., English)"
+                placeholder="Subject  (e.g. english)"
                 value={subject}
                 borderColor="gray.500"
                 _focus={{ borderColor: "primary" }}
@@ -285,7 +285,7 @@ export default function AddExam() {
             <Field.Root>
               <Field.Label>Year (optional)</Field.Label>
               <Input
-                placeholder="Subject  (e.g., English)"
+                placeholder="2023,2022......."
                 value={year}
                 borderColor="gray.500"
                 _focus={{ borderColor: "primary" }}
