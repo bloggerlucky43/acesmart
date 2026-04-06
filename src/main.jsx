@@ -9,7 +9,6 @@ import {
   defaultConfig,
   defineConfig,
 } from "@chakra-ui/react";
-import { ExamProvider } from "./pages/TakeExam/component/ExamContext.jsx";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 const config = defineConfig({
   theme: {
@@ -17,7 +16,7 @@ const config = defineConfig({
       colors: {
         primary: "#6A1B9A",
         secondary: "#10B981",
-        accent: "#CDDC39", //HOVER SATES,CORRECT ANSWERS,HIGHLIGHTS
+        accent: "#CDDC39",
         contrast: "#1C1c2e",
         danger: "#EF4444",
         energy: "#fff59d",
@@ -40,5 +39,5 @@ createRoot(document.getElementById("root")).render(
         </QueryClientProvider>
       </ChakraProvider>
     </BrowserRouter>
-  </StrictMode>
+  </StrictMode>,
 );

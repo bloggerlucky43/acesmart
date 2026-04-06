@@ -23,9 +23,11 @@ export default function Exams() {
       try {
         const res = await fetchExams();
 
-        const sortedExams = [...(res?.data ?? []).sort(
-          (a,b)=> new Date(b.createdAt)- new Date(a.createdAt)
-        )]
+        const sortedExams = [
+          ...(res?.data ?? []).sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+          ),
+        ];
 
         setAllExams(sortedExams);
       } catch (error) {
@@ -57,7 +59,8 @@ export default function Exams() {
     );
   }
 
-  const handleEdit = (examId) => navigate(`/teacher/exams/edit?exam=${examId}`);
+  const handleEdit = (examId) =>
+    navigate(`/teacher/exams/edit/${examId}/structure`);
 
   const copyToClipboard = async (text) => {
     const url = String(text);

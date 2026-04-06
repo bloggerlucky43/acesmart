@@ -9,10 +9,11 @@ import {
   List,
   Accordion,
 } from "@chakra-ui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getQuestions } from "../../../api-endpoint/exam/exams";
 import { toaster } from "../../ui/toaster";
 import { useNavigate } from "react-router-dom";
+import { STORAGE_KEY } from "../../../libs/helper";
 export default function AddExam() {
   const [subject, setSubject] = useState("");
   const [year, setYear] = useState("");
@@ -24,13 +25,58 @@ export default function AddExam() {
     duration: "",
     totalMarks: 40,
   });
+  const [editingSectionIndex, setEditingSectionIndex] = useState(null);
 
   console.log(subject, selectedQuestionsIds, examForm);
   console.log("Sections are", sections);
 
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+
+        setExamForm({
+          examTitle: "",
+          duration: "",
+          totalMarks: 40,
+          ...parsed?.examForm,
+        });
+        setSections(parsed.sections || []);
+        setSubject(parsed.subject || "");
+        setYear(parsed.year || "");
+        setQuestions(parsed.questions || []);
+        setSelectedQuestionsIds(parsed.selectedQuestionsIds || []);
+
+        toaster.info({
+          title: "Draft restored",
+        });
+      } catch (error) {
+        console.error("Failed to load draft", error);
+      }
+    }
+  }, []);
+
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const draft = {
+        examForm,
+        sections,
+        subject,
+        year,
+        questions,
+        selectedQuestionsIds,
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    }, 1000); // wait 1s
+
+    return () => clearTimeout(timeout);
+  }, [examForm, sections, subject, year, questions, selectedQuestionsIds]);
   const fetchQuestions = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
@@ -44,7 +90,10 @@ export default function AddExam() {
     setLoading(true);
 
     try {
-      const res = await getQuestions(subject?.toLowerCase().trim(), year?.trim());
+      const res = await getQuestions(
+        subject?.toLowerCase().trim(),
+        year?.trim(),
+      );
 
       if (res.success && res.data && Array.isArray(res.data)) {
         setQuestions(res.data);
@@ -107,38 +156,32 @@ export default function AddExam() {
       return;
     }
 
-    console.log("Saving section now...");
-    console.log("Selected IDs:", selectedQuestionsIds);
-    console.log("All questions:", questions);
-
-    const selectedQuestions = selectedQuestionsIds;
-
     const newSection = {
       section: subject.trim(),
       year: year?.trim() || null,
-      questions: selectedQuestions,
+      questions: selectedQuestionsIds,
     };
-    console.log("Saving section now...");
-    console.log("Selected IDs:", selectedQuestionsIds);
-    console.log("All questions:", questions);
 
-    console.log("Questions available:", questions);
-    console.log("Selected IDs:", selectedQuestionsIds);
-    console.log("Filtered selected questions:", selectedQuestions);
-    console.log("Sections before save:", sections);
+    if (editingSectionIndex !== null) {
+      // update ONLY
+      setSections((prev) =>
+        prev.map((sec, i) => (i === editingSectionIndex ? newSection : sec)),
+      );
 
-    setSections((prev) => [...prev, newSection]);
+      toaster.success({ title: "Section updated" });
+    } else {
+      // create ONLY
+      setSections((prev) => [...prev, newSection]);
+
+      toaster.success({ title: "Section added" });
+    }
 
     setSubject("");
     setYear("");
     setQuestions([]);
     setSelectedQuestionsIds([]);
-    toaster.create({
-      title: `Section "${newSection.section}" saved`,
-      type: "success",
-    });
+    setEditingSectionIndex(null);
   };
-
   const removeSection = (index) => {
     setSections((prev) => prev.filter((_, i) => i !== index));
     toaster.info({ title: "Section removed" });
@@ -189,6 +232,8 @@ export default function AddExam() {
       title: "Exam created- continuing to editor",
       type: "success",
     });
+
+    localStorage.removeItem(STORAGE_KEY);
     navigate("/teacher/exams/edit");
   };
 
@@ -196,6 +241,15 @@ export default function AddExam() {
   const questionLabel = (q) =>
     q.question ?? q.questionText ?? q.text ?? `Q${q.id}`;
 
+  const editSection = (index) => {
+    const section = sections[index];
+
+    setSubject(section.section);
+    setYear(section.year || "");
+    setQuestions(section.questions);
+    setSelectedQuestionsIds(section.questions);
+    setEditingSectionIndex(index);
+  };
   return (
     <Box
       p={6}
@@ -312,7 +366,9 @@ export default function AddExam() {
             </Button>
 
             <Button bg="green" onClick={saveSection} ml="auto">
-              Save Section
+              {editingSectionIndex !== null
+                ? "Update Section"
+                : " Save Section"}
             </Button>
           </Flex>
         </Box>
@@ -398,6 +454,14 @@ export default function AddExam() {
                         </li>
                       ))}
                     </ul>
+
+                    <Button
+                      size="sm"
+                      bg="yellow"
+                      onClick={() => editSection(idx)}
+                    >
+                      Edit Section
+                    </Button>
                   </Accordion.ItemContent>
                 </Accordion.Item>
               ))}
@@ -415,6 +479,7 @@ export default function AddExam() {
               setQuestions([]);
               setSelectedQuestionsIds([]);
               setSections([]);
+              localStorage.removeItem(STORAGE_KEY);
             }}
           >
             Reset

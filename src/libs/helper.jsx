@@ -3,6 +3,8 @@ import { saveExamResult } from "../api-endpoint/exam/exams";
 export const getStorageKey = (examId, userId) =>
   `exam_${examId}_user_${userId}`;
 
+export const STORAGE_KEY = "EXAM_DRAFT";
+
 export const saveWithRetry = async (payload, retries = 3) => {
   let attempt = 0;
   let lastError;

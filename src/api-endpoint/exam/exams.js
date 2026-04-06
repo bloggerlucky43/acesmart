@@ -5,7 +5,7 @@ export const getQuestions = async (subject, year) => {
   try {
     const response = await api.get(
       `/questions?subject=${subject}&year=${year}`,
-      { withCredentials: true }
+      { withCredentials: true },
     );
 
     const data = response.data;
@@ -25,7 +25,21 @@ export const getQuestions = async (subject, year) => {
     });
   }
 };
+export const updateExam = async (examId, finalExam) => {
+  try {
+    console.log("At the updating exam", examId);
+    console.log("At the updating exam", finalExam);
+    const response = await api.put(`/exams/${examId}`, finalExam);
 
+    return response.data;
+  } catch (error) {
+    console.error("Update exam error:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Failed to update exam",
+    };
+  }
+};
 export const createExam = async (examDetails) => {
   try {
     console.log("At create exam", examDetails);
@@ -117,6 +131,25 @@ export const fetchLiveExam = async ({ studentId, examId }) => {
     return data;
   } catch (error) {
     console.error("Error fetching exam", error);
+  }
+};
+export const getExamById = async (examId) => {
+  try {
+    const response = await api.get(`/exams/${examId}`);
+
+    const data = response.data;
+    console.log("Response at endpoint:", data);
+
+    if (!data.exam) {
+      toaster.create({
+        title: data.message,
+        type: "error",
+      });
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error fetching exam by id", error);
   }
 };
 

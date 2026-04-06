@@ -18,6 +18,8 @@ import {
   ResultPage,
   ScoreModal,
   ViewStudent,
+  EditExamStructure,
+  EditDraft,
 } from ".";
 
 import { Toaster } from "../components/ui/toaster";
@@ -49,6 +51,14 @@ const Home = () => {
             <Route path="/teacher/create_exam" element={<CreateExam />} />
             <Route path="/teacher/exams" element={<AllExams />} />
             <Route path="/teacher/exams/edit" element={<EditSettings />} />
+            <Route
+              path="/teacher/exams/edit/:examId/structure"
+              element={<EditExamStructure />}
+            />
+            <Route
+              path="/teacher/exams/edit/:examId/draft"
+              element={<EditDraft />}
+            />
             <Route
               path="/teacher/exam/questions"
               element={<ExamQuestionPage />}

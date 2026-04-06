@@ -4,8 +4,9 @@ import { useEffect, useState, useRef } from "react";
 import api from "../../../../libs/axios";
 import { toaster } from "../../../../components/ui/toaster";
 
-// const FACE_MATCH_THRESHOLD = 0.39;
-const FACE_MATCH_THRESHOLD = 0.45;
+const FACE_MATCH_THRESHOLD = 0.68;
+const MAX_CAPTURE = 3;
+const VERIFY_TIMEOUT = 120000; // 2 min
 
 export default function FaceVerificationModal({
   isOpen,
@@ -15,144 +16,176 @@ export default function FaceVerificationModal({
 }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const descriptorsRef = useRef([]);
+  const collectedRef = useRef(0);
+  const verifyingRef = useRef(false);
 
   const [cameraReady, setCameraReady] = useState(false);
+  const [modelReady, setModelReady] = useState(false);
   const [storedDescriptor, setStoredDescriptor] = useState(null);
-  const [verifying, setVerifying] = useState(false);
-  const [modelReady, setModelsReady] = useState(false);
-  // const descriptorsRef = useRef([]);
-  // const collectedRef = useRef(0);
 
   const detectorOptions = new faceapi.TinyFaceDetectorOptions({
     inputSize: 224,
-    scoreThreshold: 0.4,
+    scoreThreshold: 0.35,
   });
 
-  // start camera
+  // ================= DEVICE CAPABILITY CHECK =================
+  const isFaceCapable = () => {
+    try {
+      const canvas = document.createElement("canvas");
+      return !!window.WebGLRenderingContext && !!canvas.getContext("webgl");
+    } catch {
+      return false;
+    }
+  };
+
+  // ================= CAMERA CLEANUP =================
+  const stopCamera = () => {
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setCameraReady(false);
+    setModelReady(false);
+    setStoredDescriptor(null);
+    descriptorsRef.current = [];
+    collectedRef.current = 0;
+    verifyingRef.current = false;
+  };
+
+  // ================= START CAMERA =================
   useEffect(() => {
     if (!isOpen) return;
+
+    if (!isFaceCapable()) {
+      toaster.warning({
+        title: "Face verification skipped",
+        description: "Device not compatible",
+      });
+      onSuccess(); // only skip if device not capable
+      return;
+    }
 
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user" },
         });
+        console.log("Camera stream obtained:", stream);
 
         streamRef.current = stream;
         videoRef.current.srcObject = stream;
 
         videoRef.current.onloadedmetadata = async () => {
-          try {
-            await videoRef.current.play();
-
-            console.log("Camera started");
-            setCameraReady(true);
-          } catch (error) {
-            console.error(error);
-          }
+          await videoRef.current.play();
+          console.log("Video metadata loaded,camera is ready");
+          setCameraReady(true);
         };
       } catch (err) {
         console.error("Camera error:", err);
         toaster.error({ title: "Unable to access camera" });
+        stopCamera();
+        onClose();
       }
     };
 
     startCamera();
 
-    return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-      setCameraReady(false);
-      setModelsReady(false);
-      setStoredDescriptor(null);
-      // descriptorsRef.current = [];
-      // console.log("Camera stopped, cleanup done");
-    };
+    return () => stopCamera();
   }, [isOpen]);
 
-  //load light models
+  // ================= LOAD FACE MODELS =================
   useEffect(() => {
     if (!cameraReady) return;
 
     const loadModels = async () => {
       try {
-        // await faceapi.tf.setBackend("cpu");
         await faceapi.tf.ready();
-
+        console.log("TensorFlow ready");
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri("/models/weights"),
-          faceapi.nets.faceLandmark68Net.loadFromUri("/models/weights"),
           faceapi.nets.faceRecognitionNet.loadFromUri("/models/weights"),
+          faceapi.nets.faceLandmark68Net.loadFromUri("/models/weights"),
         ]);
-        console.log("Models loaded successfully");
-        setModelsReady(true);
-        // setLoadingModels(false);
-      } catch (error) {
-        console.error("Failed to load models:", error);
-        toaster.create({
-          type: "error",
-          title: "Failed to load face models",
-        });
+        setModelReady(true);
+      } catch (err) {
+        console.error("Model load error:", err);
+        toaster.error({ title: "Failed to load face models" });
+        stopCamera();
+        onClose();
       }
     };
+
     loadModels();
   }, [cameraReady]);
 
-  // load stored faces
+  // ================= LOAD STORED FACE =================
   useEffect(() => {
     if (!modelReady || !studentId) return;
 
     const loadStoredFace = async () => {
       try {
         const res = await api.get(`/student/face/${studentId}`);
+        console.log("Stored face API response:", res.data);
         const img = await faceapi.fetchImage(res.data.faceImageUrl);
-
-        console.log("Detecting stored face descriptor...");
 
         const detection = await faceapi
           .detectSingleFace(img, detectorOptions)
           .withFaceLandmarks()
           .withFaceDescriptor();
 
+        console.log("Stored face detection:", detection);
         if (!detection) {
-          toaster.error({ title: "Stored face not detectable" });
+          toaster.warning({ title: "Stored face not detectable" });
+          stopCamera();
+          onClose();
           return;
         }
-        console.log("Stored face descriptor loaded");
+
         setStoredDescriptor(detection.descriptor);
-      } catch (error) {
-        console.error("Failed to load reference face:", error);
+      } catch (err) {
+        console.error("Stored face load error:", err);
         toaster.error({ title: "Failed to load reference face" });
+        stopCamera();
+        onClose();
       }
     };
 
     loadStoredFace();
-  }, [studentId, modelReady]);
+  }, [modelReady, studentId]);
 
-  //Face collection
+  // ================= COLLECT LIVE FACE =================
   useEffect(() => {
     if (!modelReady || !cameraReady || !storedDescriptor) return;
 
+    descriptorsRef.current = [];
     collectedRef.current = 0;
 
-    descriptorsRef.current = [];
-
     const interval = setInterval(async () => {
-      if (!videoRef.current || videoRef.current.readyState !== 4) return;
+      if (
+        verifyingRef.current ||
+        !videoRef.current ||
+        videoRef.current.readyState !== 4
+      )
+        return;
 
       const detection = await faceapi
         .detectSingleFace(videoRef.current, detectorOptions)
         .withFaceLandmarks()
         .withFaceDescriptor();
 
-      console.log("detection", detection);
-
-      if (detection && detection.detection.score > 0.45) {
+      console.log("Live face detection:", detection);
+      if (detection && detection.detection.score > 0.55) {
+        console.log("Face detected with score:", detection.detection.score);
         descriptorsRef.current.push(detection.descriptor);
         collectedRef.current++;
+        console.log("Collected descriptors count:", collectedRef.current);
 
-        if (collectedRef.current >= 3) {
+        if (collectedRef.current >= MAX_CAPTURE) {
           clearInterval(interval);
+          console.log("Max captures collected, verifying face");
+
           verifyFace();
         }
       }
@@ -161,51 +194,59 @@ export default function FaceVerificationModal({
     return () => clearInterval(interval);
   }, [modelReady, cameraReady, storedDescriptor]);
 
-  //verify face
+  // ================= VERIFY FACE =================
   const verifyFace = async () => {
-    if (verifying) return;
-
-    console.log("storedDescriptor", storedDescriptor);
-    console.log("descriptorref length", descriptorsRef.current.length);
-
-    if (!storedDescriptor || descriptorsRef.current.length < 3) {
-      toaster.error({ title: "Face not ready" });
-      return;
-    }
-
-    setVerifying(true);
-    console.log("Starting face verification...");
+    if (verifyingRef.current) return;
+    verifyingRef.current = true;
 
     try {
       const matcher = new faceapi.FaceMatcher(
         [new faceapi.LabeledFaceDescriptors("user", [storedDescriptor])],
-        FACE_MATCH_THRESHOLD
+        FACE_MATCH_THRESHOLD,
       );
 
-      const avgDescriptor = new Float32Array(128).fill(0);
-      descriptorsRef.current.forEach((d) => {
-        for (let i = 0; i < 128; i++) avgDescriptor[i] += d[i];
+      // Count how many captures match
+      let successCount = 0;
+      descriptorsRef.current.forEach((d, i) => {
+        const result = matcher.findBestMatch(d);
+        console.log(`Capture #${i + 1} match result:`, result.toString());
+        if (result.label !== "unknown") successCount++;
       });
 
-      for (let i = 0; i < 128; i++)
-        avgDescriptor[i] /= descriptorsRef.current.length;
-
-      const bestMatches = matcher.findBestMatch(avgDescriptor);
-
-      if (bestMatches.label === "unknown") {
-        toaster.error({ title: "Face does not match" });
-      } else {
+      console.log("Total successful matches:", successCount);
+      // Require at least 2/3 samples to match
+      if (successCount >= Math.ceil(MAX_CAPTURE * 0.66)) {
         toaster.success({ title: "Face verified successfully" });
+        console.log("Face verified ✅");
+        stopCamera();
         onSuccess();
-        return;
+      } else {
+        console.log("Face does not match ❌");
+        toaster.error({ title: "Face does not match" });
+        stopCamera();
       }
     } catch (err) {
-      console.error("Verification failed:", err);
-      toaster.error({ title: "Verification failed" });
-    } finally {
-      setVerifying(false);
+      console.error("Face verification error:", err);
+      toaster.error({ title: "Face verification failed" });
+      stopCamera();
     }
   };
+
+  // ================= SAFETY TIMEOUT =================
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const timeout = setTimeout(() => {
+      toaster.warning({
+        title: "Face verification skipped",
+        description: "Verification timeout",
+      });
+      stopCamera();
+      onClose();
+    }, VERIFY_TIMEOUT);
+
+    return () => clearTimeout(timeout);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -219,10 +260,16 @@ export default function FaceVerificationModal({
       justifyContent="center"
       zIndex={9999}
     >
-      <Box bg="white" borderRadius="md" p={6} w={["90%", "400px"]}>
+      <Box bg="white" borderRadius="md" p={6} w={["90%", "420px"]}>
         <Text fontSize="lg" fontWeight="bold" mb={4}>
           Face Verification
         </Text>
+
+        {!cameraReady && (
+          <Flex align="center" justify="center" h="220px">
+            <Spinner />
+          </Flex>
+        )}
 
         <video
           ref={videoRef}
@@ -236,32 +283,23 @@ export default function FaceVerificationModal({
           }}
         />
 
-        {/* Spinner overlay */}
-        {!cameraReady && (
-          <Flex align="center" justify="center" h="200px">
-            <Spinner />
-          </Flex>
-        )}
-
         {cameraReady && (
-          <>
-            <Text textAlign={"center"}>Hold still, verifying your face</Text>
-            <Flex justify="flex-end" mt={4} gap={2}>
-              <Button
-                bg="primary"
-                disabled={verifying}
-                loading={verifying}
-                onClick={verifyFace}
-              >
-                Verify
-              </Button>
-
-              <Button variant="ghost" onClick={onClose}>
-                Cancel
-              </Button>
-            </Flex>
-          </>
+          <Text mt={3} textAlign="center">
+            Hold still while we verify your face
+          </Text>
         )}
+
+        <Flex justify="flex-end" mt={4}>
+          <Button
+            onClick={() => {
+              stopCamera();
+              onClose();
+            }}
+            variant="ghost"
+          >
+            Cancel
+          </Button>
+        </Flex>
       </Box>
     </Box>
   );
