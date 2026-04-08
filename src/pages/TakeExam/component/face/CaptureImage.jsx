@@ -3,9 +3,9 @@ import * as faceapi from "face-api.js";
 import { useEffect, useState, useRef } from "react";
 import api from "../../../../libs/axios";
 import { toaster } from "../../../../components/ui/toaster";
-
+import { loadFaceModels } from "../../login";
 const FACE_MATCH_THRESHOLD = 0.68;
-const MAX_CAPTURE = 3;
+const MAX_CAPTURE = 2;
 const VERIFY_TIMEOUT = 120000; // 2 min
 
 export default function FaceVerificationModal({
@@ -25,7 +25,7 @@ export default function FaceVerificationModal({
   const [storedDescriptor, setStoredDescriptor] = useState(null);
 
   const detectorOptions = new faceapi.TinyFaceDetectorOptions({
-    inputSize: 224,
+    inputSize: 160,
     scoreThreshold: 0.35,
   });
 
@@ -70,7 +70,11 @@ export default function FaceVerificationModal({
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" },
+          video: {
+            facingMode: "user",
+            width: { ideal: 320 },
+            height: { ideal: 240 },
+          },
         });
         console.log("Camera stream obtained:", stream);
 
@@ -101,13 +105,7 @@ export default function FaceVerificationModal({
 
     const loadModels = async () => {
       try {
-        await faceapi.tf.ready();
-        console.log("TensorFlow ready");
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri("/models/weights"),
-          faceapi.nets.faceRecognitionNet.loadFromUri("/models/weights"),
-          faceapi.nets.faceLandmark68Net.loadFromUri("/models/weights"),
-        ]);
+        await loadFaceModels();
         setModelReady(true);
       } catch (err) {
         console.error("Model load error:", err);
@@ -170,26 +168,35 @@ export default function FaceVerificationModal({
       )
         return;
 
-      const detection = await faceapi
-        .detectSingleFace(videoRef.current, detectorOptions)
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-
+      const detection = await faceapi.detectSingleFace(
+        videoRef.current,
+        detectorOptions,
+      );
       console.log("Live face detection:", detection);
-      if (detection && detection.detection.score > 0.55) {
-        console.log("Face detected with score:", detection.detection.score);
-        descriptorsRef.current.push(detection.descriptor);
+
+      const now = Date.now();
+
+      let lastFullCompute = 0;
+
+      if (detection && detection.score > 0.55 && now - lastFullCompute > 800) {
+        lastFullCompute = now;
+        //Only now compute heavy stuff
+        const fullDetection = await faceapi
+          .detectSingleFace(videoRef.current, detectorOptions)
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+
+        descriptorsRef.current.push(fullDetection.descriptor);
         collectedRef.current++;
-        console.log("Collected descriptors count:", collectedRef.current);
+
+        console.log("Collected:", collectedRef.current);
 
         if (collectedRef.current >= MAX_CAPTURE) {
           clearInterval(interval);
-          console.log("Max captures collected, verifying face");
-
           verifyFace();
         }
       }
-    }, 300);
+    }, 500);
 
     return () => clearInterval(interval);
   }, [modelReady, cameraReady, storedDescriptor]);

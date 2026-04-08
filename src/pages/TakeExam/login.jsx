@@ -15,7 +15,29 @@ import { FaBrain } from "react-icons/fa";
 import { useState } from "react";
 import { toaster } from "../../components/ui/toaster";
 import { examLogin } from "../../api-endpoint/exam/exams";
+import * as faceapi from "face-api.js";
 import FaceVerificationModal from "./component/face/CaptureImage";
+
+let modelsLoaded = false;
+export const loadFaceModels = async () => {
+  if (modelsLoaded) return;
+
+  await faceapi.tf.setBackend("webgl");
+  await faceapi.tf.ready();
+  console.log("TensorFlow ready");
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri("/models/weights"),
+    faceapi.nets.faceLandmark68Net.loadFromUri("/models/weights"),
+    faceapi.nets.faceRecognitionNet.loadFromUri("/models/weights"),
+  ]);
+
+  await faceapi.detectSingleFace(
+    document.createElement("canvas"),
+    new faceapi.TinyFaceDetectorOptions(),
+  );
+
+  modelsLoaded = true;
+};
 
 const ExamLoginPage = () => {
   const [examDetail, setExamDetail] = useState({
@@ -59,8 +81,8 @@ const ExamLoginPage = () => {
           "examStudent",
           JSON.stringify({ ...res.student, examId: id }),
         );
-        // navigate(`/ex/${id}`);
-        setShowFaceModal(true);
+        navigate(`/ex/${id}`);
+        // setShowFaceModal(true);
       }
     } catch (error) {
       setError("Invalid credentials. Please check your details");
@@ -167,7 +189,7 @@ const ExamLoginPage = () => {
           </Fieldset.Root>
         </Flex>
       </Flex>
-
+{/* 
       {showFaceModal && (
         <FaceVerificationModal
           isOpen={showFaceModal}
@@ -178,7 +200,7 @@ const ExamLoginPage = () => {
             navigate(`/ex/${id}`);
           }}
         />
-      )}
+      )} */}
     </Box>
   );
 };
