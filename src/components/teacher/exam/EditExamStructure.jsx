@@ -14,7 +14,7 @@ import { STORAGE_KEY } from "../../../libs/helper";
 import { useNavigate, useParams } from "react-router-dom";
 import { toaster } from "../../ui/toaster";
 import { useEffect, useState } from "react";
-
+import { getQuestions } from "../../../api-endpoint/exam/exams";
 import DashboardLayout from "../../../constants/dashboardlayout";
 import { getExamById } from "../../../api-endpoint/exam/exams";
 
