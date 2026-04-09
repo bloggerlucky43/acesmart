@@ -85,13 +85,17 @@ export default function EditDraft() {
       setLoading(false);
       return;
     }
+
     const finalExam = {
-      ...draft,
-      description: examDetails.description,
-      startDate: examDetails.startDate,
-      endDate: examDetails.endDate,
-      negativeMarking: examDetails.negativeMarking,
-    };
+  ...draft,
+  title: examDetails.title,
+  description: examDetails.description,
+  duration: examDetails.duration,
+  totalMarks: examDetails.totalMarks,
+  startDate: examDetails.startDate,
+  endDate: examDetails.endDate,
+  negativeMarking: examDetails.negativeMarking,
+};
 
     setLoading(true);
     try {
