@@ -345,16 +345,16 @@ export default function MobileEditExamDetails() {
         <Button
           w="100%"
           size="md"
-          bg="linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)"
+          bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
           color="white"
           borderRadius="xl"
           fontWeight="bold"
-          boxShadow="0 4px 12px rgba(99, 102, 241, 0.3)"
+          boxShadow="0 4px 12px rgba(106, 27, 154, 0.3)"
           onClick={handleSaveChanges}
           loading={loading}
           _hover={{
             transform: "translateY(-1px)",
-            boxShadow: "0 6px 16px rgba(99, 102, 241, 0.4)",
+            boxShadow: "0 6px 16px rgba(106, 27, 154, 0.4)",
           }}
           leftIcon={<Icon as={FaCheckCircle} />}
         >

@@ -6,12 +6,11 @@ import {
   Icon,
   HStack,
   VStack,
-  Spinner,
-  Center,
 } from "@chakra-ui/react";
 import { fetchExams } from "../../../api-endpoint/exam/exams";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { CardGridSkeleton } from "../../../components/ui/skeletons";
 import { FaGraduationCap, FaChevronRight, FaClipboardCheck } from "react-icons/fa";
 
 export const MPerformance = () => {
@@ -61,12 +60,7 @@ export const MPerformance = () => {
 
       {/* Loading state */}
       {isLoading ? (
-        <Center py={16}>
-          <VStack spacing={3}>
-            <Spinner size="lg" color="#4F46E5" />
-            <Text fontSize="sm" color="#64748B">Loading examinations...</Text>
-          </VStack>
-        </Center>
+        <CardGridSkeleton count={4} />
       ) : exams.length === 0 ? (
         <Box
           bg="white"

@@ -4,13 +4,13 @@ import {
   Flex,
   Text,
   Button,
-  Spinner,
   Icon,
   Badge,
   Input,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { TableSkeleton } from "../ui/skeletons";
 import {
   activateStudent,
   deactivateStudent,
@@ -145,9 +145,9 @@ const StudentEditor = () => {
           </Box>
 
           {isLoading ? (
-            <Flex h="240px" justify="center" align="center">
-              <Spinner size="xl" color="#6A1B9A" />
-            </Flex>
+            <Box p={4}>
+              <TableSkeleton rows={5} columns={4} />
+            </Box>
           ) : isError ? (
             <Flex h="200px" justify="center" align="center" color="red.500">
               <Text>Error fetching student list. Please retry.</Text>

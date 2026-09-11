@@ -1,4 +1,5 @@
-import { Box, Flex, Text, Spinner, SimpleGrid, Icon, Button } from "@chakra-ui/react";
+import { Box, Flex, Text, SimpleGrid, Icon, Button } from "@chakra-ui/react";
+import { MetricCardsSkeleton } from "../../components/ui/skeletons";
 import {
   FaUsers,
   FaBook,
@@ -29,9 +30,9 @@ const MCards = () => {
 
   if (isLoading) {
     return (
-      <Flex h="140px" justify="center" align="center">
-        <Spinner size="lg" color="#6A1B9A" />
-      </Flex>
+      <Box mb={5}>
+        <MetricCardsSkeleton count={4} />
+      </Box>
     );
   }
 

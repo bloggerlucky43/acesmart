@@ -18,7 +18,7 @@ import {
   FAQS,
 } from "../constants/pricingData";
 import PaymentModal from "../components/payment/PaymentModal";
-import Navbar from "../components/ui/landing/Navbar";
+import Navbar from "../components/ui/landing/navbar";
 import Footer from "../components/ui/landing/Footer";
 import {
   FaCheck,

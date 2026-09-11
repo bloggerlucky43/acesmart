@@ -248,13 +248,17 @@ const MNewStudent = () => {
             <Button
               type="submit"
               w="full"
-              mt={2}
-              borderRadius="md"
-              bg="primary"
+              mt={4}
+              h="46px"
+              borderRadius="xl"
+              bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
+              color="white"
+              fontWeight="bold"
+              boxShadow="0 4px 12px rgba(106, 27, 154, 0.25)"
               loading={loading}
               spinnerPlacement="center"
             >
-              Apply
+              Enroll Student
             </Button>
           </form>
         </Fieldset.Root>
