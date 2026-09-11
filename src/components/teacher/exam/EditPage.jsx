@@ -3,18 +3,31 @@ import {
   Button,
   Field,
   Switch,
-  Grid,
-  Stack,
+  SimpleGrid,
   Input,
   Flex,
-  NumberInput,
   Textarea,
-  Fieldset,
+  Text,
+  Badge,
+  HStack,
+  VStack,
+  Icon,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toaster } from "../../ui/toaster";
 import { createExam } from "../../../api-endpoint/exam/exams";
+import {
+  FaSlidersH,
+  FaCalendarAlt,
+  FaCheckCircle,
+  FaEye,
+  FaClock,
+  FaAward,
+  FaInfoCircle,
+  FaExclamationTriangle,
+} from "react-icons/fa";
+
 export default function EditPage() {
   const [loading, setLoading] = useState(false);
 
@@ -24,7 +37,6 @@ export default function EditPage() {
   const [examDetails, setExamDetails] = useState({
     title: "WAEC 2024",
     description: "This is a sample exam description.",
-
     duration: 60,
     startDate: "",
     endDate: "",
@@ -34,25 +46,30 @@ export default function EditPage() {
     id: examId || null,
   });
   const navigate = useNavigate();
-  console.log("Editing exam with ID:", examId);
 
   useEffect(() => {
     const loadExam = async () => {
       if (examId) {
         setLoading(true);
+        // Reserved for exam loader if needed
+        setLoading(false);
       } else {
         const storedData = localStorage.getItem("NEW_EXAM");
 
         if (!storedData) return;
-        const parsedData = JSON.parse(storedData);
+        try {
+          const parsedData = JSON.parse(storedData);
 
-        setExamDetails((prev) => ({
-          ...prev,
-          title: parsedData.examTitle,
-          duration: parsedData.duration,
-          sections: parsedData.sections,
-          totalMarks: parsedData.totalMarks,
-        }));
+          setExamDetails((prev) => ({
+            ...prev,
+            title: parsedData.examTitle || prev.title,
+            duration: parsedData.duration || prev.duration,
+            sections: parsedData.sections || [],
+            totalMarks: parsedData.totalMarks || prev.totalMarks,
+          }));
+        } catch (e) {
+          console.error("Failed to parse NEW_EXAM", e);
+        }
       }
     };
 
@@ -60,28 +77,22 @@ export default function EditPage() {
   }, [examId, navigate]);
 
   const handleSaveChanges = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+
     if (!examDetails.startDate) {
-      toaster.error({
-        title: "Start date required",
-      });
-      setLoading(false);
+      toaster.error({ title: "Start date/time is required" });
       return;
     } else if (!examDetails.endDate) {
-      toaster.error({ title: "End date is required" });
-      setLoading(false);
+      toaster.error({ title: "End date/time is required" });
       return;
     } else if (!examDetails.duration) {
       toaster.error({ title: "Exam duration is required" });
-      setLoading(false);
       return;
-    } else if (!examDetails.description) {
+    } else if (!examDetails.description?.trim()) {
       toaster.error({ title: "Exam description is required" });
-      setLoading(false);
       return;
     } else if (examDetails.sections.length === 0) {
-      toaster.error({ title: "Exam question is empty" });
-      setLoading(false);
+      toaster.error({ title: "Exam question sections are empty" });
       return;
     }
 
@@ -90,12 +101,12 @@ export default function EditPage() {
       const res = await createExam(examDetails);
 
       if (res.success && res.data) {
-        toaster.success({ title: "Exam created successfully" });
+        toaster.success({ title: "Exam successfully published to student portal!" });
         navigate("/teacher/exams");
       }
     } catch (error) {
       toaster.error({
-        title: "Something went wrong.Try again later.",
+        title: "Something went wrong. Please try again later.",
       });
       console.error("Server call fail:", error);
     } finally {
@@ -103,174 +114,367 @@ export default function EditPage() {
     }
   };
 
+  const totalQuestions = examDetails.sections.reduce(
+    (acc, sec) => acc + (sec.questions?.length || 0),
+    0
+  );
+
   return (
     <Box
-      bg="gray.200"
-      minH={"100vh"}
-      p={4}
-      ml="10vw"
-      w="70%"
+      bg="#F8FAFC"
+      minH="calc(100vh - 68px)"
+      p={{ base: 4, md: 8 }}
+      ml={{ base: 0, lg: "240px" }}
+      w={{ base: "100%", lg: "calc(100% - 240px)" }}
       justifySelf="center"
-      mt="9vh"
+      mt="68px"
     >
-      <Fieldset.Root
-        bg="white"
-        p={6}
-        mt={4}
-        borderRadius="md"
-        boxShadow="md"
-        size="lg"
+      {/* Header Banner */}
+      <Box
+        bg="linear-gradient(135deg, #0F172A 0%, #1E1B4B 100%)"
+        p={{ base: 6, md: 8 }}
+        borderRadius="24px"
+        color="white"
+        mb={8}
+        boxShadow="0 10px 25px -5px rgba(15, 23, 42, 0.2)"
       >
-        <Stack>
-          <Fieldset.Legend fontSize="xl" fontWeight="bold">
-            Exam Details
-          </Fieldset.Legend>
-          <Fieldset.HelperText>
-            Please provide the details for the exam.
-          </Fieldset.HelperText>
-        </Stack>
+        <Flex
+          justify="space-between"
+          align={{ base: "flex-start", md: "center" }}
+          direction={{ base: "column", md: "row" }}
+          gap={4}
+        >
+          <Box>
+            <HStack spacing={2} mb={2}>
+              <Badge
+                bg="rgba(99, 102, 241, 0.25)"
+                color="#A5B4FC"
+                px={3}
+                py={1}
+                borderRadius="full"
+                fontSize="11px"
+                fontWeight="bold"
+              >
+                STEP 2 OF 2: PUBLISHING & SCHEDULING
+              </Badge>
+              <Badge
+                bg="rgba(16, 185, 129, 0.2)"
+                color="#34D399"
+                px={2.5}
+                py={1}
+                borderRadius="full"
+                fontSize="11px"
+              >
+                {examDetails.sections.length} Sections Attached
+              </Badge>
+            </HStack>
+            <Text
+              fontSize={{ base: "22px", md: "28px" }}
+              fontWeight="800"
+              fontFamily="'Outfit', sans-serif"
+              lineHeight="1.2"
+              mb={2}
+            >
+              Examination Rules & Schedule
+            </Text>
+            <Text fontSize="14px" color="#94A3B8" maxW="680px">
+              Specify active CBT testing windows, proctoring instructions, scoring limits,
+              and negative marking penalties before deploying to students.
+            </Text>
+          </Box>
 
-        <Fieldset.Content>
-          <Grid templateColumns="repeat(2,1fr)" gap={6} mt={4}>
-            {/* left column */}
-            <Stack gap={4}>
-              <Field.Root>
-                <Field.Label>Exam Title </Field.Label>
-                <Input
-                  placeholder="Enter exam title"
-                  value={examDetails.title}
-                  onChange={(e) =>
-                    setExamDetails({ ...examDetails, title: e.target.value })
-                  }
-                  borderColor="gray.500"
-                  _focus={{ borderColor: "primary" }}
-                />
-              </Field.Root>
+          <HStack
+            spacing={4}
+            bg="rgba(255, 255, 255, 0.06)"
+            p={3}
+            borderRadius="xl"
+            border="1px solid rgba(255, 255, 255, 0.1)"
+          >
+            <VStack spacing={0} align="center" px={2}>
+              <Text fontSize="11px" color="#94A3B8">Sections</Text>
+              <Text fontSize="lg" fontWeight="bold" color="white">{examDetails.sections.length}</Text>
+            </VStack>
+            <Box h="28px" w="1px" bg="rgba(255, 255, 255, 0.15)" />
+            <VStack spacing={0} align="center" px={2}>
+              <Text fontSize="11px" color="#94A3B8">Questions</Text>
+              <Text fontSize="lg" fontWeight="bold" color="#818CF8">{totalQuestions}</Text>
+            </VStack>
+            <Box h="28px" w="1px" bg="rgba(255, 255, 255, 0.15)" />
+            <VStack spacing={0} align="center" px={2}>
+              <Text fontSize="11px" color="#94A3B8">Duration</Text>
+              <Text fontSize="lg" fontWeight="bold" color="#34D399">{examDetails.duration}m</Text>
+            </VStack>
+          </HStack>
+        </Flex>
+      </Box>
 
-              <Field.Root>
-                <Field.Label>Description </Field.Label>
-                <Textarea
-                  placeholder="Enter exam description"
-                  value={examDetails.description}
-                  onChange={(e) =>
-                    setExamDetails({
-                      ...examDetails,
-                      description: e.target.value,
-                    })
-                  }
-                  borderColor="gray.500"
-                  _focus={{ borderColor: "primary" }}
-                />
-              </Field.Root>
+      {/* Main Settings Grid */}
+      <SimpleGrid columns={{ base: 1, lg: 2 }} gap={6} mb={8}>
+        {/* Left Column: Metadata & Instructions */}
+        <Box
+          p={{ base: 6, md: 8 }}
+          borderRadius="24px"
+          border="1px solid #E2E8F0"
+          bg="white"
+          boxShadow="0 2px 12px rgba(0,0,0,0.03)"
+        >
+          <Flex align="center" gap={3} mb={5}>
+            <Flex
+              w="36px"
+              h="36px"
+              borderRadius="xl"
+              bg="rgba(99, 102, 241, 0.1)"
+              align="center"
+              justify="center"
+            >
+              <Icon as={FaInfoCircle} color="#4F46E5" boxSize={4} />
+            </Flex>
+            <Box>
+              <Text fontSize="16px" fontWeight="800" color="#0F172A">
+                General Exam Information
+              </Text>
+              <Text fontSize="12px" color="#64748B">
+                Candidate-facing exam title and instructions.
+              </Text>
+            </Box>
+          </Flex>
 
-              <Field.Root>
-                <Field.Label>Duration (minutes) </Field.Label>
-                <NumberInput.Root
-                  placeholder="Enter duration in minutes"
-                  value={examDetails.duration}
-                  onValueChange={(e) =>
-                    setExamDetails({ ...examDetails, duration: e.value })
-                  }
-                >
-                  <NumberInput.Control />
-                  <NumberInput.Input
-                    _focus={{ borderColor: "primary" }}
-                    borderColor="gray.500"
-                  />
-                </NumberInput.Root>
-              </Field.Root>
-            </Stack>
+          <VStack spacing={5} align="stretch">
+            <Field.Root required>
+              <Field.Label fontWeight="700" fontSize="13px" color="#334155">
+                Exam Title <Field.RequiredIndicator />
+              </Field.Label>
+              <Input
+                placeholder="Enter exam title"
+                borderRadius="xl"
+                h="46px"
+                borderColor="#CBD5E1"
+                _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                value={examDetails.title}
+                onChange={(e) =>
+                  setExamDetails({ ...examDetails, title: e.target.value })
+                }
+              />
+            </Field.Root>
 
-            <Stack gap={4}>
-              <Field.Root>
-                <Field.Label>Start Date</Field.Label>
-                <Input
-                  type="datetime-local"
-                  value={examDetails.startDate}
-                  onChange={(e) =>
-                    setExamDetails({
-                      ...examDetails,
-                      startDate: e.target.value,
-                    })
-                  }
-                  _focus={{ borderColor: "primary" }}
-                  borderColor="gray.500"
-                />
-              </Field.Root>
-
-              <Field.Root>
-                <Field.Label>End Date</Field.Label>
-                <Input
-                  type="datetime-local"
-                  value={examDetails.endDate}
-                  onChange={(e) =>
-                    setExamDetails({
-                      ...examDetails,
-                      endDate: e.target.value,
-                    })
-                  }
-                  _focus={{ borderColor: "primary" }}
-                  borderColor="gray.500"
-                />
-              </Field.Root>
-              <Field.Root>
-                <Field.Label>Total Marks</Field.Label>
-                <NumberInput.Root>
-                  <NumberInput.Control />
-                  <NumberInput.Input
-                    value={examDetails.totalMarks}
-                    onChange={(e) =>
-                      setExamDetails({
-                        ...examDetails,
-                        totalMarks: e.target.value,
-                      })
-                    }
-                    _focus={{ borderColor: "primary" }}
-                    borderColor="gray.500"
-                  />
-                </NumberInput.Root>
-              </Field.Root>
-
-              <Switch.Root
-                checked={examDetails.negativeMarking}
-                onCheckedChange={(e) =>
+            <Field.Root required>
+              <Field.Label fontWeight="700" fontSize="13px" color="#334155">
+                Instructions / Description <Field.RequiredIndicator />
+              </Field.Label>
+              <Textarea
+                placeholder="Provide instructions for candidate testing (e.g. calculators allowed, time limit warnings)..."
+                borderRadius="xl"
+                rows={5}
+                borderColor="#CBD5E1"
+                _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                value={examDetails.description}
+                onChange={(e) =>
                   setExamDetails({
                     ...examDetails,
-                    negativeMarking: e.checked,
+                    description: e.target.value,
                   })
                 }
-                _focus={{ borderColor: "primary" }}
-                colorPalette={"green"}
-                mt={4}
-              >
-                <Switch.HiddenInput />
-                <Switch.Control />
-                <Switch.Label>Negative Marking</Switch.Label>
-              </Switch.Root>
-            </Stack>
-          </Grid>
-        </Fieldset.Content>
-      </Fieldset.Root>
+              />
+            </Field.Root>
 
-      <Flex mt={4} justify="flex-end" gap={4}>
-        <Button
-          bg="secondary"
-          _hover={{ transform: "scale(1.05)" }}
-          onClick={handleSaveChanges}
-          loading={loading}
-          spinnerPlacement="center"
+            <SimpleGrid columns={{ base: 1, sm: 2 }} gap={4}>
+              <Field.Root required>
+                <Field.Label fontWeight="700" fontSize="13px" color="#334155">
+                  Duration (minutes) <Field.RequiredIndicator />
+                </Field.Label>
+                <Input
+                  type="number"
+                  placeholder="60"
+                  borderRadius="xl"
+                  h="46px"
+                  borderColor="#CBD5E1"
+                  _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                  value={examDetails.duration}
+                  onChange={(e) =>
+                    setExamDetails({ ...examDetails, duration: Number(e.target.value) })
+                  }
+                />
+              </Field.Root>
+
+              <Field.Root required>
+                <Field.Label fontWeight="700" fontSize="13px" color="#334155">
+                  Total Marks <Field.RequiredIndicator />
+                </Field.Label>
+                <Input
+                  type="number"
+                  placeholder="100"
+                  borderRadius="xl"
+                  h="46px"
+                  borderColor="#CBD5E1"
+                  _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                  value={examDetails.totalMarks}
+                  onChange={(e) =>
+                    setExamDetails({ ...examDetails, totalMarks: Number(e.target.value) })
+                  }
+                />
+              </Field.Root>
+            </SimpleGrid>
+          </VStack>
+        </Box>
+
+        {/* Right Column: Scheduling & Negative Marking */}
+        <Box
+          p={{ base: 6, md: 8 }}
+          borderRadius="24px"
+          border="1px solid #E2E8F0"
+          bg="white"
+          boxShadow="0 2px 12px rgba(0,0,0,0.03)"
         >
-          Save Changes
-        </Button>
+          <Flex align="center" gap={3} mb={5}>
+            <Flex
+              w="36px"
+              h="36px"
+              borderRadius="xl"
+              bg="rgba(16, 185, 129, 0.1)"
+              align="center"
+              justify="center"
+            >
+              <Icon as={FaCalendarAlt} color="#059669" boxSize={4} />
+            </Flex>
+            <Box>
+              <Text fontSize="16px" fontWeight="800" color="#0F172A">
+                Scheduling Window & Policies
+              </Text>
+              <Text fontSize="12px" color="#64748B">
+                Define the start/expiration timestamps and test behavior.
+              </Text>
+            </Box>
+          </Flex>
+
+          <VStack spacing={5} align="stretch">
+            <Field.Root required>
+              <Field.Label fontWeight="700" fontSize="13px" color="#334155">
+                Exam Start Date & Time <Field.RequiredIndicator />
+              </Field.Label>
+              <Input
+                type="datetime-local"
+                borderRadius="xl"
+                h="46px"
+                borderColor="#CBD5E1"
+                _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                value={examDetails.startDate}
+                onChange={(e) =>
+                  setExamDetails({
+                    ...examDetails,
+                    startDate: e.target.value,
+                  })
+                }
+              />
+            </Field.Root>
+
+            <Field.Root required>
+              <Field.Label fontWeight="700" fontSize="13px" color="#334155">
+                Exam End Date & Time <Field.RequiredIndicator />
+              </Field.Label>
+              <Input
+                type="datetime-local"
+                borderRadius="xl"
+                h="46px"
+                borderColor="#CBD5E1"
+                _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                value={examDetails.endDate}
+                onChange={(e) =>
+                  setExamDetails({
+                    ...examDetails,
+                    endDate: e.target.value,
+                  })
+                }
+              />
+            </Field.Root>
+
+            {/* Negative Marking Card */}
+            <Box
+              p={4}
+              borderRadius="16px"
+              bg="#F8FAFC"
+              border="1px solid #E2E8F0"
+              mt={2}
+            >
+              <Flex justify="space-between" align="center">
+                <Box maxW="80%">
+                  <HStack spacing={2} mb={1}>
+                    <Icon as={FaExclamationTriangle} color="#D97706" boxSize={3.5} />
+                    <Text fontSize="13px" fontWeight="700" color="#0F172A">
+                      Negative Marking Policy
+                    </Text>
+                  </HStack>
+                  <Text fontSize="11px" color="#64748B">
+                    When enabled, incorrect candidate choices deduct fractional marks from the aggregate score.
+                  </Text>
+                </Box>
+
+                <Switch.Root
+                  checked={examDetails.negativeMarking}
+                  onCheckedChange={(e) =>
+                    setExamDetails({
+                      ...examDetails,
+                      negativeMarking: e.checked,
+                    })
+                  }
+                  colorPalette="purple"
+                >
+                  <Switch.HiddenInput />
+                  <Switch.Control />
+                </Switch.Root>
+              </Flex>
+            </Box>
+          </VStack>
+        </Box>
+      </SimpleGrid>
+
+      {/* Bottom Action Bar */}
+      <Flex
+        p={5}
+        borderRadius="24px"
+        bg="white"
+        border="1px solid #E2E8F0"
+        justify="space-between"
+        align="center"
+        boxShadow="0 4px 20px rgba(0,0,0,0.04)"
+      >
         <Button
           variant="outline"
-          borderColor="secondary"
+          borderColor="#CBD5E1"
+          borderRadius="xl"
+          h="46px"
+          px={5}
+          fontSize="13px"
+          color="#475569"
           onClick={() =>
-            navigate(`/teacher/exam/questions?exam_question=${examId}`)
+            navigate(
+              examId
+                ? `/teacher/exam/questions?exam_question=${examId}`
+                : "/teacher/create_exam"
+            )
           }
-          _hover={{ transform: "scale(1.05)", bg: "secondary", color: "white" }}
+          leftIcon={<Icon as={FaEye} />}
         >
-          View Exam Questions
+          {examId ? "Inspect Exam Questions" : "Back to Section Builder"}
+        </Button>
+
+        <Button
+          h="48px"
+          px={8}
+          bg="linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)"
+          color="white"
+          borderRadius="xl"
+          fontWeight="bold"
+          fontSize="14px"
+          boxShadow="0 4px 16px rgba(99, 102, 241, 0.35)"
+          _hover={{
+            transform: "translateY(-1px)",
+            boxShadow: "0 6px 20px rgba(99, 102, 241, 0.45)",
+          }}
+          onClick={handleSaveChanges}
+          loading={loading}
+          leftIcon={<Icon as={FaCheckCircle} />}
+        >
+          Save & Publish Assessment
         </Button>
       </Flex>
     </Box>

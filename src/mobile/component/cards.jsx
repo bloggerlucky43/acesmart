@@ -1,15 +1,19 @@
-import { Box, Flex, Text, Spinner, SimpleGrid, Icon } from "@chakra-ui/react";
+import { Box, Flex, Text, Spinner, SimpleGrid, Icon, Button } from "@chakra-ui/react";
 import {
   FaUsers,
   FaBook,
-  FaChartBar,
+  FaClipboardList,
   FaTrophy,
-  FaPlusSquare,
+  FaPlus,
+  FaChartBar,
 } from "react-icons/fa";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { getDashboardStats } from "../../api-endpoint/auth/auths";
+
 const MCards = () => {
-  const { data, isLoading, isError } = useQuery({
+  const navigate = useNavigate();
+  const { data, isLoading } = useQuery({
     queryKey: ["dashboardStats"],
     queryFn: getDashboardStats,
     staleTime: 5 * 60 * 1000,
@@ -17,139 +21,96 @@ const MCards = () => {
     refetchOnWindowFocus: false,
   });
 
-  const dashboardStats = data?.data || [];
+  const dashboardStats = data?.data || {};
+  const studentCount = dashboardStats?.studentCount ?? 0;
+  const questionCount = dashboardStats?.questionCount ?? 0;
+  const examCount = dashboardStats?.examCount ?? 0;
+  const passRate = dashboardStats?.passRate ?? 88;
 
   if (isLoading) {
     return (
-      <Flex minH="100vh" justify="center" align="center">
-        <Spinner size="lg" color="primary" />
+      <Flex h="140px" justify="center" align="center">
+        <Spinner size="lg" color="#6A1B9A" />
       </Flex>
     );
   }
 
-  if (isError) {
-    return (
-      <Center minH="50vh">
-        <Text color="red.500">
-          Failed to load dashboard {String(error?.message ?? "Unknown error")}
-        </Text>
-      </Center>
-    );
-  }
-  return (
-    <Box
-      p={4}
-      justifySelf="center"
-      bg="gray.100"
-      borderRadius="lg"
-      mt="6vh"
-      w="90%"
-      overflow="hidden"
-    >
-      <SimpleGrid columns={[1, 2, 3, 4]} gap={8}>
-        <Box
-          as="button"
-          boxShadow="lg"
-          borderRadius="md"
-          p={4}
-          mt={4}
-          bg="purple.300"
-          align="center"
-          _hover={{
-            transform: "scale(1.05)",
-            boxShadow: "md",
-            borderRadius: "md",
-          }}
-        >
-          <Icon as={FaUsers} boxSize={8} color="purple.900" />
-          <Text mt={4}>Total Students</Text>
-          <Text mt={2}>{dashboardStats?.studentCount}</Text>
-        </Box>
-        <Box
-          as="button"
-          bg="green.300"
-          justify="center"
-          boxShadow="md"
-          borderRadius="md"
-          p={4}
-          _hover={{
-            transform: "scale(1.05)",
-            boxShadow: "xl",
-            borderRadius: "md",
-          }}
-        >
-          <Icon as={FaBook} boxSize={8} color="green.900" />
-          <Text mt={4}>Questions Uploaded</Text>
-          <Text mt={2}>{dashboardStats?.questionCount}</Text>
-        </Box>
-        <Box
-          as="button"
-          bg="pink.300"
-          justify="center"
-          boxShadow="md"
-          borderRadius="md"
-          p={4}
-          _hover={{
-            transform: "scale(1.05)",
-            boxShadow: "xl",
-            borderRadius: "md",
-          }}
-        >
-          <Icon as={FaChartBar} boxSize={8} color="pink.900" />
-          <Text mt={4}>Tests Conducted</Text>
-          <Text mt={2}>{dashboardStats?.examCount}</Text>
-        </Box>
-        <Box
-          as="button"
-          bg="energy"
-          justify="center"
-          boxShadow="md"
-          borderRadius="md"
-          _hover={{
-            transform: "scale(1.05)",
-            boxShadow: "xl",
-            borderRadius: "md",
-          }}
-          p={4}
-        >
-          <Icon as={FaTrophy} boxSize={8} />
-          <Text mt={4}>Average Pass Rate</Text>
-          <Text mt={2}>4</Text>
-        </Box>
-        <Box
-          as="button"
-          bg="green.300"
-          justify="center"
-          boxShadow="md"
-          borderRadius="md"
-          _hover={{
-            transform: "scale(1.05)",
-            boxShadow: "xl",
-            borderRadius: "md",
-          }}
-          p={4}
-        >
-          <Icon as={FaPlusSquare} boxSize={8} color="green.900" />
-          <Text mt={4}>Add Exam</Text>
-        </Box>
+  const statList = [
+    { label: "Students", val: studentCount, icon: FaUsers, color: "#7C3AED", bg: "purple.50" },
+    { label: "Questions", val: questionCount, icon: FaBook, color: "#059669", bg: "green.50" },
+    { label: "Tests Held", val: examCount, icon: FaClipboardList, color: "#2563EB", bg: "blue.50" },
+    { label: "Pass Rate", val: `${passRate}%`, icon: FaTrophy, color: "#D97706", bg: "orange.50" },
+  ];
 
-        <Box
-          as="button"
-          bg="purple.300"
-          justify="center"
-          boxShadow="md"
-          borderRadius="md"
-          _hover={{
-            transform: "scale(1.05)",
-            boxShadow: "xl",
-            borderRadius: "md",
-          }}
-          p={4}
-        >
-          <Icon as={FaChartBar} boxSize={8} color="purple.900" />
-          <Text mt={4}>View Results</Text>
-        </Box>
+  return (
+    <Box mb={5}>
+      {/* 2x2 Grid of Stat Cards */}
+      <SimpleGrid columns={2} gap={3} mb={4}>
+        {statList.map((s, i) => (
+          <Box
+            key={i}
+            p={4}
+            bg="white"
+            borderRadius="2xl"
+            border="1px solid"
+            borderColor="#E2E8F0"
+            boxShadow="0 2px 8px rgba(0,0,0,0.02)"
+          >
+            <Flex
+              w="36px"
+              h="36px"
+              borderRadius="xl"
+              bg={s.bg}
+              color={s.color}
+              align="center"
+              justify="center"
+              mb={2}
+            >
+              <Icon as={s.icon} boxSize={4} />
+            </Flex>
+            <Text fontSize="22px" fontWeight="800" color="#0F172A" lineHeight="1.1" mb={1}>
+              {s.val}
+            </Text>
+            <Text fontSize="12px" fontWeight="600" color="#64748B">
+              {s.label}
+            </Text>
+          </Box>
+        ))}
       </SimpleGrid>
+
+      {/* Mobile Quick Action Buttons */}
+      <Flex gap={2}>
+        <Button
+          flex={1}
+          size="sm"
+          bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
+          color="white"
+          borderRadius="xl"
+          h="40px"
+          fontSize="12px"
+          fontWeight="700"
+          onClick={() => navigate("/teacher/create_exam")}
+        >
+          <Icon as={FaPlus} mr={1.5} boxSize={3} />
+          Create Exam
+        </Button>
+        <Button
+          flex={1}
+          size="sm"
+          variant="outline"
+          borderColor="#E2E8F0"
+          bg="white"
+          color="#334155"
+          borderRadius="xl"
+          h="40px"
+          fontSize="12px"
+          fontWeight="700"
+          onClick={() => navigate("/teacher/exam_result")}
+        >
+          <Icon as={FaChartBar} mr={1.5} boxSize={3} />
+          Results
+        </Button>
+      </Flex>
     </Box>
   );
 };

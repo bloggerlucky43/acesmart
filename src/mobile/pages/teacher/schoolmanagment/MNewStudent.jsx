@@ -117,12 +117,11 @@ const MNewStudent = () => {
 
   return (
     <Box
-      bg="gray.200"
-      p={4}
+      bg="#F8FAFC"
+      p={2}
       align="center"
       justify="center"
-      mt="7vh"
-      minH="100vh"
+      minH="calc(100vh - 58px)"
     >
       <Flex
         rounded="md"

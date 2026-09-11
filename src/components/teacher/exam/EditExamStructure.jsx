@@ -265,12 +265,12 @@ export default function EditExamStructure() {
   return (
     <DashboardLayout>
       <Box
-        p={6}
-        bg="gray.200"
-        w={"calc(100% - 200px)"}
-        ml="200px"
-        mt="9vh"
-        minH="100vh"
+        p={{ base: 4, md: 8 }}
+        bg="#F8FAFC"
+        w={{ base: "100%", lg: "calc(100% - 240px)" }}
+        ml={{ base: 0, lg: "240px" }}
+        mt="68px"
+        minH="calc(100vh - 68px)"
         justifySelf="center"
       >
         <Text fontSize="2xl" mb={2} mt={4} fontWeight={"bold"}>

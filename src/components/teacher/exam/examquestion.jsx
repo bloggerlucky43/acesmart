@@ -7,8 +7,16 @@ export default function ExamQuestion() {
 
   const [searchParams] = useSearchParams();
   const examId = searchParams.get("exam_question");
+
   return (
-    <Box mt="9vh" minH="100vh" p={6} w="50%" justifySelf="center">
+    <Box
+      mt="68px"
+      ml={{ base: 0, lg: "240px" }}
+      w={{ base: "100%", lg: "calc(100% - 240px)" }}
+      minH="calc(100vh - 68px)"
+      p={{ base: 4, md: 8 }}
+      bg="#F8FAFC"
+    >
       <Flex mb={4}>
         <Text>Exam Questions</Text>
       </Flex>

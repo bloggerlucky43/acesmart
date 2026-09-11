@@ -28,8 +28,8 @@ export const MStudentEditor = () => {
   const students = data?.students || [];
 
   return (
-    <Box mt="5vh" minH="100vh" py={4}>
-      <Box bg="gray.200" borderRadius="md" p={4} justifySelf="center" w="98%">
+    <Box py={2}>
+      <Box bg="white" border="1px solid #E2E8F0" borderRadius="24px" p={4} w="100%" boxShadow="0 2px 10px rgba(0,0,0,0.03)">
         <Flex mt={4} mb={2} justify="space-between" align="center">
           <Text fontSize="lg"> List of Students</Text>
         </Flex>

@@ -1,16 +1,15 @@
 import { Box, Flex, Text, Table, Button } from "@chakra-ui/react";
 const MListOfStudent = () => {
   return (
-    <Box mt="6vh" py={4}>
+    <Box py={2}>
       <Box
-        bg="gray.100"
-        boxShadow="lg"
-        borderRadius="md"
-        mt={4}
+        bg="white"
+        boxShadow="0 2px 10px rgba(0,0,0,0.03)"
+        borderRadius="24px"
+        border="1px solid #E2E8F0"
         p={4}
-        minH="100vh"
-        justifySelf="center"
-        w="98%"
+        minH="calc(100vh - 80px)"
+        w="100%"
       >
         <Flex mb={4} justify="space-between" align="center">
           <Text> List of Students</Text>

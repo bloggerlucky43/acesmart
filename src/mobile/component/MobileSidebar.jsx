@@ -1,172 +1,179 @@
-import { Box, Text, Flex, Icon } from "@chakra-ui/react";
+import { Box, Text, Flex, Icon, Badge } from "@chakra-ui/react";
 import {
   FaBrain,
   FaTachometerAlt,
-  FaUserPlus,
-  FaUserEdit,
-  FaPlusSquare,
-  FaEdit,
+  FaPlusCircle,
   FaFileAlt,
   FaChartLine,
+  FaQuestionCircle,
+  FaUserPlus,
+  FaUsers,
+  FaUserEdit,
   FaTimes,
+  FaSignOutAlt,
 } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../../libs/AuthProvider";
+
+const navGroups = [
+  {
+    title: "OVERVIEW",
+    links: [
+      { name: "Dashboard", path: "/teacher_dashboard", icon: FaTachometerAlt },
+    ],
+  },
+  {
+    title: "EXAMINATIONS",
+    links: [
+      { name: "Create Exam", path: "/teacher/create_exam", icon: FaPlusCircle },
+      { name: "All Exams", path: "/teacher/exams", icon: FaFileAlt },
+      { name: "Results & Analytics", path: "/teacher/exam_result", icon: FaChartLine },
+    ],
+  },
+  {
+    title: "QUESTION BANK",
+    links: [
+      { name: "Add Questions", path: "/teacher/add_questions", icon: FaQuestionCircle },
+    ],
+  },
+  {
+    title: "STUDENTS",
+    links: [
+      { name: "Add Student", path: "/teacher/add_student", icon: FaUserPlus },
+      { name: "Student Directory", path: "/teacher/view", icon: FaUsers },
+      { name: "Edit Student", path: "/teacher/edit", icon: FaUserEdit },
+    ],
+  },
+];
 
 const MobileSideBar = ({ onClose }) => {
+  const { logout } = useAuth();
+
   return (
     <Box
-      minH="100vh"
-      zIndex={10}
-      top={0}
-      w="80%"
       position="fixed"
-      bg="gray.200"
+      inset={0}
+      zIndex={150}
+      bg="rgba(15, 23, 42, 0.65)"
+      backdropFilter="blur(6px)"
+      onClick={onClose}
     >
-      <Flex justify="end" p={2}>
-        <Icon as={FaTimes} boxSize={6} color="gray.800" onClick={onClose} />
-      </Flex>
-      <Flex gap={2} align="center" p={4}>
-        <Icon
-          as={FaBrain}
-          bg="primary"
-          borderRadius="md"
-          color="white"
-          boxSize={12}
-          p={2}
-        />
-        <Text fontSize="xl">
-          Ace<span style={{ color: "#6A1B9A" }}>Smart</span>
-        </Text>
-      </Flex>
-
-      <Flex direction="column" mt={4} p={4}>
-        <NavLink to="/teacher_dashboard" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Flex
-              gap={2}
-              align="center"
-              cursor="pointer"
-              mb={2}
-              color={isActive ? "primary" : "black"}
-            >
-              <Icon as={FaTachometerAlt} boxSize={5} />
-              <Text>Dashboard</Text>
+      <Box
+        position="fixed"
+        top={0}
+        left={0}
+        w={{ base: "82%", sm: "300px" }}
+        h="100vh"
+        bg="#0F172A"
+        color="white"
+        p={5}
+        display="flex"
+        flexDirection="column"
+        justifyContent="space-between"
+        onClick={(e) => e.stopPropagation()}
+        boxShadow="4px 0 24px rgba(0, 0, 0, 0.3)"
+      >
+        <Box>
+          {/* Header */}
+          <Flex justify="space-between" align="center" pb={4} borderBottom="1px solid #1E293B" mb={4}>
+            <Flex align="center" gap={2.5}>
+              <Flex
+                w="36px"
+                h="36px"
+                borderRadius="xl"
+                bg="#6A1B9A"
+                align="center"
+                justify="center"
+              >
+                <Icon as={FaBrain} boxSize={4} color="white" />
+              </Flex>
+              <Text fontSize="17px" fontWeight="800" fontFamily="'Outfit', sans-serif">
+                Ace<span style={{ color: "#C084FC" }}>Smart</span>
+              </Text>
             </Flex>
-          )}
-        </NavLink>
 
-        <NavLink to="/teacher/add_student" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
             <Flex
-              gap={2}
-              align="center"
-              cursor="pointer"
-              mb={2}
-              color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}
+              as="button"
+              p={1.5}
+              borderRadius="lg"
+              bg="#1E293B"
+              color="#94A3B8"
+              _hover={{ color: "white" }}
+              onClick={onClose}
             >
-              <Icon as={FaUserPlus} boxSize={5} />
-              <Text>Add Students</Text>
+              <Icon as={FaTimes} boxSize={4} />
             </Flex>
-          )}
-        </NavLink>
+          </Flex>
 
-        <NavLink to="/teacher/edit" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Flex
-              gap={2}
-              align="center"
-              cursor="pointer"
-              mb={2}
-              color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}
-            >
-              <Icon as={FaUserEdit} boxSize={5} />
-              <Text>View Student</Text>
-            </Flex>
-          )}
-        </NavLink>
+          {/* Navigation Links */}
+          <Box maxH="calc(100vh - 160px)" overflowY="auto">
+            {navGroups.map((group, gIdx) => (
+              <Box key={gIdx} mb={4}>
+                <Text
+                  fontSize="9px"
+                  fontWeight="800"
+                  color="#64748B"
+                  letterSpacing="1px"
+                  px={2}
+                  mb={1.5}
+                >
+                  {group.title}
+                </Text>
+                <Flex direction="column" gap={1}>
+                  {group.links.map((link) => (
+                    <NavLink
+                      key={link.path}
+                      to={link.path}
+                      end={link.path === "/teacher_dashboard"}
+                      style={{ textDecoration: "none" }}
+                      onClick={onClose}
+                    >
+                      {({ isActive }) => (
+                        <Flex
+                          align="center"
+                          gap={3}
+                          px={3}
+                          py={2}
+                          borderRadius="xl"
+                          fontSize="13px"
+                          fontWeight={isActive ? "700" : "500"}
+                          color={isActive ? "#FFFFFF" : "#94A3B8"}
+                          bg={isActive ? "linear-gradient(135deg, #6A1B9A 0%, #7E22CE 100%)" : "transparent"}
+                        >
+                          <Icon as={link.icon} boxSize={3.5} />
+                          <Text flex={1}>{link.name}</Text>
+                        </Flex>
+                      )}
+                    </NavLink>
+                  ))}
+                </Flex>
+              </Box>
+            ))}
+          </Box>
+        </Box>
 
-        {/* <NavLink to="/teacher/add_questions" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Flex
-              gap={2}
-              align="center"
-              cursor="pointer"
-              mb={2}
-              color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}
-            >
-              <Icon as={FaPlusSquare} boxSize={5} />
-              <Text>Add Questions</Text>
-            </Flex>
-          )}
-        </NavLink> */}
-
-        <NavLink to="/teacher/create_exam" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Flex
-              gap={2}
-              align="center"
-              cursor="pointer"
-              mb={2}
-              color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}
-            >
-              <Icon as={FaFileAlt} boxSize={5} />
-              <Text>Create new exams</Text>
-            </Flex>
-          )}
-        </NavLink>
-
-        <NavLink to="/teacher/exams" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Flex
-              gap={2}
-              align="center"
-              cursor="pointer"
-              mb={2}
-              color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}
-            >
-              <Icon as={FaFileAlt} boxSize={5} />
-              <Text>All exams</Text>
-            </Flex>
-          )}
-        </NavLink>
-
-        {/* <NavLink to="/teacher/edit" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Flex
-              gap={2}
-              align="center"
-              cursor="pointer"
-              mb={2}
-              color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}
-            >
-              <Icon as={FaPoll} boxSize={5} />
-              <Text>View exam results</Text>
-            </Flex>
-          )}
-        </NavLink> */}
-
-        <NavLink to="/teacher/exam_result" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Flex
-              gap={2}
-              align="center"
-              cursor="pointer"
-              mb={2}
-              color={isActive ? "primary" : "black"}
-              _hover={{ color: "purple.400" }}
-            >
-              <Icon as={FaChartLine} boxSize={5} />
-              <Text>Performance</Text>
-            </Flex>
-          )}
-        </NavLink>
-      </Flex>
+        {/* Footer Logout */}
+        <Box pt={4} borderTop="1px solid #1E293B">
+          <Flex
+            as="button"
+            w="100%"
+            align="center"
+            justify="center"
+            gap={2}
+            py={2.5}
+            borderRadius="xl"
+            bg="rgba(239, 68, 68, 0.15)"
+            color="#EF4444"
+            fontSize="13px"
+            fontWeight="700"
+            cursor="pointer"
+            onClick={logout}
+          >
+            <Icon as={FaSignOutAlt} boxSize={3.5} />
+            <Text>Sign Out</Text>
+          </Flex>
+        </Box>
+      </Box>
     </Box>
   );
 };

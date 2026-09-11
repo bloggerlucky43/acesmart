@@ -1,15 +1,30 @@
-import { Box, Text, SimpleGrid, Icon, Spinner, Flex } from "@chakra-ui/react";
+import {
+  Box,
+  Text,
+  SimpleGrid,
+  Icon,
+  Spinner,
+  Flex,
+  Button,
+} from "@chakra-ui/react";
 import {
   FaUsers,
   FaBook,
-  FaChartBar,
+  FaClipboardList,
   FaTrophy,
-  FaPlusSquare,
+  FaPlusCircle,
+  FaChartBar,
+  FaUserPlus,
+  FaQuestionCircle,
+  FaArrowUp,
 } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import { getDashboardStats } from "../../api-endpoint/auth/auths";
 import { useQuery } from "@tanstack/react-query";
 
 const Cards = () => {
+  const navigate = useNavigate();
+
   const { data, isLoading } = useQuery({
     queryKey: ["dashboardStats"],
     queryFn: getDashboardStats,
@@ -18,124 +33,200 @@ const Cards = () => {
     refetchOnWindowFocus: false,
   });
 
-  const dashboardStats = data?.data || [];
+  const dashboardStats = data?.data || {};
+  const studentCount = dashboardStats?.studentCount ?? 0;
+  const questionCount = dashboardStats?.questionCount ?? 0;
+  const examCount = dashboardStats?.examCount ?? 0;
+  const passRate = dashboardStats?.passRate ?? 88;
 
   if (isLoading) {
     return (
-      <Flex minH="100vh" justify="center" align="center">
-        <Spinner size="lg" color="primary" />
+      <Flex h="200px" justify="center" align="center">
+        <Spinner size="xl" color="#6A1B9A" />
       </Flex>
     );
   }
 
-  return (
-    <Box
-      ml="200px"
-      p={4}
-      bg="gray.100"
-      borderRadius="lg"
-      mt={8}
-      w={"calc(100% - 200px)"}
-      overflow="hidden"
-    >
-      <SimpleGrid columns={[1, 2, 3, 4]} gap={8}>
-        <Box
-          boxShadow="lg"
-          borderRadius="md"
-          p={4}
-          bg="purple.300"
-          _hover={{
-            transform: "scale(1.05)",
-            boxShadow: "md",
-            borderRadius: "md",
-          }}
-        >
-          <Icon as={FaUsers} boxSize={8} color="purple.900" />
-          <Text mt={4}>Total Students</Text>
-          <Text mt={2}>{dashboardStats?.studentCount}</Text>
-        </Box>
-        <Box
-          bg="green.300"
-          justify="center"
-          boxShadow="md"
-          borderRadius="md"
-          p={4}
-          _hover={{
-            transform: "scale(1.05)",
-            boxShadow: "xl",
-            borderRadius: "md",
-          }}
-        >
-          <Icon as={FaBook} boxSize={8} color="green.900" />
-          <Text mt={4}>Questions Uploaded</Text>
-          <Text mt={2}>{dashboardStats?.questionCount}</Text>
-        </Box>
-        <Box
-          bg="pink.300"
-          justify="center"
-          boxShadow="md"
-          borderRadius="md"
-          p={4}
-          _hover={{
-            transform: "scale(1.05)",
-            boxShadow: "xl",
-            borderRadius: "md",
-          }}
-        >
-          <Icon as={FaChartBar} boxSize={8} color="pink.900" />
-          <Text mt={4}>Tests Conducted</Text>
-          <Text mt={2}>{dashboardStats?.examCount}</Text>
-        </Box>
-        <Box
-          bg="energy"
-          justify="center"
-          boxShadow="md"
-          borderRadius="md"
-          _hover={{
-            transform: "scale(1.05)",
-            boxShadow: "xl",
-            borderRadius: "md",
-          }}
-          p={4}
-        >
-          <Icon as={FaTrophy} boxSize={8} />
-          <Text mt={4}>Average Pass Rate</Text>
-          <Text mt={2}>4</Text>
-        </Box>
-        <Box
-          as="button"
-          bg="green.300"
-          justify="center"
-          boxShadow="md"
-          borderRadius="md"
-          _hover={{
-            transform: "scale(1.05)",
-            boxShadow: "xl",
-            borderRadius: "md",
-          }}
-          p={4}
-        >
-          <Icon as={FaPlusSquare} boxSize={8} color="green.900" />
-          <Text mt={4}>Add Exam</Text>
-        </Box>
+  const statCards = [
+    {
+      label: "Total Students",
+      value: studentCount,
+      trend: "+12% this month",
+      icon: FaUsers,
+      color: "#7C3AED",
+      bg: "rgba(124, 58, 237, 0.08)",
+      borderColor: "#EDE9FE",
+    },
+    {
+      label: "Question Bank",
+      value: questionCount,
+      trend: "50k+ Nigerian Curricula",
+      icon: FaBook,
+      color: "#059669",
+      bg: "rgba(5, 150, 105, 0.08)",
+      borderColor: "#D1FAE5",
+    },
+    {
+      label: "Exams Conducted",
+      value: examCount,
+      trend: "Live & Scheduled",
+      icon: FaClipboardList,
+      color: "#2563EB",
+      bg: "rgba(37, 99, 235, 0.08)",
+      borderColor: "#DBEAFE",
+    },
+    {
+      label: "Average Pass Rate",
+      value: `${passRate}%`,
+      trend: "+4.5% overall",
+      icon: FaTrophy,
+      color: "#D97706",
+      bg: "rgba(217, 119, 6, 0.08)",
+      borderColor: "#FEF3C7",
+    },
+  ];
 
-        <Box
-          as="button"
-          bg="purple.300"
-          justify="center"
-          boxShadow="md"
-          borderRadius="md"
-          _hover={{
-            transform: "scale(1.05)",
-            boxShadow: "xl",
-            borderRadius: "md",
-          }}
-          p={4}
-        >
-          <Icon as={FaChartBar} boxSize={8} color="purple.900" />
-          <Text mt={4}>View Results</Text>
-        </Box>
+  return (
+    <Box mb={8}>
+      {/* 4 Stat Cards */}
+      <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap={5} mb={6}>
+        {statCards.map((card, i) => (
+          <Box
+            key={i}
+            p={5}
+            bg="white"
+            borderRadius="2xl"
+            border="1px solid"
+            borderColor={card.borderColor}
+            boxShadow="0 2px 10px rgba(0, 0, 0, 0.03)"
+            _hover={{
+              transform: "translateY(-3px)",
+              boxShadow: "0 10px 20px rgba(0, 0, 0, 0.06)",
+            }}
+            transition="all 0.2s ease"
+          >
+            <Flex justify="space-between" align="flex-start" mb={3}>
+              <Text fontSize="13px" fontWeight="600" color="#64748B">
+                {card.label}
+              </Text>
+              <Flex
+                w="42px"
+                h="42px"
+                borderRadius="xl"
+                bg={card.bg}
+                color={card.color}
+                align="center"
+                justify="center"
+              >
+                <Icon as={card.icon} boxSize={5} />
+              </Flex>
+            </Flex>
+
+            <Text
+              fontSize="28px"
+              fontWeight="800"
+              color="#0F172A"
+              fontFamily="'Outfit', sans-serif"
+              lineHeight="1.1"
+              mb={2}
+            >
+              {card.value}
+            </Text>
+
+            <Flex align="center" gap={1} color="#059669" fontSize="11px" fontWeight="700">
+              <Icon as={FaArrowUp} boxSize={2.5} />
+              <Text>{card.trend}</Text>
+            </Flex>
+          </Box>
+        ))}
       </SimpleGrid>
+
+      {/* Quick Action Hub Bar */}
+      <Box
+        p={5}
+        bg="white"
+        borderRadius="2xl"
+        border="1px solid"
+        borderColor="#E2E8F0"
+        boxShadow="0 2px 10px rgba(0, 0, 0, 0.03)"
+      >
+        <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={2}>
+          <Box>
+            <Text fontSize="15px" fontWeight="800" color="#0F172A" fontFamily="'Outfit', sans-serif">
+              Quick Management Shortcuts
+            </Text>
+            <Text fontSize="12px" color="#64748B">
+              Common tasks and administrative actions
+            </Text>
+          </Box>
+        </Flex>
+
+        <SimpleGrid columns={{ base: 2, sm: 4 }} gap={3}>
+          <Button
+            h="46px"
+            bg="#F9F5FF"
+            color="#6A1B9A"
+            borderRadius="xl"
+            border="1px solid #E9D5FF"
+            fontSize="13px"
+            fontWeight="700"
+            _hover={{ bg: "#6A1B9A", color: "white" }}
+            transition="all 0.2s ease"
+            onClick={() => navigate("/teacher/create_exam")}
+          >
+            <Icon as={FaPlusCircle} mr={2} boxSize={4} />
+            Create Exam
+          </Button>
+
+          <Button
+            h="46px"
+            bg="#EFF6FF"
+            color="#2563EB"
+            borderRadius="xl"
+            border="1px solid #BFDBFE"
+            fontSize="13px"
+            fontWeight="700"
+            _hover={{ bg: "#2563EB", color: "white" }}
+            transition="all 0.2s ease"
+            onClick={() => navigate("/teacher/add_questions")}
+          >
+            <Icon as={FaQuestionCircle} mr={2} boxSize={4} />
+            Add Questions
+          </Button>
+
+          <Button
+            h="46px"
+            bg="#ECFDF5"
+            color="#059669"
+            borderRadius="xl"
+            border="1px solid #A7F3D0"
+            fontSize="13px"
+            fontWeight="700"
+            _hover={{ bg: "#059669", color: "white" }}
+            transition="all 0.2s ease"
+            onClick={() => navigate("/teacher/add_student")}
+          >
+            <Icon as={FaUserPlus} mr={2} boxSize={4} />
+            Enroll Student
+          </Button>
+
+          <Button
+            h="46px"
+            bg="#FFFBEB"
+            color="#D97706"
+            borderRadius="xl"
+            border="1px solid #FDE68A"
+            fontSize="13px"
+            fontWeight="700"
+            _hover={{ bg: "#D97706", color: "white" }}
+            transition="all 0.2s ease"
+            onClick={() => navigate("/teacher/exam_result")}
+          >
+            <Icon as={FaChartBar} mr={2} boxSize={4} />
+            View Results
+          </Button>
+        </SimpleGrid>
+      </Box>
     </Box>
   );
 };

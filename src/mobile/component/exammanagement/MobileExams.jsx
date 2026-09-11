@@ -56,14 +56,15 @@ export default function MobileExams() {
 
   return (
     <Box
-      bg="gray.200"
-      minH="100vh"
+      bg="white"
+      border="1px solid #E2E8F0"
+      borderRadius="24px"
       p={4}
       w="100%"
-      justifySelf="center"
-      mt="7vh"
+      boxShadow="0 2px 10px rgba(0,0,0,0.03)"
+      minH="calc(100vh - 80px)"
     >
-      <Box bg="white" p={2} borderRadius="md">
+      <Box>
         <Flex mb={4} justify="space-between" align="center">
           <Text>All Exams</Text>
         </Flex>

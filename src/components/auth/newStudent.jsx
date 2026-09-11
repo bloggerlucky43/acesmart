@@ -2,11 +2,11 @@ import {
   Box,
   Text,
   Image,
-  Fieldset,
   Input,
   Button,
-  Field,
   Flex,
+  Icon,
+  SimpleGrid,
 } from "@chakra-ui/react";
 import { useState, useRef } from "react";
 import { addStudent } from "../../api-endpoint/student/students";
@@ -14,6 +14,14 @@ import { toaster } from "../ui/toaster";
 import imageCompression from "browser-image-compression";
 import CropModal from "../CropModal";
 import { getCroppedImg } from "../CropImage";
+import {
+  FaUserPlus,
+  FaCamera,
+  FaEnvelope,
+  FaUser,
+  FaCheckCircle,
+  FaShieldAlt,
+} from "react-icons/fa";
 
 const NewStudent = () => {
   const [form, setForm] = useState({
@@ -28,6 +36,7 @@ const NewStudent = () => {
   const [showCrop, setShowCrop] = useState(false);
 
   const fileInputRef = useRef(null);
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -57,16 +66,14 @@ const NewStudent = () => {
         useWebWorker: true,
       });
 
-      setImage(compressed); // this is what gets uploaded
-      setPreview(URL.createObjectURL(compressed));
-
-      setShowCrop(false);
-      setRawImage(null);
-
+      setImage(compressed);
       if (preview) {
         URL.revokeObjectURL(preview);
       }
       setPreview(URL.createObjectURL(compressed));
+
+      setShowCrop(false);
+      setRawImage(null);
     } catch (err) {
       toaster.error({ title: "Image processing failed" });
     }
@@ -93,11 +100,10 @@ const NewStudent = () => {
 
       setLoading(true);
       const res = await addStudent(formData);
-      console.log("at res", res);
 
       if (res?.success && res?.message === "Student Added Successfully") {
         toaster.create({
-          title: "Student added successfully",
+          title: "Student enrolled successfully",
           type: "success",
         });
 
@@ -107,148 +113,245 @@ const NewStudent = () => {
       }
     } catch (error) {
       console.error("Error querying server", error);
+      toaster.create({
+        title: error?.response?.data?.message || "Failed to add student",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
   };
+
   return (
-    <Flex
-      rounded="md"
-      mt="9vh"
-      ml="200px"
-      justifySelf={"center"}
-      w={"calc(100% - 200px)"}
-      p={4}
-      minH="100vh"
-      color="gray.900"
-      bg="gray.200"
+    <Box
+      mt="68px"
+      ml={{ base: 0, lg: "240px" }}
+      w={{ base: "100%", lg: "calc(100% - 240px)" }}
+      p={{ base: 4, md: 8 }}
+      minH="calc(100vh - 68px)"
+      bg="#F8FAFC"
     >
-      <Fieldset.Root size="lg" maxW="4xl">
+      <Box maxW="1000px" mx="auto">
+        {/* Page Header */}
+        <Box mb={8}>
+          <Flex align="center" gap={2.5} mb={1}>
+            <Flex
+              w="38px"
+              h="38px"
+              borderRadius="xl"
+              bg="purple.50"
+              color="#6A1B9A"
+              align="center"
+              justify="center"
+            >
+              <Icon as={FaUserPlus} boxSize={5} />
+            </Flex>
+            <Text
+              fontSize={{ base: "22px", md: "26px" }}
+              fontWeight="800"
+              color="#0F172A"
+              fontFamily="'Outfit', sans-serif"
+            >
+              Enroll Candidate
+            </Text>
+          </Flex>
+          <Text fontSize="14px" color="#64748B">
+            Register student biometric face profile and credentials for proctored CBT examination access.
+          </Text>
+        </Box>
+
         <form onSubmit={handleSubmit} encType="multipart/form-data">
-          <Box>
-            <Text fontSize="xl" mt={4} fontWeight="bold">
-              Add New Student
-            </Text>
-            <Text mb={4}>
-              Fill in the details below to add a student to the system
-            </Text>
-          </Box>
+          <SimpleGrid columns={{ base: 1, md: 12 }} gap={8}>
+            
+            {/* Left Column: Biometric Photo Uploader */}
+            <Box
+              gridColumn={{ md: "span 4" }}
+              bg="white"
+              borderRadius="24px"
+              p={6}
+              border="1px solid"
+              borderColor="#E2E8F0"
+              boxShadow="0 2px 12px rgba(0,0,0,0.03)"
+              textAlign="center"
+            >
+              <Text fontSize="15px" fontWeight="700" color="#0F172A" mb={1}>
+                Biometric Photo
+              </Text>
+              <Text fontSize="12px" color="#64748B" mb={5}>
+                Used for AI face proctoring verification
+              </Text>
 
-          <Fieldset.Content>
-            <Flex gap={8} align={"flex-start"} wrap="wrap">
-              <Box mt={6}>
-                <Text fontSize="sm" mb={2}>
-                  Student Image
-                </Text>
-
-                {/* Clickable Upload Box */}
-                <Box
-                  w="180px"
-                  h="180px"
-                  border="2px dashed"
-                  borderColor="gray.400"
-                  borderRadius="md"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor="pointer"
-                  bg="gray.100"
-                  _hover={{ borderColor: "primary" }}
-                  onClick={() => fileInputRef.current.click()}
-                  overflow="hidden"
-                >
-                  {preview ? (
-                    <Image
-                      src={preview}
-                      alt="Student preview"
-                      w="100%"
-                      h="100%"
-                      objectFit="cover"
-                    />
-                  ) : (
-                    <Text fontSize="sm" color="gray.500" textAlign="center">
-                      Click to upload image
+              {/* Upload Drop Zone */}
+              <Box
+                w="180px"
+                h="180px"
+                mx="auto"
+                border="2px dashed"
+                borderColor={preview ? "#10B981" : "#CBD5E1"}
+                borderRadius="24px"
+                display="flex"
+                flexDirection="column"
+                alignItems="center"
+                justifyContent="center"
+                cursor="pointer"
+                bg={preview ? "transparent" : "#F8FAFC"}
+                _hover={{ borderColor: "#6A1B9A", bg: "#FAF5FF" }}
+                onClick={() => fileInputRef.current.click()}
+                overflow="hidden"
+                position="relative"
+                transition="all 0.2s ease"
+              >
+                {preview ? (
+                  <Image
+                    src={preview}
+                    alt="Student Face Preview"
+                    w="100%"
+                    h="100%"
+                    objectFit="cover"
+                  />
+                ) : (
+                  <Flex direction="column" align="center" gap={2} p={4}>
+                    <Flex
+                      w="46px"
+                      h="46px"
+                      borderRadius="full"
+                      bg="purple.50"
+                      color="#6A1B9A"
+                      align="center"
+                      justify="center"
+                    >
+                      <Icon as={FaCamera} boxSize={5} />
+                    </Flex>
+                    <Text fontSize="12px" fontWeight="700" color="#475569">
+                      Upload Headshot
                     </Text>
-                  )}
-                </Box>
-
-                {/* Hidden File Input */}
-                <Input
-                  type="file"
-                  accept="image/*"
-                  ref={fileInputRef}
-                  display="none"
-                  onChange={handleImageChange}
-                />
+                    <Text fontSize="10px" color="#94A3B8">
+                      JPG or PNG under 5MB
+                    </Text>
+                  </Flex>
+                )}
               </Box>
 
-              <Field.Root required>
-                <Field.Label>
-                  First name
-                  <Field.RequiredIndicator />
-                </Field.Label>
-                <Input
-                  name="name"
-                  placeholder="Enter your firstname"
-                  value={form.firstName}
-                  borderColor="gray.800"
-                  _focus={{ outline: "none", borderColor: "primary" }}
-                  onChange={(e) =>
-                    setForm({ ...form, firstName: e.target.value })
-                  }
-                  required
-                />
-              </Field.Root>
-              <Field.Root required>
-                <Field.Label>
-                  Last name
-                  <Field.RequiredIndicator />
-                </Field.Label>
-                <Input
-                  name="lastname"
-                  placeholder="Enter your surname"
-                  value={form.lastName}
-                  borderColor="gray.800"
-                  _focus={{ outline: "none", borderColor: "primary" }}
-                  onChange={(e) =>
-                    setForm({ ...form, lastName: e.target.value })
-                  }
-                  required
-                />
-              </Field.Root>
-              <Field.Root required>
-                <Field.Label>
-                  Student Email
-                  <Field.RequiredIndicator />
-                </Field.Label>
+              <Input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                display="none"
+                onChange={handleImageChange}
+              />
+
+              <Button
+                size="sm"
+                variant="outline"
+                borderColor="#E2E8F0"
+                mt={4}
+                w="100%"
+                borderRadius="xl"
+                fontSize="12px"
+                fontWeight="600"
+                onClick={() => fileInputRef.current.click()}
+              >
+                {preview ? "Change Photo" : "Browse Image"}
+              </Button>
+
+              <Flex align="center" justify="center" gap={1.5} color="#059669" fontSize="11px" fontWeight="600" mt={4}>
+                <Icon as={FaShieldAlt} />
+                <Text>Auto-compressed with AI crop</Text>
+              </Flex>
+            </Box>
+
+            {/* Right Column: Candidate Profile Details */}
+            <Box
+              gridColumn={{ md: "span 8" }}
+              bg="white"
+              borderRadius="24px"
+              p={{ base: 6, md: 8 }}
+              border="1px solid"
+              borderColor="#E2E8F0"
+              boxShadow="0 2px 12px rgba(0,0,0,0.03)"
+            >
+              <Text fontSize="17px" fontWeight="800" color="#0F172A" mb={6}>
+                Candidate Credentials
+              </Text>
+
+              <SimpleGrid columns={{ base: 1, sm: 2 }} gap={5} mb={5}>
+                <Box>
+                  <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                    First Name *
+                  </Text>
+                  <Input
+                    placeholder="e.g. Babatunde"
+                    value={form.firstName}
+                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                    borderRadius="xl"
+                    h="48px"
+                    fontSize="14px"
+                    borderColor="#CBD5E1"
+                    _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
+                    required
+                  />
+                </Box>
+
+                <Box>
+                  <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                    Surname / Last Name *
+                  </Text>
+                  <Input
+                    placeholder="e.g. Adeleke"
+                    value={form.lastName}
+                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                    borderRadius="xl"
+                    h="48px"
+                    fontSize="14px"
+                    borderColor="#CBD5E1"
+                    _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
+                    required
+                  />
+                </Box>
+              </SimpleGrid>
+
+              <Box mb={6}>
+                <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                  Student Email Address *
+                </Text>
                 <Input
                   type="email"
-                  name="email"
-                  placeholder="e.g example@gmail.com"
+                  placeholder="e.g. b.adeleke@school.edu.ng"
                   value={form.studentemail}
-                  borderColor="gray.800"
-                  _focus={{ outline: "none", borderColor: "primary" }}
-                  onChange={(e) =>
-                    setForm({ ...form, studentemail: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, studentemail: e.target.value })}
+                  borderRadius="xl"
+                  h="48px"
+                  fontSize="14px"
+                  borderColor="#CBD5E1"
+                  _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
                   required
                 />
-              </Field.Root>
-            </Flex>
-          </Fieldset.Content>
-          <Button
-            type="submit"
-            w="full"
-            mt={2}
-            borderRadius="md"
-            bg="primary"
-            loading={loading}
-            spinnerPlacement="center"
-          >
-            Apply
-          </Button>
+                <Text fontSize="11px" color="#94A3B8" mt={1}>
+                  Exam invitation codes and test schedules will be dispatched to this email.
+                </Text>
+              </Box>
+
+              <Button
+                type="submit"
+                w="100%"
+                h="50px"
+                bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
+                color="white"
+                borderRadius="xl"
+                fontSize="15px"
+                fontWeight="700"
+                boxShadow="0 4px 14px rgba(106, 27, 154, 0.3)"
+                _hover={{ opacity: 0.95, transform: "translateY(-1px)" }}
+                loading={loading}
+                loadingText="Registering Candidate..."
+              >
+                <Icon as={FaCheckCircle} mr={2} boxSize={4} />
+                Complete Enrollment
+              </Button>
+            </Box>
+          </SimpleGrid>
         </form>
-      </Fieldset.Root>
+      </Box>
 
       {showCrop && (
         <CropModal
@@ -257,7 +360,7 @@ const NewStudent = () => {
           onClose={() => setShowCrop(false)}
         />
       )}
-    </Flex>
+    </Box>
   );
 };
 

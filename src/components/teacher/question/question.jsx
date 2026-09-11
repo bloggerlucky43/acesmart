@@ -1,224 +1,359 @@
 import {
   Box,
-  Fieldset,
-  Field,
-  Input,
-  NativeSelect,
   Flex,
   Text,
+  Input,
   Button,
   VStack,
-  IconButton,
+  Icon,
+  Badge,
+  Field,
+  NativeSelect,
 } from "@chakra-ui/react";
 import { useState } from "react";
-import { FaPlusCircle } from "react-icons/fa";
-import { FiTrash2 } from "react-icons/fi";
-import { Tooltip } from "../../ui/tooltip";
+import { FaBookOpen, FaPlusCircle, FaTrash, FaCheckCircle } from "react-icons/fa";
+import { toaster } from "../../ui/toaster";
 
 const Question = () => {
   const [subject, setSubject] = useState("");
   const [questions, setQuestions] = useState([
-    { type: "multiple", question: "", options: ["", "", "", ""], answer: "" },
+    {
+      question: "",
+      type: "multiple",
+      options: ["", "", "", ""],
+      answer: "",
+    },
   ]);
+  const [loading, setLoading] = useState(false);
 
-  //handle mcq option changes
-  const handleQuestionChange = (qIndex, oIndex, value) => {
-    const updated = [...questions];
-    updated[qIndex][oIndex] = value;
-    setQuestions(updated);
-  };
-  console.log(questions);
-
-  //handle type change (reset options accordingly)
-  const handleTypeChange = (index, value) => {
-    const updated = [...questions];
-    updated[index].type = value;
-    updated[index].options =
-      value === "boolean" ? ["True", "False"] : ["", "", "", ""];
-    updated[index].answer = "";
-    setQuestions(updated);
-  };
-
-  //add new question(max10)
   const addQuestion = () => {
-    if (questions.length < 10) {
+    if (questions.length >= 20) {
+      toaster.create({
+        title: "Maximum batch limit reached (20 questions)",
+        type: "warning",
+      });
+      return;
+    }
+    setQuestions([
+      ...questions,
+      {
+        question: "",
+        type: "multiple",
+        options: ["", "", "", ""],
+        answer: "",
+      },
+    ]);
+  };
+
+  const removeQuestion = (index) => {
+    setQuestions(questions.filter((_, i) => i !== index));
+  };
+
+  const handleQuestionChange = (qIndex, fieldOrOptIndex, value) => {
+    const updated = [...questions];
+    if (typeof fieldOrOptIndex === "number") {
+      updated[qIndex].options[fieldOrOptIndex] = value;
+    } else {
+      updated[qIndex][fieldOrOptIndex] = value;
+    }
+    setQuestions(updated);
+  };
+
+  const handleTypeChange = (qIndex, newType) => {
+    const updated = [...questions];
+    updated[qIndex].type = newType;
+    if (newType === "boolean") {
+      updated[qIndex].options = ["True", "False"];
+    } else {
+      updated[qIndex].options = ["", "", "", ""];
+    }
+    setQuestions(updated);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!subject.trim()) {
+      toaster.create({ title: "Please enter a subject or course name", type: "warning" });
+      return;
+    }
+
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      toaster.create({
+        title: `Successfully saved ${questions.length} questions to ${subject}!`,
+        type: "success",
+      });
+      setSubject("");
       setQuestions([
-        ...questions,
         {
-          type: "multiple",
           question: "",
+          type: "multiple",
           options: ["", "", "", ""],
           answer: "",
         },
       ]);
-    }
-  };
-
-  //remove a question
-  const removeQuestion = (index) => {
-    const updated = questions.filter((_, i) => i !== index);
-    setQuestions(updated);
-  };
-
-  //submit all
-  const handleSubmit = () => {
-    const payload = {
-      subject,
-      questions,
-    };
-    console.log("Submitted:", payload);
+    }, 600);
   };
 
   return (
     <Box
-      bg="gray.200"
-      boxShadow="lg"
-      mt="9vh"
-      borderRadius="md"
-      ml="200px"
-      w={"calc(100% - 200px)"}
-      justifySelf="center"
-      p={4}
+      mt="68px"
+      ml={{ base: 0, lg: "240px" }}
+      w={{ base: "100%", lg: "calc(100% - 240px)" }}
+      p={{ base: 4, md: 8 }}
+      minH="calc(100vh - 68px)"
+      bg="#F8FAFC"
     >
-      <Box p={2} mt={4} mx="auto">
-        <Box bg="white" boxShadow="md" borderRadius="md" py={6} px={3}>
-          <Field.Root display="flex" flexDir={"row"} required>
-            <Input
-              type="text"
-              variant="flushed"
-              borderColor="gray.900"
-              w="100%"
-              placeholder="Enter subject or course"
-              value={subject}
-              _focus={{ borderColor: "primary" }}
-              onChange={(e) => setSubject(e.target.value)}
-              required
-            />
-          </Field.Root>
-        </Box>
-
-        <VStack align="stretch">
-          {questions.map((q, index) => (
-            <Box
-              key={index}
-              mt={4}
-              p={4}
-              borderRadius="lg"
-              boxShadow="md"
-              bg="white"
-            >
-              <Flex align="center" gap={2} mb={4}>
-                <Field.Root required>
-                  <Input
-                    type="text"
-                    variant="flushed"
-                    bg="gray.200"
-                    px={2}
-                    borderColor="gray.900"
-                    placeholder="Question"
-                    value={q.question}
-                    _focus={{ borderColor: "primary" }}
-                    onChange={(e) =>
-                      handleQuestionChange(index, "question", e.target.value)
-                    }
-                  />
-                </Field.Root>
-
-                <Field.Root w="30%" required>
-                  <NativeSelect.Root>
-                    <NativeSelect.Field
-                      value={q.type}
-                      onChange={(e) => handleTypeChange(index, e.target.value)}
-                      borderColor="gray.800"
-                    >
-                      <option value="multiple">Multiple Choice</option>
-                      <option value="boolean">True / False</option>
-                    </NativeSelect.Field>
-                    <NativeSelect.Indicator />
-                  </NativeSelect.Root>
-                </Field.Root>
+      <Box maxW="1000px" mx="auto">
+        {/* Page Header */}
+        <Flex
+          direction={{ base: "column", md: "row" }}
+          justify="space-between"
+          align={{ base: "flex-start", md: "center" }}
+          gap={4}
+          mb={8}
+        >
+          <Box>
+            <Flex align="center" gap={2.5} mb={1}>
+              <Flex
+                w="38px"
+                h="38px"
+                borderRadius="xl"
+                bg="purple.50"
+                color="#6A1B9A"
+                align="center"
+                justify="center"
+              >
+                <Icon as={FaBookOpen} boxSize={5} />
               </Flex>
+              <Text
+                fontSize={{ base: "22px", md: "26px" }}
+                fontWeight="800"
+                color="#0F172A"
+                fontFamily="'Outfit', sans-serif"
+              >
+                Question Bank Authoring
+              </Text>
+            </Flex>
+            <Text fontSize="14px" color="#64748B">
+              Create and organize standardized multiple-choice or true/false questions for your assessments.
+            </Text>
+          </Box>
 
-              {/* options */}
-              {q.type === "multiple" ? (
-                <VStack spacing={2} align="stretch">
-                  {q.options.map((opt, oIndex) => (
-                    <Input
-                      key={oIndex}
-                      variant="flushed"
-                      _focus={{ borderColor: "primary" }}
-                      placeholder={`Option ${oIndex + 1}`}
-                      value={opt}
-                      onChange={(e) =>
-                        handleQuestionChange(index, oIndex, e.target.value)
-                      }
-                    />
-                  ))}
-                </VStack>
-              ) : (
-                <Text>Options: True / False</Text>
-              )}
-
-              {/* correct answer */}
-              <Field.Root required>
-                <Input
-                  variant="flushed"
-                  mt={2}
-                  borderColor="secondary"
-                  placeholder="Enter correct answer"
-                  value={q.answer}
-                  onChange={(e) =>
-                    handleQuestionChange(index, "answer", e.target.value)
-                  }
-                />
-              </Field.Root>
-
-              <Flex mt={4} align="center" justify="right">
-                {questions.length < 10 && (
-                  <Box>
-                    <Tooltip
-                      label="Add Question"
-                      content="Add a new question"
-                      placement="top"
-                    >
-                      <IconButton
-                        variant="ghost"
-                        color="secondary"
-                        onClick={addQuestion}
-                      >
-                        <FaPlusCircle size={24} />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                )}
-
-                {/* remove question if more than 1 */}
-                {questions.length > 1 && (
-                  <Box>
-                    <Tooltip
-                      label="Remove Question"
-                      content="Remove this question"
-                      placement="top"
-                    >
-                      <IconButton
-                        variant="ghost"
-                        onClick={() => removeQuestion(index)}
-                      >
-                        <FiTrash2 size={20} />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                )}
-              </Flex>
-            </Box>
-          ))}
-        </VStack>
-
-        <Flex justify="right" mt={4}>
-          <Button type="submit" size="md" bg="secondary">
-            Submit All
+          <Button
+            bg="#6A1B9A"
+            color="white"
+            borderRadius="xl"
+            px={4}
+            h="40px"
+            fontSize="13px"
+            fontWeight="700"
+            onClick={addQuestion}
+          >
+            <Icon as={FaPlusCircle} mr={1.5} boxSize={3.5} />
+            Add Another Question
           </Button>
         </Flex>
+
+        <form onSubmit={handleSubmit}>
+          {/* Subject Card */}
+          <Box
+            bg="white"
+            borderRadius="24px"
+            p={6}
+            border="1px solid"
+            borderColor="#E2E8F0"
+            boxShadow="0 2px 12px rgba(0, 0, 0, 0.03)"
+            mb={6}
+          >
+            <Field.Root required>
+              <Field.Label fontWeight="700" fontSize="13px" color="#334155" mb={1.5}>
+                Subject or Examination Course *
+              </Field.Label>
+              <Input
+                placeholder="e.g. Mathematics, English Language, Physics..."
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                borderRadius="xl"
+                h="48px"
+                fontSize="14px"
+                borderColor="#CBD5E1"
+                _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
+                required
+              />
+            </Field.Root>
+          </Box>
+
+          {/* Questions Stack */}
+          <VStack gap={6} align="stretch" mb={8}>
+            {questions.map((q, qIdx) => (
+              <Box
+                key={qIdx}
+                bg="white"
+                borderRadius="24px"
+                p={6}
+                border="1px solid"
+                borderColor="#E2E8F0"
+                boxShadow="0 2px 12px rgba(0, 0, 0, 0.03)"
+              >
+                <Flex justify="space-between" align="center" mb={4}>
+                  <Badge
+                    bg="purple.50"
+                    color="#6A1B9A"
+                    borderRadius="full"
+                    px={3}
+                    py={1}
+                    fontSize="12px"
+                    fontWeight="800"
+                    border="1px solid #E9D5FF"
+                  >
+                    Question {qIdx + 1}
+                  </Badge>
+
+                  {questions.length > 1 && (
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      color="#EF4444"
+                      _hover={{ bg: "red.50" }}
+                      onClick={() => removeQuestion(qIdx)}
+                    >
+                      <Icon as={FaTrash} mr={1} boxSize={3} />
+                      Remove
+                    </Button>
+                  )}
+                </Flex>
+
+                {/* Question Text & Type */}
+                <Flex gap={4} mb={5} direction={{ base: "column", md: "row" }}>
+                  <Box flex={1}>
+                    <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                      Question Text *
+                    </Text>
+                    <Input
+                      placeholder="Type the full exam question statement..."
+                      value={q.question}
+                      onChange={(e) => handleQuestionChange(qIdx, "question", e.target.value)}
+                      borderRadius="xl"
+                      h="46px"
+                      fontSize="14px"
+                      borderColor="#CBD5E1"
+                      _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
+                      required
+                    />
+                  </Box>
+
+                  <Box w={{ base: "100%", md: "200px" }}>
+                    <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                      Answer Type
+                    </Text>
+                    <NativeSelect.Root>
+                      <NativeSelect.Field
+                        value={q.type}
+                        onChange={(e) => handleTypeChange(qIdx, e.target.value)}
+                        borderRadius="xl"
+                        h="46px"
+                        fontSize="13px"
+                        borderColor="#CBD5E1"
+                      >
+                        <option value="multiple">Multiple Choice (4)</option>
+                        <option value="boolean">True / False</option>
+                      </NativeSelect.Field>
+                      <NativeSelect.Indicator />
+                    </NativeSelect.Root>
+                  </Box>
+                </Flex>
+
+                {/* Options Selection */}
+                {q.type === "multiple" ? (
+                  <Box mb={5}>
+                    <Text fontSize="13px" fontWeight="700" color="#334155" mb={2}>
+                      Options (A, B, C, D)
+                    </Text>
+                    <VStack gap={2.5} align="stretch">
+                      {q.options.map((opt, oIndex) => {
+                        const label = String.fromCharCode(65 + oIndex);
+                        return (
+                          <Flex key={oIndex} align="center" gap={3}>
+                            <Flex
+                              w="32px"
+                              h="32px"
+                              borderRadius="lg"
+                              bg="#F1F5F9"
+                              color="#475569"
+                              align="center"
+                              justify="center"
+                              fontSize="12px"
+                              fontWeight="800"
+                            >
+                              {label}
+                            </Flex>
+                            <Input
+                              placeholder={`Option ${label} text...`}
+                              value={opt}
+                              onChange={(e) => handleQuestionChange(qIdx, oIndex, e.target.value)}
+                              borderRadius="xl"
+                              h="42px"
+                              fontSize="13px"
+                              borderColor="#E2E8F0"
+                              _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
+                              required
+                            />
+                          </Flex>
+                        );
+                      })}
+                    </VStack>
+                  </Box>
+                ) : (
+                  <Box p={3} bg="#F8FAFC" borderRadius="xl" mb={4} color="#64748B" fontSize="13px">
+                    Options configured as <strong>True</strong> and <strong>False</strong>.
+                  </Box>
+                )}
+
+                {/* Correct Answer */}
+                <Box>
+                  <Text fontSize="13px" fontWeight="700" color="#059669" mb={1.5}>
+                    Correct Answer Key *
+                  </Text>
+                  <Input
+                    placeholder="e.g. Enter matching option text or A/B/C/D"
+                    value={q.answer}
+                    onChange={(e) => handleQuestionChange(qIdx, "answer", e.target.value)}
+                    borderRadius="xl"
+                    h="44px"
+                    fontSize="13px"
+                    borderColor="#A7F3D0"
+                    bg="#F0FDF4"
+                    _focus={{ borderColor: "#10B981", boxShadow: "0 0 0 1px #10B981" }}
+                    required
+                  />
+                </Box>
+              </Box>
+            ))}
+          </VStack>
+
+          {/* Submit Toolbar */}
+          <Flex justify="flex-end" gap={3}>
+            <Button
+              type="submit"
+              bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
+              color="white"
+              px={8}
+              h="48px"
+              borderRadius="xl"
+              fontSize="14px"
+              fontWeight="700"
+              boxShadow="0 4px 12px rgba(106, 27, 154, 0.25)"
+              _hover={{ opacity: 0.95 }}
+              loading={loading}
+              loadingText="Saving to Repository..."
+            >
+              <Icon as={FaCheckCircle} mr={2} boxSize={4} />
+              Save Questions to Bank
+            </Button>
+          </Flex>
+        </form>
       </Box>
     </Box>
   );

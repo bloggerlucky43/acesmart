@@ -119,13 +119,13 @@ export default function EditDraft() {
     <DashboardLayout>
       {" "}
       <Box
-        bg="gray.200"
-        minH={"100vh"}
-        p={4}
-        ml="10vw"
-        w="70%"
+        bg="#F8FAFC"
+        minH={"calc(100vh - 68px)"}
+        p={{ base: 4, md: 8 }}
+        ml={{ base: 0, lg: "240px" }}
+        w={{ base: "100%", lg: "calc(100% - 240px)" }}
         justifySelf="center"
-        mt="9vh"
+        mt="68px"
       >
         <Fieldset.Root
           bg="white"

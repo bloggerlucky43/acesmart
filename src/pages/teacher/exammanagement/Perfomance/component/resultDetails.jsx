@@ -123,100 +123,217 @@ export default function ResultDetails() {
     );
   }
 
+  const examTitle = String(results[0]?.examTitle ?? "Examination");
+  const avgPercentage = results.length
+    ? (results.reduce((acc, r) => acc + Number(r?.percentage || 0), 0) / results.length).toFixed(1)
+    : 0;
+
   return (
     <Box
-      w={"calc(100% -200px)"}
-      mt="9vh"
-      ml="200px"
-      p={4}
-      bg="gray.200"
-      minH="100vh"
-      cursor="pointer"
+      w={{ base: "100%", lg: "calc(100% - 240px)" }}
+      mt="68px"
+      ml={{ base: 0, lg: "240px" }}
+      p={{ base: 4, md: 8 }}
+      bg="#F8FAFC"
+      minH="calc(100vh - 68px)"
     >
-      <Flex mb={6} justify="space-between" align="center" mt={4}>
-        <Text fontSize="2xl" fontWeight={"semibold"}>
-          {String(results[0]?.examTitle ?? "Exam")} Results
-        </Text>
-        <Flex gap={4}>
-          <Button bg="primary" onClick={handleDownload}>
-            Download Excel
-          </Button>
-          <Button onClick={handleDownloadPDF} bg="secondary" color="white">
-            Download PDF
-          </Button>
+      <Box maxW="1200px" mx="auto">
+        {/* Top Header & Export Toolbar */}
+        <Flex
+          direction={{ base: "column", md: "row" }}
+          justify="space-between"
+          align={{ base: "flex-start", md: "center" }}
+          gap={4}
+          mb={6}
+        >
+          <Box>
+            <Flex align="center" gap={2.5} mb={1}>
+              <Text
+                fontSize={{ base: "22px", md: "26px" }}
+                fontWeight="800"
+                color="#0F172A"
+                fontFamily="'Outfit', sans-serif"
+              >
+                {examTitle}
+              </Text>
+              <Badge
+                bg="purple.50"
+                color="#6A1B9A"
+                border="1px solid #E9D5FF"
+                borderRadius="full"
+                px={2.5}
+                py={0.5}
+                fontSize="12px"
+                fontWeight="700"
+              >
+                {results.length} Candidates
+              </Badge>
+            </Flex>
+            <Text fontSize="13px" color="#64748B">
+              Detailed candidate score breakdowns, sectional marks, and class performance distribution.
+            </Text>
+          </Box>
+
+          <Flex gap={3} flexWrap="wrap">
+            <Button
+              bg="#10B981"
+              color="white"
+              borderRadius="xl"
+              px={4}
+              h="42px"
+              fontSize="13px"
+              fontWeight="700"
+              _hover={{ bg: "#059669" }}
+              onClick={handleDownload}
+            >
+              Export Excel (.xlsx)
+            </Button>
+            <Button
+              bg="#6A1B9A"
+              color="white"
+              borderRadius="xl"
+              px={4}
+              h="42px"
+              fontSize="13px"
+              fontWeight="700"
+              _hover={{ opacity: 0.95 }}
+              onClick={handleDownloadPDF}
+            >
+              Download PDF Report
+            </Button>
+          </Flex>
         </Flex>
-      </Flex>
 
-      {results.length === 0 ? (
-        <Center h="50vh">
-          <Text>No student results found for this exam.</Text>
-        </Center>
-      ) : (
-        <Table.ScrollArea id="result-table">
-          <Table.Root size="md" stickyHeader>
-            <Table.Header>
-              <Table.Row bg="primary">
-                <Table.ColumnHeader color="white" textAlign={"center"}>
-                  Student ID
-                </Table.ColumnHeader>
-                <Table.ColumnHeader color="white" textAlign={"center"}>
-                  Name
-                </Table.ColumnHeader>
+        {/* Quick Metric Pills */}
+        <Flex gap={4} mb={6} flexWrap="wrap">
+          <Box px={4} py={2.5} borderRadius="xl" bg="white" border="1px solid #E2E8F0">
+            <Text fontSize="11px" color="#64748B" fontWeight="600">
+              CANDIDATES ASSESSED
+            </Text>
+            <Text fontSize="18px" fontWeight="800" color="#0F172A">
+              {results.length}
+            </Text>
+          </Box>
 
-                {subjects.map((subject) => (
-                  <Table.ColumnHeader
-                    key={subject}
-                    color="white"
-                    textAlign={"center"}
-                    textTransform={"capitalize"}
-                  >
-                    {subject}
-                  </Table.ColumnHeader>
-                ))}
+          <Box px={4} py={2.5} borderRadius="xl" bg="white" border="1px solid #E2E8F0">
+            <Text fontSize="11px" color="#64748B" fontWeight="600">
+              CLASS AVERAGE SCORE
+            </Text>
+            <Text fontSize="18px" fontWeight="800" color="#7C3AED">
+              {avgPercentage}%
+            </Text>
+          </Box>
+        </Flex>
 
-                <Table.ColumnHeader color="White" textAlign="center">
-                  Total
-                </Table.ColumnHeader>
+        {/* Results Table Card */}
+        <Box
+          bg="white"
+          borderRadius="24px"
+          border="1px solid"
+          borderColor="#E2E8F0"
+          boxShadow="0 2px 12px rgba(0, 0, 0, 0.03)"
+          overflow="hidden"
+        >
+          {results.length === 0 ? (
+            <Center h="240px">
+              <Text color="#64748B" fontSize="14px">
+                No student submissions recorded for this examination yet.
+              </Text>
+            </Center>
+          ) : (
+            <Table.ScrollArea id="result-table" maxH="65vh">
+              <Table.Root size="md" stickyHeader>
+                <Table.Header>
+                  <Table.Row bg="#0F172A">
+                    <Table.ColumnHeader color="white" py={3.5} px={5} fontSize="12px" fontWeight="700">
+                      Student ID
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader color="white" py={3.5} px={5} fontSize="12px" fontWeight="700">
+                      Candidate Name
+                    </Table.ColumnHeader>
 
-                <Table.ColumnHeader color="White" textAlign="center">
-                  Percentage (%)
-                </Table.ColumnHeader>
-              </Table.Row>
-            </Table.Header>
+                    {subjects.map((subject) => (
+                      <Table.ColumnHeader
+                        key={subject}
+                        color="white"
+                        py={3.5}
+                        px={4}
+                        fontSize="12px"
+                        fontWeight="700"
+                        textAlign="center"
+                        textTransform="capitalize"
+                      >
+                        {subject}
+                      </Table.ColumnHeader>
+                    ))}
 
-            <Table.Body>
-              {results?.map((res) => (
-                <Table.Row key={res.id} bg="white">
-                  <Table.Cell textAlign={"center"}>
-                    {res?.studentCode || res?.Student?.studentId}
-                  </Table.Cell>
-                  <Table.Cell textAlign={"center"}>
-                    {res?.Student
-                      ? `${res?.Student?.firstName} ${res?.Student?.lastName}`
-                      : "N/A"}
-                  </Table.Cell>
+                    <Table.ColumnHeader color="white" py={3.5} px={4} fontSize="12px" fontWeight="700" textAlign="center">
+                      Total
+                    </Table.ColumnHeader>
 
-                  {subjects.map((subject) => (
-                    <Table.Cell key={subject} textAlign={"center"}>
-                      {res?.scores?.[subject] ?? "-"}
-                    </Table.Cell>
-                  ))}
+                    <Table.ColumnHeader color="white" py={3.5} px={5} fontSize="12px" fontWeight="700" textAlign="right">
+                      Grade / %
+                    </Table.ColumnHeader>
+                  </Table.Row>
+                </Table.Header>
 
-                  <Table.Cell textAlign={"center"}>
-                    {res?.totalScore}
-                  </Table.Cell>
-                  <Table.Cell textAlign={"center"}>
-                    {typeof res?.percentage === "number"
-                      ? res?.percentage.toFixed(2)
-                      : Number(res?.percentage || 0).toFixed(2)}
-                    %
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table.Root>
-        </Table.ScrollArea>
-      )}
+                <Table.Body>
+                  {results?.map((res) => {
+                    const pct = typeof res?.percentage === "number"
+                      ? res?.percentage
+                      : Number(res?.percentage || 0);
+                    const isPass = pct >= 50;
+
+                    return (
+                      <Table.Row
+                        key={res.id}
+                        _hover={{ bg: "#FAF5FF" }}
+                        transition="background 0.15s ease"
+                      >
+                        <Table.Cell py={3.5} px={5} fontWeight="700" color="#6A1B9A" fontSize="13px">
+                          {res?.studentCode || res?.Student?.studentId || `STU-${res.id}`}
+                        </Table.Cell>
+
+                        <Table.Cell py={3.5} px={5} fontWeight="600" color="#1E293B">
+                          {res?.Student
+                            ? `${res?.Student?.firstName} ${res?.Student?.lastName}`
+                            : "Candidate"}
+                        </Table.Cell>
+
+                        {subjects.map((subject) => (
+                          <Table.Cell key={subject} py={3.5} px={4} textAlign="center" fontWeight="600" color="#334155">
+                            {res?.scores?.[subject] ?? "-"}
+                          </Table.Cell>
+                        ))}
+
+                        <Table.Cell py={3.5} px={4} textAlign="center" fontWeight="800" color="#0F172A">
+                          {res?.totalScore}
+                        </Table.Cell>
+
+                        <Table.Cell py={3.5} px={5} textAlign="right">
+                          <Badge
+                            bg={isPass ? "green.50" : "red.50"}
+                            color={isPass ? "#059669" : "#DC2626"}
+                            border="1px solid"
+                            borderColor={isPass ? "#A7F3D0" : "#FECACA"}
+                            borderRadius="full"
+                            px={2.5}
+                            py={0.5}
+                            fontSize="11px"
+                            fontWeight="800"
+                          >
+                            {pct.toFixed(1)}%
+                          </Badge>
+                        </Table.Cell>
+                      </Table.Row>
+                    );
+                  })}
+                </Table.Body>
+              </Table.Root>
+            </Table.ScrollArea>
+          )}
+        </Box>
+      </Box>
     </Box>
   );
 }

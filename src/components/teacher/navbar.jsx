@@ -1,34 +1,146 @@
-import { Flex, Text, Avatar, Icon } from "@chakra-ui/react";
-import { FaBell } from "react-icons/fa";
+import {
+  Flex,
+  Text,
+  Avatar,
+  Icon,
+  Button,
+  Box,
+} from "@chakra-ui/react";
+import { FaBell, FaPlus, FaCalendarAlt } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
+
 const Navbar = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const teacherName = user?.name || user?.username || "Educator";
+  const today = new Date().toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
   return (
     <Flex
-      as="nav"
-      bg="gray.200"
-      p={4}
-      w={"calc(100% - 200px)"}
+      as="header"
+      position="fixed"
+      top={0}
+      right={0}
+      w={{ base: "100%", lg: "calc(100% - 240px)" }}
+      ml={{ base: 0, lg: "240px" }}
+      h="68px"
+      bg="rgba(255, 255, 255, 0.92)"
+      backdropFilter="blur(16px)"
+      borderBottom="1px solid"
+      borderColor="#E2E8F0"
+      px={{ base: 4, md: 6 }}
       justify="space-between"
       align="center"
-      right={0}
-      position="fixed"
-      zIndex={10}
-      borderBottom="solid 2px"
-      borderColor="primary"
-      top={0}
-      ml={"200px"}
+      zIndex={20}
+      boxShadow="0 1px 12px rgba(0, 0, 0, 0.03)"
     >
-      <Flex align="center">
-        <Text fontSize="xl">Welcome back,{user.username}</Text>
-      </Flex>
-      <Flex gap={3} align="center">
-        <Icon as={FaBell} boxSize={6} />
-        <Avatar.Root bg="primary" color="white">
-          <Avatar.Fallback name={user.name} />
-          <Avatar.Image src="" />
-        </Avatar.Root>
-        <Text>{user.name}</Text>
+      {/* Left Greeting & Context */}
+      <Box>
+        <Flex align="center" gap={2}>
+          <Text
+            fontSize={{ base: "16px", md: "18px" }}
+            fontWeight="800"
+            color="#0F172A"
+            fontFamily="'Outfit', sans-serif"
+          >
+            Welcome back, {teacherName}
+          </Text>
+          <Box
+            w="8px"
+            h="8px"
+            borderRadius="full"
+            bg="#10B981"
+            boxShadow="0 0 6px #10B981"
+            title="Online"
+          />
+        </Flex>
+        <Flex align="center" gap={1.5} color="#64748B" fontSize="12px">
+          <Icon as={FaCalendarAlt} boxSize={3} />
+          <Text>{today} • CBT Center Management</Text>
+        </Flex>
+      </Box>
+
+      {/* Right Controls */}
+      <Flex gap={3.5} align="center">
+        {/* Quick New Exam Action */}
+        <Button
+          size="sm"
+          bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
+          color="white"
+          borderRadius="xl"
+          px={3.5}
+          h="38px"
+          fontSize="13px"
+          fontWeight="700"
+          boxShadow="0 4px 12px rgba(106, 27, 154, 0.25)"
+          _hover={{
+            opacity: 0.95,
+            transform: "translateY(-1px)",
+          }}
+          onClick={() => navigate("/teacher/create_exam")}
+          display={{ base: "none", sm: "flex" }}
+        >
+          <Icon as={FaPlus} mr={1.5} boxSize={3} />
+          New Exam
+        </Button>
+
+        {/* Notifications Bell */}
+        <Flex
+          as="button"
+          align="center"
+          justify="center"
+          w="38px"
+          h="38px"
+          borderRadius="xl"
+          bg="#F1F5F9"
+          color="#475569"
+          position="relative"
+          cursor="pointer"
+          _hover={{ bg: "#E2E8F0", color: "#6A1B9A" }}
+          transition="all 0.2s ease"
+          title="Notifications"
+        >
+          <Icon as={FaBell} boxSize={4} />
+          <Box
+            position="absolute"
+            top="8px"
+            right="8px"
+            w="8px"
+            h="8px"
+            borderRadius="full"
+            bg="#EF4444"
+            border="1.5px solid white"
+          />
+        </Flex>
+
+        {/* User Avatar Badge */}
+        <Flex
+          align="center"
+          gap={2.5}
+          p={1}
+          pr={3}
+          borderRadius="full"
+          bg="#F8FAFC"
+          border="1px solid #E2E8F0"
+        >
+          <Avatar.Root size="xs" bg="#6A1B9A" color="white">
+            <Avatar.Fallback name={teacherName} />
+          </Avatar.Root>
+          <Text
+            fontSize="13px"
+            fontWeight="700"
+            color="#1E293B"
+            display={{ base: "none", md: "block" }}
+          >
+            {teacherName}
+          </Text>
+        </Flex>
       </Flex>
     </Flex>
   );
