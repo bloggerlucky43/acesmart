@@ -3,10 +3,10 @@ import {
   Text,
   SimpleGrid,
   Icon,
-  Spinner,
   Flex,
   Button,
 } from "@chakra-ui/react";
+import { MetricCardsSkeleton } from "../ui/skeletons";
 import {
   FaUsers,
   FaBook,
@@ -40,11 +40,7 @@ const Cards = () => {
   const passRate = dashboardStats?.passRate ?? 88;
 
   if (isLoading) {
-    return (
-      <Flex h="200px" justify="center" align="center">
-        <Spinner size="xl" color="#6A1B9A" />
-      </Flex>
-    );
+    return <MetricCardsSkeleton count={4} />;
   }
 
   const statCards = [

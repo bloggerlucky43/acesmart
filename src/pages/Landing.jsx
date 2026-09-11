@@ -14,8 +14,6 @@ import Heading from "../components/ui/landing/Heading";
 import Features from "../components/ui/landing/features";
 import Numbers from "../components/ui/landing/numbers";
 import Testimonial from "../components/ui/landing/testimonial";
-import Register from "../components/auth/register";
-import Login from "../components/auth/login";
 import Contact from "../components/ui/landing/contact";
 import Footer from "../components/ui/landing/Footer";
 import {
@@ -26,8 +24,6 @@ import {
 } from "react-icons/fa";
 
 function Landing() {
-  const [isOpenLogin, setIsOpenLogin] = useState(false);
-  const [showDrawer, setShowDrawer] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showExamModal, setShowExamModal] = useState(false);
   const [examCode, setExamCode] = useState("");
@@ -70,8 +66,8 @@ function Landing() {
           testimonials: testimonialRef,
           contact: contactRef,
         }}
-        onLoginOpen={() => setIsOpenLogin(true)}
-        onDrawerOpen={() => setShowDrawer(true)}
+        onLoginOpen={() => navigate("/login")}
+        onDrawerOpen={() => navigate("/register")}
         onMenuOpen={() => setShowMenu(true)}
         onExamModalOpen={() => setShowExamModal(true)}
       />
@@ -80,7 +76,7 @@ function Landing() {
       <Box as="main">
         <Heading
           homeRef={headingRef}
-          onGetStarted={() => setShowDrawer(true)}
+          onGetStarted={() => navigate("/register")}
           onTakeExam={() => setShowExamModal(true)}
         />
         <Numbers numberRef={numberRef} />
@@ -88,8 +84,8 @@ function Landing() {
         <Testimonial testimonialsRef={testimonialRef} />
         <Contact contactRef={contactRef} />
         <Footer
-          onLoginOpen={() => setIsOpenLogin(true)}
-          onDrawerOpen={() => setShowDrawer(true)}
+          onLoginOpen={() => navigate("/login")}
+          onDrawerOpen={() => navigate("/register")}
           onExamModalOpen={() => setShowExamModal(true)}
         />
       </Box>
@@ -380,7 +376,7 @@ function Landing() {
                 mb={2.5}
                 onClick={() => {
                   setShowMenu(false);
-                  setIsOpenLogin(true);
+                  navigate("/login");
                 }}
               >
                 Teacher Login
@@ -392,102 +388,12 @@ function Landing() {
                 borderRadius="xl"
                 onClick={() => {
                   setShowMenu(false);
-                  setShowDrawer(true);
+                  navigate("/register");
                 }}
               >
                 Register School
               </Button>
             </Box>
-          </Box>
-        </Box>
-      )}
-
-      {/* Sign Up / Registration Drawer */}
-      {showDrawer && (
-        <Box
-          position="fixed"
-          inset={0}
-          zIndex={170}
-          bg="rgba(17, 7, 38, 0.55)"
-          backdropFilter="blur(6px)"
-          onClick={() => setShowDrawer(false)}
-        >
-          <Box
-            position="fixed"
-            top={0}
-            right={0}
-            bg="white"
-            shadow="2xl"
-            w={{ base: "90%", sm: "440px" }}
-            h="100vh"
-            p={{ base: 6, sm: 8 }}
-            overflowY="auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Flex justify="space-between" align="center" pb={4} mb={4} borderBottom="1px solid" borderColor="gray.100">
-              <Box>
-                <Text fontSize="20px" fontWeight="800" color="gray.900">
-                  Create School Account
-                </Text>
-                <Text fontSize="12px" color="gray.500">
-                  Join 120+ institutions setting smart CBT exams
-                </Text>
-              </Box>
-              <Icon
-                as={FaTimes}
-                boxSize={4}
-                color="gray.400"
-                cursor="pointer"
-                _hover={{ color: "gray.700" }}
-                onClick={() => setShowDrawer(false)}
-              />
-            </Flex>
-            <Register />
-          </Box>
-        </Box>
-      )}
-
-      {/* Login Drawer */}
-      {isOpenLogin && (
-        <Box
-          position="fixed"
-          inset={0}
-          zIndex={170}
-          bg="rgba(17, 7, 38, 0.55)"
-          backdropFilter="blur(6px)"
-          onClick={() => setIsOpenLogin(false)}
-        >
-          <Box
-            position="fixed"
-            top={0}
-            right={0}
-            bg="white"
-            shadow="2xl"
-            w={{ base: "90%", sm: "420px" }}
-            h="100vh"
-            p={{ base: 6, sm: 8 }}
-            overflowY="auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Flex justify="space-between" align="center" pb={4} mb={4} borderBottom="1px solid" borderColor="gray.100">
-              <Box>
-                <Text fontSize="20px" fontWeight="800" color="gray.900">
-                  Welcome Back
-                </Text>
-                <Text fontSize="12px" color="gray.500">
-                  Log in to your AceSmart educator dashboard
-                </Text>
-              </Box>
-              <Icon
-                as={FaTimes}
-                boxSize={4}
-                color="gray.400"
-                cursor="pointer"
-                _hover={{ color: "gray.700" }}
-                onClick={() => setIsOpenLogin(false)}
-              />
-            </Flex>
-            <Login />
           </Box>
         </Box>
       )}

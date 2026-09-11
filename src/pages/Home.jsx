@@ -27,6 +27,8 @@ import {
 import { Toaster } from "../components/ui/toaster";
 import { ExamProvider } from "./TakeExam/component/ExamContext";
 import PageLoader from "../components/ui/pageloader";
+import LoginPage from "./auth/LoginPage";
+import RegisterPage from "./auth/RegisterPage";
 
 const Home = () => {
   return (
@@ -45,6 +47,8 @@ const Home = () => {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
             <Route path="/pricing" element={<PricingPage />} />
 
             <Route path="/teacher_dashboard" element={<Teacher />} />

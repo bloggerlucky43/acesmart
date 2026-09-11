@@ -8,11 +8,11 @@ import {
   Icon,
   Avatar,
   Badge,
-  Spinner,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import { fetchStudent } from "../../api-endpoint/student/students";
 import { useQuery } from "@tanstack/react-query";
+import { TableSkeleton } from "../ui/skeletons";
 import {
   FaUsers,
   FaSearch,
@@ -173,9 +173,9 @@ const ListOfStudent = () => {
 
           {/* Table Content */}
           {isLoading ? (
-            <Flex h="240px" justify="center" align="center">
-              <Spinner size="xl" color="#6A1B9A" />
-            </Flex>
+            <Box p={4}>
+              <TableSkeleton rows={5} columns={4} />
+            </Box>
           ) : isError ? (
             <Flex h="200px" justify="center" align="center" color="red.500">
               <Text>Failed to load student directory. Please try again.</Text>

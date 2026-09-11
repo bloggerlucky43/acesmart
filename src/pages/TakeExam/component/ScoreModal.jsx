@@ -8,7 +8,6 @@ import {
   Badge,
   Icon,
   SimpleGrid,
-  Progress,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { useExam } from "./ExamContext";
@@ -16,12 +15,20 @@ import { useRef, useState, useEffect } from "react";
 import { checkResultExisting } from "../../../api-endpoint/exam/exams";
 import { toaster } from "../../../components/ui/toaster";
 import { saveWithRetry } from "../../../libs/helper";
+import { getWeakAreaDetection } from "../../../api-endpoint/ai/ai";
 import {
   FaCheckCircle,
   FaGraduationCap,
   FaAward,
   FaArrowRight,
   FaRedo,
+  FaShieldAlt,
+  FaBrain,
+  FaExclamationTriangle,
+  FaBookOpen,
+  FaLightbulb,
+  FaChevronDown,
+  FaChevronUp,
 } from "react-icons/fa";
 
 function ScoreModal({ onClose }) {
@@ -30,6 +37,9 @@ function ScoreModal({ onClose }) {
   const [checking, setChecking] = useState(true);
   const [saveStatus, setSaveStatus] = useState("loading");
   const [retryCount, setRetryCount] = useState(0);
+  const [aiInsights, setAiInsights] = useState(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [showAnomalies, setShowAnomalies] = useState(false);
   const hasProcessedRef = useRef(false);
   const navigate = useNavigate();
 
@@ -44,7 +54,26 @@ function ScoreModal({ onClose }) {
     parsedStudent = {};
   }
 
+  // Load integrity & anomaly metrics recorded during exam
+  let storedAnomalies = [];
+  let storedViolationCount = 0;
+  let storedIntegrity = "VERIFIED";
+
+  try {
+    const rawAnom = localStorage.getItem("lastExamAnomalies");
+    if (rawAnom) {
+      const parsed = JSON.parse(rawAnom);
+      storedAnomalies = parsed.anomalies || [];
+      storedViolationCount = parsed.violationCount || storedAnomalies.length;
+      storedIntegrity = parsed.integrityStatus || (storedViolationCount > 0 ? "FLAGGED_SUSPICIOUS" : "VERIFIED");
+    }
+  } catch (e) {}
+
   const isDemo = examData?.id === "demo-exam-cbt" || !examData?.id;
+  const candidateName =
+    `${parsedStudent?.firstName ?? ""} ${parsedStudent?.lastName ?? ""}`.trim() ||
+    parsedStudent?.name ||
+    "Candidate";
 
   // Check if result already exists & save result
   useEffect(() => {
@@ -83,6 +112,9 @@ function ScoreModal({ onClose }) {
               examId: examData?.id,
               examTitle: examData?.title,
               totalMarks: examData?.totalMarks,
+              anomalies: storedAnomalies,
+              violationCount: storedViolationCount,
+              integrityStatus: storedIntegrity,
             });
 
             if (res.data) {
@@ -119,9 +151,29 @@ function ScoreModal({ onClose }) {
     }
   }, [student, examData?.id, navigate, onClose, retryCount, isDemo]);
 
-  const candidateName =
-    `${parsedStudent?.firstName ?? ""} ${parsedStudent?.lastName ?? ""}`.trim() ||
-    "Candidate";
+  // Fetch AI Weak Area Detection & Study Guidance
+  useEffect(() => {
+    const fetchAiDiagnostics = async () => {
+      setLoadingAi(true);
+      try {
+        const data = await getWeakAreaDetection({
+          scores,
+          totalMarks,
+          examSections: examData?.sections,
+          studentName: candidateName,
+        });
+        setAiInsights(data);
+      } catch (err) {
+        console.warn("AI diagnostic fetch warning:", err);
+      } finally {
+        setLoadingAi(false);
+      }
+    };
+
+    if (scores && Object.keys(scores).length > 0) {
+      fetchAiDiagnostics();
+    }
+  }, [scores, totalMarks, examData, candidateName]);
 
   const handleContinueButton = () => {
     if (onClose) onClose();
@@ -135,7 +187,7 @@ function ScoreModal({ onClose }) {
         position="fixed"
         inset={0}
         zIndex={2000}
-        bg="rgba(15, 23, 42, 0.8)"
+        bg="rgba(15, 23, 42, 0.85)"
         backdropFilter="blur(8px)"
         display="flex"
         alignItems="center"
@@ -152,23 +204,24 @@ function ScoreModal({ onClose }) {
           w="100%"
         >
           <Flex
-            w="48px"
-            h="48px"
-            borderRadius="14px"
-            bg="#2563EB"
+            w="52px"
+            h="52px"
+            borderRadius="16px"
+            bg="#6A1B9A"
             color="white"
             align="center"
             justify="center"
             mx="auto"
             mb={4}
+            className="glow-ambient"
           >
-            <Icon as={FaGraduationCap} boxSize={6} />
+            <Icon as={FaGraduationCap} boxSize={7} />
           </Flex>
-          <Text fontSize="16px" fontWeight="bold" color="white" mb={1}>
+          <Text fontSize="18px" fontWeight="bold" color="white" mb={1}>
             Finalizing Examination
           </Text>
-          <Text fontSize="12px" color="#94A3B8">
-            Verifying answers and computing scores...
+          <Text fontSize="13px" color="#94A3B8">
+            Grading responses and recording proctoring audit log...
           </Text>
         </Box>
       </Box>
@@ -182,7 +235,7 @@ function ScoreModal({ onClose }) {
         position="fixed"
         inset={0}
         zIndex={2000}
-        bg="rgba(15, 23, 42, 0.8)"
+        bg="rgba(15, 23, 42, 0.85)"
         backdropFilter="blur(8px)"
         display="flex"
         alignItems="center"
@@ -198,14 +251,14 @@ function ScoreModal({ onClose }) {
           maxW="420px"
           w="100%"
         >
-          <Text fontSize="16px" fontWeight="bold" color="#F87171" mb={2}>
+          <Text fontSize="18px" fontWeight="bold" color="#F87171" mb={2}>
             Connection Interruption
           </Text>
-          <Text fontSize="12px" color="#94A3B8" mb={5}>
+          <Text fontSize="13px" color="#94A3B8" mb={5}>
             Unable to save exam results automatically. Please retry.
           </Text>
           <Button
-            bg="#2563EB"
+            bg="#6A1B9A"
             color="white"
             borderRadius="12px"
             w="100%"
@@ -214,8 +267,8 @@ function ScoreModal({ onClose }) {
               setSaveStatus("loading");
               setRetryCount((c) => c + 1);
             }}
-            leftIcon={<Icon as={FaRedo} />}
           >
+            <Icon as={FaRedo} mr={2} />
             Retry Submission
           </Button>
         </Box>
@@ -235,7 +288,7 @@ function ScoreModal({ onClose }) {
       position="fixed"
       inset={0}
       zIndex={1500}
-      bg="rgba(15, 23, 42, 0.8)"
+      bg="rgba(15, 23, 42, 0.85)"
       backdropFilter="blur(8px)"
       display="flex"
       alignItems="center"
@@ -247,18 +300,19 @@ function ScoreModal({ onClose }) {
         borderRadius="24px"
         border="1px solid #334155"
         p={{ base: 6, sm: 8 }}
-        maxW="540px"
+        maxW="580px"
         w="100%"
         boxShadow="0 25px 50px rgba(0, 0, 0, 0.5)"
-        maxH="90vh"
+        maxH="92vh"
         overflowY="auto"
+        className="animate-scale-in"
       >
         {/* Header Badge & Title */}
-        <VStack spacing={2} align="center" textAlign="center" mb={6}>
+        <VStack spacing={2} align="center" textAlign="center" mb={5}>
           <Flex
-            w="52px"
-            h="52px"
-            borderRadius="16px"
+            w="54px"
+            h="54px"
+            borderRadius="18px"
             bg="rgba(16, 185, 129, 0.15)"
             color="#34D399"
             align="center"
@@ -268,26 +322,90 @@ function ScoreModal({ onClose }) {
             <Icon as={FaAward} boxSize={7} />
           </Flex>
 
-          <Text fontSize="22px" fontWeight="800" color="white" fontFamily="'Outfit', sans-serif">
+          <Text fontSize="24px" fontWeight="800" color="white" fontFamily="'Outfit', sans-serif">
             Assessment Complete
           </Text>
           <Text fontSize="13px" color="#94A3B8">
-            Candidate: <b>{candidateName}</b>
-            {parsedStudent?.studentId && ` • Reg: ${parsedStudent.studentId}`}
+            Candidate: <b style={{ color: "white" }}>{candidateName}</b>
+            {parsedStudent?.studentId && ` • ID: ${parsedStudent.studentId}`}
           </Text>
 
-          <Badge
-            bg={performanceTier.bg}
-            color={performanceTier.color}
-            borderRadius="full"
-            px={3}
-            py={1}
-            fontSize="11px"
-            fontWeight="bold"
-            mt={1}
-          >
-            {performanceTier.label}
-          </Badge>
+          <HStack spacing={2} mt={1}>
+            <Badge
+              bg={performanceTier.bg}
+              color={performanceTier.color}
+              borderRadius="full"
+              px={3}
+              py={1}
+              fontSize="11px"
+              fontWeight="bold"
+            >
+              {performanceTier.label}
+            </Badge>
+
+            {/* Integrity Status Badge */}
+            {storedViolationCount === 0 ? (
+              <Badge
+                bg="rgba(16, 185, 129, 0.15)"
+                color="#34D399"
+                borderRadius="full"
+                px={3}
+                py={1}
+                fontSize="11px"
+                fontWeight="bold"
+                display="flex"
+                alignItems="center"
+                gap={1.5}
+              >
+                <Icon as={FaShieldAlt} boxSize={3} />
+                Integrity Verified
+              </Badge>
+            ) : (
+              <Badge
+                bg={storedViolationCount >= 5 ? "rgba(239, 68, 68, 0.2)" : "rgba(245, 158, 11, 0.2)"}
+                color={storedViolationCount >= 5 ? "#F87171" : "#FBBF24"}
+                borderRadius="full"
+                px={3}
+                py={1}
+                fontSize="11px"
+                fontWeight="bold"
+                cursor="pointer"
+                onClick={() => setShowAnomalies(!showAnomalies)}
+                display="flex"
+                alignItems="center"
+                gap={1.5}
+              >
+                <Icon as={FaExclamationTriangle} boxSize={3} />
+                {storedViolationCount} Incident{storedViolationCount > 1 ? "s" : ""} Flagged
+                <Icon as={showAnomalies ? FaChevronUp : FaChevronDown} boxSize={2.5} />
+              </Badge>
+            )}
+          </HStack>
+
+          {/* Anomaly Inspection Dropdown */}
+          {showAnomalies && storedAnomalies.length > 0 && (
+            <Box
+              w="100%"
+              mt={3}
+              p={3}
+              borderRadius="xl"
+              bg="#0F172A"
+              border="1px solid #475569"
+              textAlign="left"
+            >
+              <Text fontSize="11px" fontWeight="700" color="#FBBF24" mb={2} textTransform="uppercase">
+                Proctoring Incident Log ({storedAnomalies.length}):
+              </Text>
+              <VStack spacing={1.5} align="stretch">
+                {storedAnomalies.map((a, i) => (
+                  <Flex key={i} justify="space-between" align="center" fontSize="12px" color="#CBD5E1">
+                    <Text>• {a.description || a.type}</Text>
+                    <Text color="#94A3B8" fontSize="11px">{a.timestamp}</Text>
+                  </Flex>
+                ))}
+              </VStack>
+            </Box>
+          )}
         </VStack>
 
         {/* Big Overall Score Card */}
@@ -296,14 +414,14 @@ function ScoreModal({ onClose }) {
           borderRadius="18px"
           border="1px solid #334155"
           p={5}
-          mb={5}
+          mb={4}
           textAlign="center"
         >
           <Text fontSize="11px" color="#94A3B8" textTransform="uppercase" letterSpacing="0.5px">
             Cumulative Score
           </Text>
           <HStack justify="center" align="baseline" spacing={2} mt={1}>
-            <Text fontSize="36px" fontWeight="900" color="white" lineHeight="1">
+            <Text fontSize="38px" fontWeight="900" color="white" lineHeight="1">
               {totalScore.toFixed(1)}
             </Text>
             <Text fontSize="18px" color="#64748B" fontWeight="bold">
@@ -323,12 +441,12 @@ function ScoreModal({ onClose }) {
 
         {/* Section Score Breakdown */}
         {scores && Object.keys(scores).length > 0 && (
-          <Box mb={6}>
-            <Text fontSize="12px" fontWeight="bold" color="#94A3B8" mb={3} textTransform="uppercase" letterSpacing="0.5px">
+          <Box mb={4}>
+            <Text fontSize="12px" fontWeight="bold" color="#94A3B8" mb={2.5} textTransform="uppercase" letterSpacing="0.5px">
               Subject Section Performance:
             </Text>
 
-            <VStack spacing={2.5} align="stretch">
+            <SimpleGrid columns={{ base: 1, sm: 2 }} gap={2}>
               {Object.entries(scores).map(([section, score]) => (
                 <Box
                   key={section}
@@ -347,24 +465,128 @@ function ScoreModal({ onClose }) {
                   </Flex>
                 </Box>
               ))}
-            </VStack>
+            </SimpleGrid>
           </Box>
         )}
+
+        {/* AI Learning Diagnostic & Weak Area Detection Card */}
+        <Box
+          mb={6}
+          p={4}
+          borderRadius="18px"
+          bg="linear-gradient(145deg, rgba(106, 27, 154, 0.15) 0%, rgba(30, 41, 59, 0.9) 100%)"
+          border="1px solid rgba(168, 85, 247, 0.35)"
+          position="relative"
+        >
+          <Flex align="center" justify="space-between" mb={3}>
+            <Flex align="center" gap={2}>
+              <Flex
+                w="28px"
+                h="28px"
+                borderRadius="lg"
+                bg="#6A1B9A"
+                color="white"
+                align="center"
+                justify="center"
+              >
+                <Icon as={FaBrain} boxSize={3.5} />
+              </Flex>
+              <Text fontSize="14px" fontWeight="800" color="#E9D5FF">
+                AI Learning Diagnostic
+              </Text>
+            </Flex>
+            <Badge
+              bg="rgba(168, 85, 247, 0.2)"
+              color="#D8B4FE"
+              borderRadius="full"
+              px={2.5}
+              py={0.5}
+              fontSize="10px"
+              fontWeight="bold"
+            >
+              {loadingAi ? "Analyzing..." : "Targeted Insights"}
+            </Badge>
+          </Flex>
+
+          {/* Diagnostic summary narrative */}
+          <Text fontSize="13px" color="#CBD5E1" mb={3.5} lineHeight="1.5">
+            {aiInsights?.diagnosticNarrative ||
+              "AI diagnosis: Evaluating question error rates and topic-specific concept mastery..."}
+          </Text>
+
+          {/* Identified Weak Areas */}
+          {aiInsights?.weakAreas && aiInsights.weakAreas.length > 0 && (
+            <Box mb={3.5}>
+              <Text fontSize="11px" fontWeight="700" color="#FCA5A5" textTransform="uppercase" mb={2}>
+                Priority Focus Areas (Score &lt; 50%):
+              </Text>
+              <VStack spacing={2} align="stretch">
+                {aiInsights.weakAreas.map((w, idx) => (
+                  <Box
+                    key={idx}
+                    p={2.5}
+                    borderRadius="xl"
+                    bg="rgba(239, 68, 68, 0.1)"
+                    border="1px solid rgba(239, 68, 68, 0.25)"
+                  >
+                    <Flex justify="space-between" align="center" mb={1}>
+                      <Text fontSize="12px" fontWeight="700" color="#FCA5A5">
+                        {w.subject} • {w.topic}
+                      </Text>
+                      <Badge bg="rgba(239, 68, 68, 0.2)" color="#FCA5A5" fontSize="10px">
+                        {w.scorePercent}% Mastery
+                      </Badge>
+                    </Flex>
+                    <Text fontSize="11px" color="#E2E8F0">
+                      💡 {w.remediationAdvice}
+                    </Text>
+                  </Box>
+                ))}
+              </VStack>
+            </Box>
+          )}
+
+          {/* Personalized Study Roadmap */}
+          {aiInsights?.personalizedRoadmap && aiInsights.personalizedRoadmap.length > 0 && (
+            <Box pt={2} borderTop="1px solid rgba(168, 85, 247, 0.2)">
+              <Flex align="center" gap={1.5} mb={2}>
+                <Icon as={FaBookOpen} color="#C084FC" boxSize={3} />
+                <Text fontSize="11px" fontWeight="700" color="#D8B4FE" textTransform="uppercase">
+                  Recommended Study Roadmap:
+                </Text>
+              </Flex>
+              <VStack spacing={1.5} align="stretch">
+                {aiInsights.personalizedRoadmap.map((item, i) => (
+                  <Flex key={i} align="flex-start" gap={2} fontSize="12px" color="#CBD5E1">
+                    <Text color="#A855F7" fontWeight="bold">Step {i + 1}:</Text>
+                    <Text>{item}</Text>
+                  </Flex>
+                ))}
+              </VStack>
+              {aiInsights?.recommendedPracticeHours && (
+                <Text fontSize="11px" color="#A78BFA" mt={2} fontStyle="italic">
+                  Target: {aiInsights.recommendedPracticeHours}
+                </Text>
+              )}
+            </Box>
+          )}
+        </Box>
 
         {/* Exit / Return Action */}
         <Button
           w="100%"
           h="48px"
-          bg="#2563EB"
+          bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
           color="white"
-          borderRadius="12px"
+          borderRadius="14px"
           fontWeight="bold"
           fontSize="14px"
-          _hover={{ bg: "#1D4ED8" }}
+          boxShadow="0 4px 14px rgba(106, 27, 154, 0.35)"
+          _hover={{ opacity: 0.95 }}
           onClick={handleContinueButton}
-          rightIcon={<Icon as={FaArrowRight} />}
         >
           Exit Assessment Portal
+          <Icon as={FaArrowRight} ml={2} />
         </Button>
       </Box>
     </Box>

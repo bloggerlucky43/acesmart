@@ -45,11 +45,19 @@ export default function ExamBody() {
   const [tabValue, setTabValue] = useState("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState({});
   const violationCount = useRef(0);
+  const anomaliesRef = useRef([]);
   const isTerminatedRef = useRef(false);
   const totalMarks = examData?.totalMarks || 100;
   const percentage = (totalScore / totalMarks) * 100;
   const hasProcessedRef = useRef(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Clear previous exam anomalies when starting a fresh session
+    try {
+      localStorage.removeItem("lastExamAnomalies");
+    } catch (e) {}
+  }, []);
 
   useEffect(() => {
     if (examData?.sections?.length > 0) {
@@ -83,6 +91,40 @@ export default function ExamBody() {
     if (isTerminatedRef.current || hasProcessedRef.current) return;
 
     violationCount.current += 1;
+    const now = new Date();
+    const anomalyRecord = {
+      id: `anom-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      type: reason.toLowerCase().includes("tab")
+        ? "TAB_SWITCH"
+        : reason.toLowerCase().includes("focus")
+        ? "WINDOW_BLUR"
+        : "PROCTOR_ALERT",
+      description: reason,
+      timestamp: now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      isoTime: now.toISOString(),
+      warningNumber: violationCount.current,
+    };
+    anomaliesRef.current.push(anomalyRecord);
+
+    let currentIntegrity = "VERIFIED";
+    if (violationCount.current >= 5) {
+      currentIntegrity = "HIGH_RISK_TERMINATED";
+    } else if (violationCount.current >= 2) {
+      currentIntegrity = "FLAGGED_SUSPICIOUS";
+    } else if (violationCount.current === 1) {
+      currentIntegrity = "MINOR_WARNING";
+    }
+
+    try {
+      localStorage.setItem(
+        "lastExamAnomalies",
+        JSON.stringify({
+          anomalies: anomaliesRef.current,
+          violationCount: violationCount.current,
+          integrityStatus: currentIntegrity,
+        })
+      );
+    } catch (e) {}
 
     toaster.create({
       title: "Exam Integrity Notice",
@@ -204,7 +246,23 @@ export default function ExamBody() {
     // Clean up active session
     localStorage.removeItem("activeExamKey");
 
-    const isViolationTermination = violationCount.current >= 5;
+    const anomalies = anomaliesRef.current || [];
+    const count = violationCount.current || 0;
+    let integrityStatus = "VERIFIED";
+    if (count >= 5) integrityStatus = "HIGH_RISK_TERMINATED";
+    else if (count >= 2) integrityStatus = "FLAGGED_SUSPICIOUS";
+    else if (count === 1) integrityStatus = "MINOR_WARNING";
+
+    try {
+      localStorage.setItem(
+        "lastExamAnomalies",
+        JSON.stringify({
+          anomalies,
+          violationCount: count,
+          integrityStatus,
+        })
+      );
+    } catch (e) {}
 
     try {
       if (examData?.id && examData.id !== "demo-exam-cbt") {
@@ -221,6 +279,9 @@ export default function ExamBody() {
             totalMarks: examData?.totalMarks,
             studentCode: parsedStudent?.studentId,
             percentage: Number(percentage.toFixed(2)),
+            anomalies,
+            violationCount: count,
+            integrityStatus,
           });
         }
       }

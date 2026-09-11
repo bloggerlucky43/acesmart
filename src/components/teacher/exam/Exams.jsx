@@ -4,7 +4,6 @@ import {
   Flex,
   Table,
   Button,
-  Spinner,
   Icon,
   Badge,
   Input,
@@ -12,6 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { fetchExams } from "../../../api-endpoint/exam/exams";
+import { TableSkeleton } from "../../ui/skeletons";
 import {
   FaCopy,
   FaFileAlt,
@@ -209,9 +209,9 @@ export default function Exams() {
           </Box>
 
           {loading ? (
-            <Flex h="240px" justify="center" align="center">
-              <Spinner size="xl" color="#6A1B9A" />
-            </Flex>
+            <Box p={4}>
+              <TableSkeleton rows={5} columns={5} />
+            </Box>
           ) : filteredExams.length === 0 ? (
             <Flex h="240px" direction="column" justify="center" align="center" color="#64748B">
               <Icon as={FaFileAlt} boxSize={8} color="#CBD5E1" mb={2} />
