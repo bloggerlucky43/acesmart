@@ -39,3 +39,5 @@ export const ResultPage = lazy(
   () => import("./teacher/exammanagement/Perfomance/resultpage"),
 );
 export const ScoreModal = lazy(() => import("./TakeExam/component/ScoreModal"));
+export const BillingPage = lazy(() => import("./teacher/billing/BillingPage"));
+export const PricingPage = lazy(() => import("./PricingPage"));

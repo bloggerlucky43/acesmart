@@ -34,8 +34,12 @@ export const MResultPage = () => {
       try {
         setLoading(true);
         const response = await fetchExamResults(id);
-        if (response?.data) {
+        if (Array.isArray(response?.data)) {
           setResult(response.data);
+        } else if (Array.isArray(response)) {
+          setResult(response);
+        } else {
+          setResult([]);
         }
       } catch (error) {
         console.error("Error fetching student results:", error);

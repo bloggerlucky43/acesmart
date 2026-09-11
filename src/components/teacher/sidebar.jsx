@@ -17,6 +17,7 @@ import {
   FaUsers,
   FaUserEdit,
   FaSignOutAlt,
+  FaCreditCard,
 } from "react-icons/fa";
 import { NavLink, useNavigate } from "react-router-dom";
 import { logoutUser } from "../../api-endpoint/auth/auths";
@@ -51,6 +52,12 @@ const navGroups = [
       { name: "Edit Student", path: "/teacher/edit", icon: FaUserEdit },
     ],
   },
+  {
+    title: "SUBSCRIPTION & BILLING",
+    links: [
+      { name: "Billing & Plans", path: "/teacher/billing", icon: FaCreditCard },
+    ],
+  },
 ];
 
 const Sidebar = () => {
@@ -83,7 +90,7 @@ const Sidebar = () => {
       bg="#0F172A"
       color="white"
       zIndex={30}
-      display="flex"
+      display={{ base: "none", lg: "flex" }}
       flexDirection="column"
       justifyContent="space-between"
       borderRight="1px solid"

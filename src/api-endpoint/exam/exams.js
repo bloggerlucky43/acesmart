@@ -164,6 +164,12 @@ export const fetchExamResults = async (examId) => {
     return res.data;
   } catch (error) {
     console.error("Error fetching exam results", error);
+    if (error?.response?.status === 404) {
+      return { success: true, data: [] };
+    }
+    throw new Error(
+      error?.response?.data?.message || error?.message || "Failed to fetch exam results"
+    );
   }
 };
 export const checkResultExisting = async ({ studentId, examId }) => {

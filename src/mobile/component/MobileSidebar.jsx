@@ -11,6 +11,7 @@ import {
   FaUserEdit,
   FaTimes,
   FaSignOutAlt,
+  FaCreditCard,
 } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
@@ -42,6 +43,12 @@ const navGroups = [
       { name: "Add Student", path: "/teacher/add_student", icon: FaUserPlus },
       { name: "Student Directory", path: "/teacher/view", icon: FaUsers },
       { name: "Edit Student", path: "/teacher/edit", icon: FaUserEdit },
+    ],
+  },
+  {
+    title: "SUBSCRIPTION & BILLING",
+    links: [
+      { name: "Billing & Plans", path: "/teacher/billing", icon: FaCreditCard },
     ],
   },
 ];

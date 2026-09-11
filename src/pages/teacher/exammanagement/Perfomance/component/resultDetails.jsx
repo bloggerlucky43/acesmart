@@ -1,4 +1,5 @@
 import {
+  Badge,
   Box,
   Flex,
   Table,
@@ -26,7 +27,10 @@ export default function ResultDetails() {
     error,
   } = useQuery({
     queryKey: ["exam-results", id],
-    queryFn: () => fetchExamResults(id).then((res) => res.data),
+    queryFn: async () => {
+      const res = await fetchExamResults(id);
+      return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+    },
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
   });

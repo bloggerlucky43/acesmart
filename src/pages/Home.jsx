@@ -20,6 +20,8 @@ import {
   ViewStudent,
   EditExamStructure,
   EditDraft,
+  BillingPage,
+  PricingPage,
 } from ".";
 
 import { Toaster } from "../components/ui/toaster";
@@ -43,6 +45,7 @@ const Home = () => {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<Landing />} />
+            <Route path="/pricing" element={<PricingPage />} />
 
             <Route path="/teacher_dashboard" element={<Teacher />} />
             <Route path="/teacher/add_student" element={<AddStudent />} />
@@ -66,6 +69,7 @@ const Home = () => {
             />
             <Route path="/teacher/exam_result" element={<Performance />} />
             <Route path="/teacher/exam_results/:id" element={<ResultPage />} />
+            <Route path="/teacher/billing" element={<BillingPage />} />
           </Routes>
         </Suspense>
         <Toaster />

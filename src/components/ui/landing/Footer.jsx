@@ -16,8 +16,10 @@ import {
   FaFacebook,
   FaShieldAlt,
 } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 const Footer = ({ onLoginOpen, onDrawerOpen, onExamModalOpen }) => {
+  const navigate = useNavigate();
   return (
     <Box
       as="footer"
@@ -138,6 +140,23 @@ const Footer = ({ onLoginOpen, onDrawerOpen, onExamModalOpen }) => {
                 </Text>
                 <Text fontSize="11px" color="gray.400">
                   Enter test code & take CBT exam
+                </Text>
+              </Box>
+
+              <Box
+                p={3}
+                borderRadius="xl"
+                bg="whiteAlpha.100"
+                border="1px solid whiteAlpha.200"
+                cursor="pointer"
+                _hover={{ bg: "whiteAlpha.200" }}
+                onClick={() => navigate("/pricing")}
+              >
+                <Text fontSize="13px" fontWeight="700" color="white">
+                  Pricing & Subscriptions
+                </Text>
+                <Text fontSize="11px" color="gray.400">
+                  School tiers & candidate prep passes
                 </Text>
               </Box>
 

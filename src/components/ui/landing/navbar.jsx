@@ -7,6 +7,7 @@ import {
   useBreakpointValue,
 } from "@chakra-ui/react";
 import { FaBrain, FaBars, FaGraduationCap, FaArrowRight } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 const Navbar = ({
   onNavClick,
@@ -17,6 +18,7 @@ const Navbar = ({
   onExamModalOpen,
 }) => {
   const isMobile = useBreakpointValue({ base: true, md: false });
+  const navigate = useNavigate();
 
   return (
     <Box
@@ -143,6 +145,14 @@ const Navbar = ({
             transition="color 0.2s"
           >
             Testimonials
+          </Text>
+          <Text
+            cursor="pointer"
+            onClick={() => navigate("/pricing")}
+            _hover={{ color: "#6A1B9A" }}
+            transition="color 0.2s"
+          >
+            Pricing
           </Text>
           <Text
             cursor="pointer"

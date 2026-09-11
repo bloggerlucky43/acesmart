@@ -332,6 +332,21 @@ function Landing() {
                   borderRadius="lg"
                   cursor="pointer"
                   _hover={{ bg: "purple.50", color: "#6A1B9A" }}
+                  onClick={() => {
+                    setShowMenu(false);
+                    navigate("/pricing");
+                  }}
+                >
+                  Pricing & Plans
+                </Text>
+                <Text
+                  fontSize="16px"
+                  fontWeight="600"
+                  color="gray.800"
+                  p={2}
+                  borderRadius="lg"
+                  cursor="pointer"
+                  _hover={{ bg: "purple.50", color: "#6A1B9A" }}
                   onClick={(e) => {
                     setShowMenu(false);
                     scrollToSection(contactRef, e);
