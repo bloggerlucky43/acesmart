@@ -32,11 +32,11 @@ export default function Results() {
   return (
     <Box
       bg="#F8FAFC"
-      mt="68px"
+      mt="84px"
       p={{ base: 4, md: 8 }}
       ml={{ base: 0, lg: "240px" }}
       w={{ base: "100%", lg: "calc(100% - 240px)" }}
-      minH="calc(100vh - 68px)"
+      minH="calc(100vh - 84px)"
     >
       <Box maxW="1200px" mx="auto">
         {/* Page Header */}

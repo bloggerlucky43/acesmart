@@ -35,6 +35,7 @@ const Home = () => {
           <Route path="/exam/:id" element={<ExamLoginPage />} />
           <Route path="/ex/:id" element={<StartExam />} />
           <Route path="/take_exam" element={<Dashboard />} />
+          <Route path="/takeexam" element={<Dashboard />} />
           <Route path="/student_result" element={<ScoreModal />} />
         </Routes>
       </ExamProvider>

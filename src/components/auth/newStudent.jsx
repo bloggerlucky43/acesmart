@@ -124,11 +124,11 @@ const NewStudent = () => {
 
   return (
     <Box
-      mt="68px"
+      mt="84px"
       ml={{ base: 0, lg: "240px" }}
       w={{ base: "100%", lg: "calc(100% - 240px)" }}
       p={{ base: 4, md: 8 }}
-      minH="calc(100vh - 68px)"
+      minH="calc(100vh - 84px)"
       bg="#F8FAFC"
     >
       <Box maxW="1000px" mx="auto">

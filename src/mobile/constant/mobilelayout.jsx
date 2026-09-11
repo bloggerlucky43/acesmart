@@ -5,7 +5,14 @@ const MobileLayout = ({ children }) => {
   return (
     <Box minH="100vh" bg="#F8FAFC">
       <MobileNavBar />
-      <Box as="main" pt="58px" p={4} minH="calc(100vh - 58px)" bg="#F8FAFC">
+      <Box
+        as="main"
+        pt="76px"
+        px={{ base: 3, sm: 4 }}
+        pb={8}
+        minH="calc(100vh - 76px)"
+        bg="#F8FAFC"
+      >
         {children}
       </Box>
     </Box>

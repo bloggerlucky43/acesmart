@@ -11,9 +11,8 @@ import {
   HStack,
   VStack,
   Icon,
-  Collapse,
 } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getQuestions } from "../../../api-endpoint/exam/exams";
 import { toaster } from "../../ui/toaster";
 import { useNavigate } from "react-router-dom";
@@ -32,6 +31,10 @@ import {
   FaChevronDown,
   FaChevronUp,
   FaListOl,
+  FaCheck,
+  FaTimes,
+  FaFileAlt,
+  FaRegLightbulb,
 } from "react-icons/fa";
 
 export default function AddExam() {
@@ -40,6 +43,7 @@ export default function AddExam() {
   const [selectedQuestionsIds, setSelectedQuestionsIds] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [sections, setSections] = useState([]);
+  const [filterQuery, setFilterQuery] = useState("");
   const [examForm, setExamForm] = useState({
     examTitle: "",
     duration: "",
@@ -114,6 +118,7 @@ export default function AddExam() {
       if (res.success && res.data && Array.isArray(res.data)) {
         setQuestions(res.data);
         setSelectedQuestionsIds([]);
+        setFilterQuery("");
         localStorage.setItem("QUES_TION", JSON.stringify(res.data));
         toaster.success({
           title: `Successfully fetched ${res.data.length} questions for ${subject}!`,
@@ -136,23 +141,27 @@ export default function AddExam() {
     }
   };
 
-  const handleSelectAll = () => {
-    if (selectedQuestionsIds.length === questions.length) {
-      setSelectedQuestionsIds([]);
-    } else {
-      setSelectedQuestionsIds([...questions]);
-    }
+  const selectedIdSet = useMemo(() => {
+    return new Set(selectedQuestionsIds.map((item) => item.id));
+  }, [selectedQuestionsIds]);
+
+  const selectAllQuestions = () => {
+    setSelectedQuestionsIds([...questions]);
+  };
+
+  const deselectAllQuestions = () => {
+    setSelectedQuestionsIds([]);
   };
 
   const toggleSelectQuestion = (q) => {
-    const exists = selectedQuestionsIds.some((item) => item.id === q.id);
-    if (exists) {
-      setSelectedQuestionsIds(
-        selectedQuestionsIds.filter((item) => item.id !== q.id)
-      );
-    } else {
-      setSelectedQuestionsIds([...selectedQuestionsIds, q]);
-    }
+    setSelectedQuestionsIds((prev) => {
+      const exists = prev.some((item) => item.id === q.id);
+      if (exists) {
+        return prev.filter((item) => item.id !== q.id);
+      } else {
+        return [...prev, q];
+      }
+    });
   };
 
   const saveSection = () => {
@@ -200,6 +209,7 @@ export default function AddExam() {
     setYear("");
     setQuestions([]);
     setSelectedQuestionsIds([]);
+    setFilterQuery("");
   };
 
   const editSection = (index) => {
@@ -209,12 +219,13 @@ export default function AddExam() {
     setQuestions(sec.questions);
     setSelectedQuestionsIds(sec.questions);
     setEditingSectionIndex(index);
+    setFilterQuery("");
   };
 
   const removeSection = (index) => {
     const updated = sections.filter((_, i) => i !== index);
     setSections(updated);
-    toaster.info({ title: "Section removed" });
+    toaster.info({ title: "Section removed from assessment" });
   };
 
   const handleCreateExam = () => {
@@ -269,720 +280,825 @@ export default function AddExam() {
     0
   );
 
+  const displayedQuestions = filterQuery.trim()
+    ? questions.filter((q) =>
+        (q.questionText || q.question || "")
+          .toLowerCase()
+          .includes(filterQuery.toLowerCase())
+      )
+    : questions;
+
+  const hasTitle = Boolean(examForm.examTitle.trim());
+  const hasDuration = Boolean(examForm.duration && Number(examForm.duration) > 0);
+  const hasMarks = Boolean(examForm.totalMarks && Number(examForm.totalMarks) > 0);
+  const hasSections = sections.length > 0;
+  const isReadyToProceed = hasTitle && hasDuration && hasMarks && hasSections;
+
   return (
     <Box
       p={{ base: 4, md: 8 }}
       bg="#F8FAFC"
       w={{ base: "100%", lg: "calc(100% - 240px)" }}
       ml={{ base: 0, lg: "240px" }}
-      mt="68px"
-      minH="calc(100vh - 68px)"
+      mt="84px"
+      minH="calc(100vh - 84px)"
       justifySelf="center"
     >
-      {/* Hero Header Banner */}
-      <Box
-        bg="linear-gradient(135deg, #0F172A 0%, #1E1B4B 100%)"
-        p={{ base: 6, md: 8 }}
-        borderRadius="24px"
-        color="white"
-        mb={8}
-        boxShadow="0 10px 25px -5px rgba(15, 23, 42, 0.2)"
-        position="relative"
-        overflow="hidden"
+      {/* Top Header Bar */}
+      <Flex
+        direction={{ base: "column", md: "row" }}
+        justify="space-between"
+        align={{ base: "flex-start", md: "center" }}
+        gap={4}
+        mb={6}
       >
-        <Flex
-          justify="space-between"
-          align={{ base: "flex-start", md: "center" }}
-          direction={{ base: "column", md: "row" }}
-          gap={4}
-        >
-          <Box>
-            <HStack spacing={2} mb={2}>
-              <Badge
-                bg="rgba(99, 102, 241, 0.25)"
-                color="#A5B4FC"
-                px={3}
-                py={1}
-                borderRadius="full"
-                fontSize="11px"
-                fontWeight="bold"
-                letterSpacing="0.5px"
-              >
-                CBT ASSESSMENT STUDIO
-              </Badge>
-              <HStack spacing={1.5} bg="rgba(16, 185, 129, 0.2)" px={2.5} py={0.5} borderRadius="full">
-                <Box w="6px" h="6px" borderRadius="full" bg="#34D399" />
-                <Text fontSize="11px" color="#34D399" fontWeight="medium">
-                  Draft auto-saved
-                </Text>
-              </HStack>
-            </HStack>
-            <Text
-              fontSize={{ base: "22px", md: "28px" }}
-              fontWeight="800"
-              fontFamily="'Outfit', sans-serif"
-              lineHeight="1.2"
-              mb={2}
-            >
-              Create Multi-Section Examination
-            </Text>
-            <Text fontSize="14px" color="#94A3B8" maxW="680px">
-              Configure modular subject sections (e.g., Mathematics, English Language, Physics),
-              fetch accredited questions from the repository, and set examination timing.
-            </Text>
-          </Box>
-
-          {/* Quick Stats Pill */}
-          <HStack
-            spacing={4}
-            bg="rgba(255, 255, 255, 0.06)"
-            p={3}
-            borderRadius="xl"
-            border="1px solid rgba(255, 255, 255, 0.1)"
-          >
-            <VStack spacing={0} align="center" px={2}>
-              <Text fontSize="11px" color="#94A3B8">Sections</Text>
-              <Text fontSize="lg" fontWeight="bold" color="white">{sections.length}</Text>
-            </VStack>
-            <Box h="28px" w="1px" bg="rgba(255, 255, 255, 0.15)" />
-            <VStack spacing={0} align="center" px={2}>
-              <Text fontSize="11px" color="#94A3B8">Questions</Text>
-              <Text fontSize="lg" fontWeight="bold" color="#818CF8">{totalExamQuestions}</Text>
-            </VStack>
-            <Box h="28px" w="1px" bg="rgba(255, 255, 255, 0.15)" />
-            <VStack spacing={0} align="center" px={2}>
-              <Text fontSize="11px" color="#94A3B8">Total Marks</Text>
-              <Text fontSize="lg" fontWeight="bold" color="#34D399">{examForm.totalMarks || 0}</Text>
-            </VStack>
-          </HStack>
-        </Flex>
-      </Box>
-
-      {/* STEP 1: Basic Information Card */}
-      <Box
-        p={{ base: 6, md: 8 }}
-        borderRadius="24px"
-        border="1px solid #E2E8F0"
-        bg="white"
-        boxShadow="0 2px 12px rgba(0,0,0,0.03)"
-        mb={8}
-      >
-        <Flex align="center" gap={3} mb={5}>
-          <Flex
-            w="36px"
-            h="36px"
-            borderRadius="xl"
-            bg="rgba(99, 102, 241, 0.1)"
-            align="center"
-            justify="center"
-          >
-            <Icon as={FaBookOpen} color="#4F46E5" boxSize={4} />
-          </Flex>
-          <Box>
-            <Text fontSize="16px" fontWeight="800" color="#0F172A">
-              1. General Examination Parameters
-            </Text>
-            <Text fontSize="12px" color="#64748B">
-              Define the master assessment title, total duration, and aggregate score.
-            </Text>
-          </Box>
-        </Flex>
-
-        <SimpleGrid columns={{ base: 1, md: 3 }} gap={5}>
-          <Field.Root required>
-            <Field.Label fontWeight="700" fontSize="13px" color="#334155">
-              Exam Title <Field.RequiredIndicator />
-            </Field.Label>
-            <Input
-              placeholder="e.g. JAMB UTME Mock 2026 / Term 1 Finals"
-              borderRadius="xl"
-              h="46px"
-              borderColor="#CBD5E1"
-              _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
-              value={examForm.examTitle}
-              onChange={(e) =>
-                setExamForm({ ...examForm, examTitle: e.target.value })
-              }
-            />
-          </Field.Root>
-
-          <Field.Root required>
-            <Field.Label fontWeight="700" fontSize="13px" color="#334155">
-              Duration (minutes) <Field.RequiredIndicator />
-            </Field.Label>
-            <Input
-              type="number"
-              placeholder="e.g. 120"
-              borderRadius="xl"
-              h="46px"
-              borderColor="#CBD5E1"
-              _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
-              value={examForm.duration}
-              onChange={(e) =>
-                setExamForm({
-                  ...examForm,
-                  duration: e.target.value,
-                })
-              }
-            />
-          </Field.Root>
-
-          <Field.Root required>
-            <Field.Label fontWeight="700" fontSize="13px" color="#334155">
-              Total Marks <Field.RequiredIndicator />
-            </Field.Label>
-            <Input
-              type="number"
-              placeholder="e.g. 400"
-              borderRadius="xl"
-              h="46px"
-              borderColor="#CBD5E1"
-              _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
-              value={examForm.totalMarks}
-              onChange={(e) =>
-                setExamForm({ ...examForm, totalMarks: e.target.value })
-              }
-            />
-          </Field.Root>
-        </SimpleGrid>
-      </Box>
-
-      {/* STEP 2: Subject Section Builder */}
-      <Box
-        p={{ base: 6, md: 8 }}
-        borderRadius="24px"
-        border="1px solid #E2E8F0"
-        bg="white"
-        boxShadow="0 2px 12px rgba(0,0,0,0.03)"
-        mb={8}
-      >
-        <Flex
-          justify="space-between"
-          align={{ base: "flex-start", sm: "center" }}
-          direction={{ base: "column", sm: "row" }}
-          gap={3}
-          mb={5}
-        >
-          <Flex align="center" gap={3}>
-            <Flex
-              w="36px"
-              h="36px"
-              borderRadius="xl"
-              bg="rgba(124, 58, 237, 0.1)"
-              align="center"
-              justify="center"
-            >
-              <Icon as={FaLayerGroup} color="#7C3AED" boxSize={4} />
-            </Flex>
-            <Box>
-              <Text fontSize="16px" fontWeight="800" color="#0F172A">
-                2. Subject Section Builder & Question Bank
-              </Text>
-              <Text fontSize="12px" color="#64748B">
-                Query repository questions, pick items, and save as modular sections.
-              </Text>
-            </Box>
-          </Flex>
-
-          {editingSectionIndex !== null && (
+        <Box>
+          <HStack spacing={2} mb={1}>
             <Badge
-              bg="#FEF3C7"
-              color="#D97706"
-              px={3}
-              py={1}
-              borderRadius="full"
-              fontSize="11px"
-              fontWeight="bold"
-            >
-              EDITING SECTION #{editingSectionIndex + 1}
-            </Badge>
-          )}
-        </Flex>
-
-        {/* Query Controls Bar */}
-        <Box
-          bg="#F8FAFC"
-          p={5}
-          borderRadius="20px"
-          border="1px solid #E2E8F0"
-          mb={6}
-        >
-          <SimpleGrid columns={{ base: 1, md: 12 }} gap={4} alignItems="flex-end">
-            <Box gridColumn={{ base: "1", md: "span 5" }}>
-              <Field.Root required>
-                <Field.Label fontWeight="700" fontSize="12px" color="#475569">
-                  Subject or Course <Field.RequiredIndicator />
-                </Field.Label>
-                <Input
-                  placeholder="e.g. Mathematics, English, Biology"
-                  bg="white"
-                  borderRadius="xl"
-                  h="44px"
-                  borderColor="#CBD5E1"
-                  _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                />
-              </Field.Root>
-            </Box>
-
-            <Box gridColumn={{ base: "1", md: "span 3" }}>
-              <Field.Root>
-                <Field.Label fontWeight="700" fontSize="12px" color="#475569">
-                  Target Exam Year (Optional)
-                </Field.Label>
-                <Input
-                  placeholder="e.g. 2024, 2025"
-                  bg="white"
-                  borderRadius="xl"
-                  h="44px"
-                  borderColor="#CBD5E1"
-                  _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
-                  value={year}
-                  onChange={(e) => setYear(e.target.value)}
-                />
-              </Field.Root>
-            </Box>
-
-            <Box gridColumn={{ base: "1", md: "span 4" }}>
-              <Button
-                w="100%"
-                h="44px"
-                bg="linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)"
-                color="white"
-                borderRadius="xl"
-                fontWeight="700"
-                fontSize="13px"
-                onClick={fetchQuestions}
-                loading={loading}
-                _hover={{ opacity: 0.95, transform: "translateY(-1px)" }}
-                leftIcon={<Icon as={FaSearch} />}
-                boxShadow="0 4px 12px rgba(79, 70, 229, 0.25)"
-              >
-                Fetch Questions
-              </Button>
-            </Box>
-          </SimpleGrid>
-        </Box>
-
-        {/* Questions Selection Area */}
-        {questions.length > 0 && (
-          <Box mb={6}>
-            <Flex
-              justify="space-between"
-              align="center"
               bg="#0F172A"
               color="white"
-              p={4}
-              borderRadius="16px"
-              mb={3}
+              px={2.5}
+              py={0.5}
+              borderRadius="md"
+              fontSize="10px"
+              fontWeight="bold"
+              letterSpacing="0.5px"
             >
-              <HStack spacing={3}>
-                <Icon as={FaListOl} color="#818CF8" boxSize={4} />
-                <Text fontSize="14px" fontWeight="bold">
-                  Available Questions ({questions.length})
-                </Text>
-                <Badge
-                  bg="rgba(99, 102, 241, 0.3)"
-                  color="#C7D2FE"
-                  px={2.5}
-                  py={0.5}
-                  borderRadius="full"
-                  fontSize="11px"
-                >
-                  {selectedQuestionsIds.length} Selected
-                </Badge>
-              </HStack>
+              CBT CREATOR STUDIO
+            </Badge>
+            <HStack spacing={1.5} bg="rgba(16, 185, 129, 0.12)" px={2} py={0.5} borderRadius="full">
+              <Box w="6px" h="6px" borderRadius="full" bg="#10B981" />
+              <Text fontSize="11px" color="#059669" fontWeight="semibold">
+                Draft Auto-Saved
+              </Text>
+            </HStack>
+          </HStack>
+          <Text
+            fontSize={{ base: "22px", md: "26px" }}
+            fontWeight="800"
+            color="#0F172A"
+            fontFamily="'Outfit', sans-serif"
+            lineHeight="1.2"
+          >
+            Create Multi-Section Examination
+          </Text>
+          <Text fontSize="13px" color="#64748B">
+            Assemble modular assessment sections, query the accredited question repository, and configure live testing limits.
+          </Text>
+        </Box>
 
-              <Button
-                size="sm"
-                variant="outline"
-                color="white"
-                borderColor="rgba(255, 255, 255, 0.2)"
-                _hover={{ bg: "rgba(255, 255, 255, 0.1)" }}
-                borderRadius="lg"
-                fontSize="12px"
-                onClick={handleSelectAll}
-              >
-                {selectedQuestionsIds.length === questions.length
-                  ? "Deselect All"
-                  : "Select All"}
-              </Button>
-            </Flex>
-
-            {/* Scrollable Questions Grid */}
-            <VStack spacing={3} align="stretch" maxH="380px" overflowY="auto" pr={1}>
-              {questions.map((q, idx) => {
-                const isSelected = selectedQuestionsIds.some(
-                  (item) => item.id === q.id
-                );
-                return (
-                  <Box
-                    key={q.id || idx}
-                    p={4}
-                    borderRadius="16px"
-                    border="1px solid"
-                    borderColor={isSelected ? "#6366F1" : "#E2E8F0"}
-                    bg={isSelected ? "rgba(99, 102, 241, 0.04)" : "#FFFFFF"}
-                    cursor="pointer"
-                    onClick={() => toggleSelectQuestion(q)}
-                    transition="all 0.15s ease"
-                    _hover={{ borderColor: "#818CF8", bg: "rgba(99, 102, 241, 0.02)" }}
-                  >
-                    <Flex gap={3} align="flex-start">
-                      <Checkbox.Root
-                        checked={isSelected}
-                        onCheckedChange={() => toggleSelectQuestion(q)}
-                        colorPalette="purple"
-                        mt={0.5}
-                      >
-                        <Checkbox.HiddenInput />
-                        <Checkbox.Control />
-                      </Checkbox.Root>
-
-                      <Box flex={1}>
-                        <HStack spacing={2} mb={1}>
-                          <Badge
-                            bg="#F1F5F9"
-                            color="#475569"
-                            fontSize="10px"
-                            fontWeight="bold"
-                            px={2}
-                            borderRadius="md"
-                          >
-                            Q{idx + 1}
-                          </Badge>
-                          {q.subject && (
-                            <Badge
-                              bg="rgba(79, 70, 229, 0.1)"
-                              color="#4F46E5"
-                              fontSize="10px"
-                              borderRadius="full"
-                              px={2}
-                              textTransform="capitalize"
-                            >
-                              {q.subject}
-                            </Badge>
-                          )}
-                        </HStack>
-
-                        <Text fontSize="13px" fontWeight="600" color="#0F172A" mb={2}>
-                          {q.questionText || q.question}
-                        </Text>
-
-                        {/* Options preview pills */}
-                        {q.options && (
-                          <SimpleGrid columns={{ base: 1, sm: 2 }} gap={1.5}>
-                            {Object.entries(q.options).map(([key, value]) => (
-                              <Text
-                                key={key}
-                                fontSize="11px"
-                                color="#64748B"
-                                bg="#F8FAFC"
-                                p={1.5}
-                                borderRadius="md"
-                                border="1px solid #F1F5F9"
-                              >
-                                <strong style={{ color: "#334155" }}>{key.toUpperCase()}:</strong> {value}
-                              </Text>
-                            ))}
-                          </SimpleGrid>
-                        )}
-                      </Box>
-                    </Flex>
-                  </Box>
-                );
-              })}
-            </VStack>
-          </Box>
-        )}
-
-        {/* Section Save / Update Button */}
-        <Flex justify="flex-end" gap={3} pt={2}>
-          {editingSectionIndex !== null && (
-            <Button
-              variant="outline"
-              borderRadius="xl"
-              h="42px"
-              fontSize="13px"
-              onClick={() => {
-                setEditingSectionIndex(null);
-                setSubject("");
-                setYear("");
-                setQuestions([]);
-                setSelectedQuestionsIds([]);
-              }}
-            >
-              Cancel Edit
-            </Button>
-          )}
+        <HStack spacing={3}>
+          <Button
+            variant="outline"
+            borderColor="#CBD5E1"
+            borderRadius="xl"
+            h="40px"
+            fontSize="12px"
+            color="#64748B"
+            leftIcon={<Icon as={FaRedo} />}
+            onClick={() => {
+              setExamForm({ examTitle: "", duration: "", totalMarks: 40 });
+              setSubject("");
+              setYear("");
+              setQuestions([]);
+              setSelectedQuestionsIds([]);
+              setSections([]);
+              localStorage.removeItem(STORAGE_KEY);
+              toaster.info({ title: "Draft cleared" });
+            }}
+          >
+            Reset Draft
+          </Button>
 
           <Button
-            bg="#059669"
+            h="40px"
+            px={5}
+            bg="linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)"
             color="white"
             borderRadius="xl"
-            h="42px"
-            px={6}
-            fontWeight="700"
-            fontSize="13px"
-            _hover={{ bg: "#047857" }}
-            onClick={saveSection}
-            isDisabled={!subject.trim() || selectedQuestionsIds.length === 0}
-            leftIcon={<Icon as={FaCheckCircle} />}
-            boxShadow="0 4px 12px rgba(5, 150, 105, 0.25)"
-          >
-            {editingSectionIndex !== null
-              ? "Update Section"
-              : `Save Section (${selectedQuestionsIds.length} Questions)`}
-          </Button>
-        </Flex>
-      </Box>
-
-      {/* STEP 3: Saved Sections Live Review */}
-      <Box
-        p={{ base: 6, md: 8 }}
-        borderRadius="24px"
-        border="1px solid #E2E8F0"
-        bg="white"
-        boxShadow="0 2px 12px rgba(0,0,0,0.03)"
-        mb={8}
-      >
-        <Flex justify="space-between" align="center" mb={5}>
-          <Box>
-            <Text fontSize="16px" fontWeight="800" color="#0F172A">
-              3. Configured Examination Sections ({sections.length})
-            </Text>
-            <Text fontSize="12px" color="#64748B">
-              Review saved subject modules before finalizing exam structure.
-            </Text>
-          </Box>
-
-          <Badge
-            bg="rgba(16, 185, 129, 0.1)"
-            color="#059669"
-            px={3}
-            py={1}
-            borderRadius="full"
-            fontSize="12px"
             fontWeight="bold"
+            fontSize="13px"
+            boxShadow="0 4px 14px rgba(99, 102, 241, 0.3)"
+            _hover={{
+              transform: "translateY(-1px)",
+              boxShadow: "0 6px 18px rgba(99, 102, 241, 0.4)",
+            }}
+            onClick={handleCreateExam}
+            isDisabled={!isReadyToProceed}
+            rightIcon={<Icon as={FaArrowRight} />}
           >
-            {totalExamQuestions} Questions in Assessment
-          </Badge>
-        </Flex>
+            Proceed to Publish
+          </Button>
+        </HStack>
+      </Flex>
 
-        {sections.length === 0 ? (
+      {/* 2-COLUMN CBT STUDIO LAYOUT */}
+      <SimpleGrid columns={{ base: 1, xl: 12 }} gap={6} alignItems="flex-start">
+        
+        {/* ================= LEFT COLUMN: WORK AREA & BUILDER (7 of 12 cols) ================= */}
+        <Box gridColumn={{ base: "1", xl: "span 7" }}>
+          
+          {/* Card 1: Exam General Parameters */}
           <Box
-            p={8}
-            borderRadius="20px"
-            border="2px dashed #E2E8F0"
-            bg="#F8FAFC"
-            textAlign="center"
+            bg="white"
+            p={6}
+            borderRadius="24px"
+            border="1px solid #E2E8F0"
+            boxShadow="0 2px 10px rgba(0, 0, 0, 0.02)"
+            mb={6}
           >
-            <Icon as={FaLayerGroup} boxSize={8} color="#94A3B8" mb={2} />
-            <Text fontWeight="700" color="#334155" fontSize="14px" mb={1}>
-              No Subject Sections Added Yet
-            </Text>
-            <Text fontSize="12px" color="#64748B" maxW="450px" mx="auto">
-              Use Section 2 above to fetch questions for a subject (e.g., Mathematics, English),
-              select test items, and click "Save Section".
-            </Text>
-          </Box>
-        ) : (
-          <VStack spacing={3} align="stretch">
-            {sections.map((sec, idx) => {
-              const isExpanded = expandedSectionIdx === idx;
-              return (
-                <Box
-                  key={idx}
-                  borderRadius="20px"
-                  border="1px solid #E2E8F0"
-                  bg="#FFFFFF"
-                  overflow="hidden"
-                  boxShadow="0 1px 3px rgba(0,0,0,0.04)"
-                >
-                  <Flex
-                    p={4}
-                    justify="space-between"
-                    align="center"
-                    bg="#F8FAFC"
-                    cursor="pointer"
-                    onClick={() =>
-                      setExpandedSectionIdx(isExpanded ? null : idx)
+            <Flex align="center" gap={2.5} mb={4}>
+              <Flex
+                w="32px"
+                h="32px"
+                borderRadius="lg"
+                bg="rgba(99, 102, 241, 0.1)"
+                align="center"
+                justify="center"
+              >
+                <Icon as={FaFileAlt} color="#4F46E5" boxSize={3.5} />
+              </Flex>
+              <Box>
+                <Text fontSize="15px" fontWeight="800" color="#0F172A">
+                  Step 1: Exam Identification & Timings
+                </Text>
+                <Text fontSize="11px" color="#64748B">
+                  Core assessment credentials visible to all enrolled candidates.
+                </Text>
+              </Box>
+            </Flex>
+
+            <VStack spacing={4} align="stretch">
+              <Field.Root required>
+                <Field.Label fontWeight="700" fontSize="12px" color="#334155">
+                  Master Examination Title <Field.RequiredIndicator />
+                </Field.Label>
+                <Input
+                  placeholder="e.g. WAEC 2026 Mathematics & Science General Mock"
+                  borderRadius="xl"
+                  h="44px"
+                  borderColor="#CBD5E1"
+                  _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                  value={examForm.examTitle}
+                  onChange={(e) =>
+                    setExamForm({ ...examForm, examTitle: e.target.value })
+                  }
+                />
+              </Field.Root>
+
+              <SimpleGrid columns={{ base: 1, sm: 2 }} gap={4}>
+                <Field.Root required>
+                  <Field.Label fontWeight="700" fontSize="12px" color="#334155">
+                    Duration (minutes) <Field.RequiredIndicator />
+                  </Field.Label>
+                  <HStack>
+                    <Input
+                      type="number"
+                      placeholder="e.g. 120"
+                      borderRadius="xl"
+                      h="44px"
+                      borderColor="#CBD5E1"
+                      _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                      value={examForm.duration}
+                      onChange={(e) =>
+                        setExamForm({
+                          ...examForm,
+                          duration: e.target.value,
+                        })
+                      }
+                    />
+                  </HStack>
+                </Field.Root>
+
+                <Field.Root required>
+                  <Field.Label fontWeight="700" fontSize="12px" color="#334155">
+                    Total Marks <Field.RequiredIndicator />
+                  </Field.Label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 100"
+                    borderRadius="xl"
+                    h="44px"
+                    borderColor="#CBD5E1"
+                    _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                    value={examForm.totalMarks}
+                    onChange={(e) =>
+                      setExamForm({ ...examForm, totalMarks: e.target.value })
                     }
+                  />
+                </Field.Root>
+              </SimpleGrid>
+            </VStack>
+          </Box>
+
+          {/* Card 2: Section Builder Studio */}
+          <Box
+            bg="white"
+            p={6}
+            borderRadius="24px"
+            border="1px solid #E2E8F0"
+            boxShadow="0 2px 10px rgba(0, 0, 0, 0.02)"
+          >
+            <Flex justify="space-between" align="center" mb={4}>
+              <Flex align="center" gap={2.5}>
+                <Flex
+                  w="32px"
+                  h="32px"
+                  borderRadius="lg"
+                  bg="rgba(124, 58, 237, 0.1)"
+                  align="center"
+                  justify="center"
+                >
+                  <Icon as={FaLayerGroup} color="#7C3AED" boxSize={3.5} />
+                </Flex>
+                <Box>
+                  <Text fontSize="15px" fontWeight="800" color="#0F172A">
+                    Step 2: Subject Section Builder
+                  </Text>
+                  <Text fontSize="11px" color="#64748B">
+                    Query repository questions, select items, and append to this examination.
+                  </Text>
+                </Box>
+              </Flex>
+
+              {editingSectionIndex !== null && (
+                <Badge
+                  bg="#FEF3C7"
+                  color="#D97706"
+                  px={2.5}
+                  py={1}
+                  borderRadius="full"
+                  fontSize="10px"
+                  fontWeight="bold"
+                >
+                  EDITING SECTION #{editingSectionIndex + 1}
+                </Badge>
+              )}
+            </Flex>
+
+            {/* Query Controls */}
+            <Box
+              bg="#F8FAFC"
+              p={4}
+              borderRadius="18px"
+              border="1px solid #E2E8F0"
+              mb={5}
+            >
+              <SimpleGrid columns={{ base: 1, md: 12 }} gap={3} alignItems="flex-end">
+                <Box gridColumn={{ base: "1", md: "span 5" }}>
+                  <Field.Root required>
+                    <Field.Label fontWeight="700" fontSize="11px" color="#475569">
+                      Subject / Course <Field.RequiredIndicator />
+                    </Field.Label>
+                    <Input
+                      placeholder="e.g. Mathematics, Physics, English"
+                      bg="white"
+                      borderRadius="lg"
+                      h="40px"
+                      fontSize="13px"
+                      borderColor="#CBD5E1"
+                      _focus={{ borderColor: "#6366F1" }}
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                    />
+                  </Field.Root>
+                </Box>
+
+                <Box gridColumn={{ base: "1", md: "span 3" }}>
+                  <Field.Root>
+                    <Field.Label fontWeight="700" fontSize="11px" color="#475569">
+                      Year (Optional)
+                    </Field.Label>
+                    <Input
+                      placeholder="e.g. 2024"
+                      bg="white"
+                      borderRadius="lg"
+                      h="40px"
+                      fontSize="13px"
+                      borderColor="#CBD5E1"
+                      _focus={{ borderColor: "#6366F1" }}
+                      value={year}
+                      onChange={(e) => setYear(e.target.value)}
+                    />
+                  </Field.Root>
+                </Box>
+
+                <Box gridColumn={{ base: "1", md: "span 4" }}>
+                  <Button
+                    w="100%"
+                    h="40px"
+                    bg="#0F172A"
+                    color="white"
+                    borderRadius="lg"
+                    fontWeight="700"
+                    fontSize="12px"
+                    onClick={fetchQuestions}
+                    loading={loading}
+                    _hover={{ bg: "#1E293B" }}
+                    leftIcon={<Icon as={FaSearch} />}
                   >
-                    <HStack spacing={3}>
-                      <Badge
-                        bg="#0F172A"
-                        color="white"
-                        borderRadius="md"
-                        px={2.5}
-                        py={1}
-                        fontSize="11px"
-                        fontWeight="bold"
-                      >
-                        SECTION {idx + 1}
-                      </Badge>
-                      <Box>
-                        <Text
-                          fontSize="15px"
-                          fontWeight="700"
-                          color="#0F172A"
-                          textTransform="capitalize"
-                        >
-                          {sec.section}
-                        </Text>
-                        <HStack spacing={2}>
-                          <Text fontSize="11px" color="#64748B">
-                            {sec.questions.length} Questions
-                          </Text>
-                          {sec.year && (
-                            <>
-                              <Text fontSize="11px" color="#CBD5E1">•</Text>
-                              <Text fontSize="11px" color="#64748B">Year {sec.year}</Text>
-                            </>
-                          )}
-                        </HStack>
-                      </Box>
-                    </HStack>
+                    Query Questions
+                  </Button>
+                </Box>
+              </SimpleGrid>
+            </Box>
 
-                    <HStack spacing={2} onClick={(e) => e.stopPropagation()}>
+            {/* Question Selector List */}
+            {questions.length === 0 ? (
+              <Box
+                p={8}
+                borderRadius="18px"
+                border="2px dashed #E2E8F0"
+                bg="#F8FAFC"
+                textAlign="center"
+                mb={4}
+              >
+                <Icon as={FaBookOpen} boxSize={7} color="#94A3B8" mb={2} />
+                <Text fontWeight="700" color="#334155" fontSize="13px" mb={1}>
+                  No Questions Queried Yet
+                </Text>
+                <Text fontSize="11px" color="#64748B" maxW="380px" mx="auto">
+                  Type a subject above (e.g. "English", "Mathematics") and click "Query Questions" to inspect and select questions from the repository.
+                </Text>
+              </Box>
+            ) : (
+              <Box mb={5}>
+                {/* Search & Selection Controls Header */}
+                <Flex
+                  justify="space-between"
+                  align="center"
+                  bg="#0F172A"
+                  color="white"
+                  p={3.5}
+                  borderRadius="16px"
+                  mb={3}
+                  gap={3}
+                  wrap="wrap"
+                >
+                  <HStack spacing={2}>
+                    <Icon as={FaListOl} color="#818CF8" boxSize={3.5} />
+                    <Text fontSize="13px" fontWeight="bold">
+                      {questions.length} Items Found
+                    </Text>
+                    <Badge
+                      bg="rgba(99, 102, 241, 0.3)"
+                      color="#C7D2FE"
+                      px={2}
+                      py={0.5}
+                      borderRadius="full"
+                      fontSize="10px"
+                    >
+                      {selectedQuestionsIds.length} Selected
+                    </Badge>
+                  </HStack>
+
+                  <HStack spacing={2}>
+                    <Input
+                      placeholder="Filter questions..."
+                      size="xs"
+                      w="140px"
+                      bg="rgba(255, 255, 255, 0.1)"
+                      borderColor="rgba(255, 255, 255, 0.2)"
+                      color="white"
+                      _placeholder={{ color: "gray.400" }}
+                      borderRadius="md"
+                      value={filterQuery}
+                      onChange={(e) => setFilterQuery(e.target.value)}
+                    />
+                    {selectedQuestionsIds.length > 0 && (
                       <Button
                         size="xs"
-                        variant="outline"
-                        borderColor="#CBD5E1"
+                        variant="subtle"
+                        bg="rgba(239, 68, 68, 0.25)"
+                        color="#FCA5A5"
+                        _hover={{ bg: "rgba(239, 68, 68, 0.35)" }}
                         borderRadius="md"
-                        leftIcon={<Icon as={FaEdit} />}
-                        onClick={() => editSection(idx)}
+                        onClick={deselectAllQuestions}
                       >
-                        Edit
+                        Deselect All
                       </Button>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        colorPalette="red"
-                        borderColor="#FCA5A5"
-                        color="#DC2626"
-                        borderRadius="md"
-                        leftIcon={<Icon as={FaTrash} />}
-                        onClick={() => removeSection(idx)}
-                      >
-                        Delete
-                      </Button>
-                      <Flex
-                        w="28px"
-                        h="28px"
-                        borderRadius="md"
-                        bg="white"
-                        align="center"
-                        justify="center"
+                    )}
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      color="white"
+                      borderColor="rgba(255, 255, 255, 0.25)"
+                      _hover={{ bg: "rgba(255, 255, 255, 0.1)" }}
+                      borderRadius="md"
+                      onClick={selectAllQuestions}
+                    >
+                      Select All
+                    </Button>
+                  </HStack>
+                </Flex>
+
+                {/* Questions Scrollable Deck */}
+                <VStack spacing={2.5} align="stretch" maxH="360px" overflowY="auto" pr={1}>
+                  {displayedQuestions.map((q, idx) => {
+                    const isSelected = selectedIdSet.has(q.id);
+                    return (
+                      <Box
+                        key={q.id || idx}
+                        p={3.5}
+                        borderRadius="14px"
+                        border="1px solid"
+                        borderColor={isSelected ? "#6366F1" : "#E2E8F0"}
+                        bg={isSelected ? "rgba(99, 102, 241, 0.04)" : "#FFFFFF"}
                         cursor="pointer"
-                        onClick={() =>
-                          setExpandedSectionIdx(isExpanded ? null : idx)
-                        }
+                        onClick={() => toggleSelectQuestion(q)}
+                        transition="all 0.1s ease"
+                        _hover={{ borderColor: "#818CF8", bg: "rgba(99, 102, 241, 0.02)" }}
                       >
-                        <Icon
-                          as={isExpanded ? FaChevronUp : FaChevronDown}
-                          color="#64748B"
-                          boxSize={3}
-                        />
-                      </Flex>
-                    </HStack>
-                  </Flex>
-
-                  {/* Expanded Section Items */}
-                  {isExpanded && (
-                    <Box p={4} borderTop="1px solid #F1F5F9" bg="white">
-                      <VStack spacing={2} align="stretch">
-                        {sec.questions.map((q, qIdx) => (
-                          <Box
-                            key={q.id || qIdx}
-                            p={3}
-                            borderRadius="12px"
-                            bg="#F8FAFC"
-                            border="1px solid #F1F5F9"
+                        <Flex gap={3} align="flex-start">
+                          <Checkbox.Root
+                            checked={isSelected}
+                            pointerEvents="none"
+                            colorPalette="purple"
+                            mt={0.5}
                           >
-                            <Text fontSize="12px" fontWeight="600" color="#1E293B" mb={1}>
-                              {qIdx + 1}. {q.questionText || q.question}
+                            <Checkbox.HiddenInput />
+                            <Checkbox.Control />
+                          </Checkbox.Root>
+
+                          <Box flex={1}>
+                            <HStack spacing={2} mb={1}>
+                              <Badge
+                                bg="#F1F5F9"
+                                color="#475569"
+                                fontSize="9px"
+                                fontWeight="bold"
+                                px={1.5}
+                                borderRadius="md"
+                              >
+                                Q{idx + 1}
+                              </Badge>
+                              {q.subject && (
+                                <Badge
+                                  bg="rgba(79, 70, 229, 0.1)"
+                                  color="#4F46E5"
+                                  fontSize="9px"
+                                  borderRadius="full"
+                                  px={2}
+                                  textTransform="capitalize"
+                                >
+                                  {q.subject}
+                                </Badge>
+                              )}
+                            </HStack>
+
+                            <Text fontSize="12px" fontWeight="600" color="#0F172A" mb={1.5}>
+                              {q.questionText || q.question}
                             </Text>
+
                             {q.options && (
-                              <SimpleGrid columns={{ base: 1, sm: 2 }} gap={1} mt={1}>
-                                {Object.entries(q.options).map(([k, val]) => (
-                                  <Text key={k} fontSize="10px" color="#64748B">
-                                    <strong style={{ color: "#334155" }}>{k.toUpperCase()}:</strong> {val}
+                              <SimpleGrid columns={{ base: 1, sm: 2 }} gap={1}>
+                                {Object.entries(q.options).map(([key, value]) => (
+                                  <Text
+                                    key={key}
+                                    fontSize="10px"
+                                    color="#64748B"
+                                    bg="#F8FAFC"
+                                    p={1}
+                                    borderRadius="md"
+                                    border="1px solid #F1F5F9"
+                                  >
+                                    <strong style={{ color: "#334155" }}>{key.toUpperCase()}:</strong> {value}
                                   </Text>
                                 ))}
                               </SimpleGrid>
                             )}
                           </Box>
-                        ))}
-                      </VStack>
+                        </Flex>
+                      </Box>
+                    );
+                  })}
+                </VStack>
+              </Box>
+            )}
+
+            {/* Section Save Toolbar */}
+            <Flex justify="flex-end" gap={2.5}>
+              {editingSectionIndex !== null && (
+                <Button
+                  variant="outline"
+                  borderRadius="xl"
+                  h="40px"
+                  fontSize="12px"
+                  onClick={() => {
+                    setEditingSectionIndex(null);
+                    setSubject("");
+                    setYear("");
+                    setQuestions([]);
+                    setSelectedQuestionsIds([]);
+                  }}
+                >
+                  Cancel Edit
+                </Button>
+              )}
+
+              <Button
+                bg="#059669"
+                color="white"
+                borderRadius="xl"
+                h="40px"
+                px={5}
+                fontWeight="700"
+                fontSize="12px"
+                _hover={{ bg: "#047857" }}
+                onClick={saveSection}
+                isDisabled={!subject.trim() || selectedQuestionsIds.length === 0}
+                leftIcon={<Icon as={FaCheckCircle} />}
+                boxShadow="0 4px 12px rgba(5, 150, 105, 0.2)"
+              >
+                {editingSectionIndex !== null
+                  ? "Update Section"
+                  : `Add Section (${selectedQuestionsIds.length} Questions)`}
+              </Button>
+            </Flex>
+          </Box>
+        </Box>
+
+        {/* ================= RIGHT COLUMN: LIVE BLUEPRINT & SECTIONS ROSTER (5 of 12 cols) ================= */}
+        <Box
+          gridColumn={{ base: "1", xl: "span 5" }}
+          position={{ base: "static", xl: "sticky" }}
+          top="84px"
+        >
+          {/* Blueprint Card */}
+          <Box
+            bg="white"
+            p={6}
+            borderRadius="24px"
+            border="1px solid #E2E8F0"
+            boxShadow="0 4px 20px rgba(0, 0, 0, 0.04)"
+            mb={4}
+          >
+            {/* Header & Live Summary */}
+            <Flex justify="space-between" align="center" mb={4}>
+              <Text fontSize="15px" fontWeight="800" color="#0F172A">
+                Live Exam Blueprint
+              </Text>
+              <Badge
+                bg="rgba(99, 102, 241, 0.12)"
+                color="#4F46E5"
+                px={2.5}
+                py={0.5}
+                borderRadius="full"
+                fontSize="11px"
+                fontWeight="bold"
+              >
+                {sections.length} {sections.length === 1 ? "Section" : "Sections"}
+              </Badge>
+            </Flex>
+
+            {/* Live Metrics Grid */}
+            <SimpleGrid columns={3} gap={2} mb={5}>
+              <Box
+                bg="#F8FAFC"
+                p={2.5}
+                borderRadius="xl"
+                border="1px solid #E2E8F0"
+                textAlign="center"
+              >
+                <Text fontSize="10px" color="#64748B" fontWeight="medium">Questions</Text>
+                <Text fontSize="16px" fontWeight="800" color="#4F46E5">
+                  {totalExamQuestions}
+                </Text>
+              </Box>
+              <Box
+                bg="#F8FAFC"
+                p={2.5}
+                borderRadius="xl"
+                border="1px solid #E2E8F0"
+                textAlign="center"
+              >
+                <Text fontSize="10px" color="#64748B" fontWeight="medium">Duration</Text>
+                <Text fontSize="16px" fontWeight="800" color="#0F172A">
+                  {examForm.duration ? `${examForm.duration}m` : "—"}
+                </Text>
+              </Box>
+              <Box
+                bg="#F8FAFC"
+                p={2.5}
+                borderRadius="xl"
+                border="1px solid #E2E8F0"
+                textAlign="center"
+              >
+                <Text fontSize="10px" color="#64748B" fontWeight="medium">Total Score</Text>
+                <Text fontSize="16px" fontWeight="800" color="#059669">
+                  {examForm.totalMarks || "—"}
+                </Text>
+              </Box>
+            </SimpleGrid>
+
+            {/* Configured Sections List */}
+            <Text fontSize="12px" fontWeight="700" color="#334155" mb={2}>
+              Assembled Sections Roster:
+            </Text>
+
+            {sections.length === 0 ? (
+              <Box
+                p={6}
+                borderRadius="16px"
+                border="2px dashed #E2E8F0"
+                bg="#F8FAFC"
+                textAlign="center"
+                mb={5}
+              >
+                <Icon as={FaRegLightbulb} color="#94A3B8" boxSize={5} mb={2} />
+                <Text fontSize="12px" fontWeight="bold" color="#334155" mb={0.5}>
+                  No Sections Attached Yet
+                </Text>
+                <Text fontSize="11px" color="#64748B">
+                  Use the left section builder to fetch questions and click "Add Section".
+                </Text>
+              </Box>
+            ) : (
+              <VStack spacing={2.5} align="stretch" mb={5} maxH="380px" overflowY="auto">
+                {sections.map((sec, idx) => {
+                  const isExpanded = expandedSectionIdx === idx;
+                  return (
+                    <Box
+                      key={idx}
+                      borderRadius="16px"
+                      border="1px solid #E2E8F0"
+                      bg="#FFFFFF"
+                      overflow="hidden"
+                      boxShadow="0 1px 3px rgba(0,0,0,0.03)"
+                    >
+                      <Flex
+                        p={3}
+                        justify="space-between"
+                        align="center"
+                        bg="#F8FAFC"
+                        cursor="pointer"
+                        onClick={() =>
+                          setExpandedSectionIdx(isExpanded ? null : idx)
+                        }
+                      >
+                        <HStack spacing={2}>
+                          <Badge
+                            bg="#0F172A"
+                            color="white"
+                            borderRadius="md"
+                            px={2}
+                            py={0.5}
+                            fontSize="10px"
+                            fontWeight="bold"
+                          >
+                            #{idx + 1}
+                          </Badge>
+                          <Box>
+                            <Text
+                              fontSize="13px"
+                              fontWeight="700"
+                              color="#0F172A"
+                              textTransform="capitalize"
+                              lineHeight="1.2"
+                            >
+                              {sec.section}
+                            </Text>
+                            <Text fontSize="10px" color="#64748B">
+                              {sec.questions.length} Qs {sec.year && `• ${sec.year}`}
+                            </Text>
+                          </Box>
+                        </HStack>
+
+                        <HStack spacing={1} onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="2xs"
+                            variant="ghost"
+                            color="#4F46E5"
+                            onClick={() => editSection(idx)}
+                            px={1.5}
+                            title="Edit Section"
+                          >
+                            <Icon as={FaEdit} />
+                          </Button>
+                          <Button
+                            size="2xs"
+                            variant="ghost"
+                            color="#DC2626"
+                            onClick={() => removeSection(idx)}
+                            px={1.5}
+                            title="Remove Section"
+                          >
+                            <Icon as={FaTrash} />
+                          </Button>
+                          <Flex
+                            w="22px"
+                            h="22px"
+                            borderRadius="md"
+                            align="center"
+                            justify="center"
+                            cursor="pointer"
+                            onClick={() =>
+                              setExpandedSectionIdx(isExpanded ? null : idx)
+                            }
+                          >
+                            <Icon
+                              as={isExpanded ? FaChevronUp : FaChevronDown}
+                              color="#64748B"
+                              boxSize={2.5}
+                            />
+                          </Flex>
+                        </HStack>
+                      </Flex>
+
+                      {/* Expandable Preview */}
+                      {isExpanded && (
+                        <Box p={3} borderTop="1px solid #F1F5F9" bg="white">
+                          <VStack spacing={1.5} align="stretch" maxH="180px" overflowY="auto">
+                            {sec.questions.map((q, qIdx) => (
+                              <Box
+                                key={q.id || qIdx}
+                                p={2}
+                                borderRadius="8px"
+                                bg="#F8FAFC"
+                                border="1px solid #F1F5F9"
+                              >
+                                <Text fontSize="11px" fontWeight="600" color="#1E293B" noOfLines={2}>
+                                  {qIdx + 1}. {q.questionText || q.question}
+                                </Text>
+                              </Box>
+                            ))}
+                          </VStack>
+                        </Box>
+                      )}
                     </Box>
-                  )}
-                </Box>
-              );
-            })}
-          </VStack>
-        )}
-      </Box>
+                  );
+                })}
+              </VStack>
+            )}
 
-      {/* FINALIZATION TOOLBAR */}
-      <Flex
-        p={5}
-        borderRadius="24px"
-        bg="white"
-        border="1px solid #E2E8F0"
-        justify="space-between"
-        align="center"
-        boxShadow="0 4px 20px rgba(0,0,0,0.04)"
-      >
-        <Button
-          variant="outline"
-          borderColor="#CBD5E1"
-          borderRadius="xl"
-          h="46px"
-          px={5}
-          fontSize="13px"
-          color="#64748B"
-          leftIcon={<Icon as={FaRedo} />}
-          onClick={() => {
-            setExamForm({ examTitle: "", duration: "", totalMarks: 40 });
-            setSubject("");
-            setYear("");
-            setQuestions([]);
-            setSelectedQuestionsIds([]);
-            setSections([]);
-            localStorage.removeItem(STORAGE_KEY);
-            toaster.info({ title: "Draft reset" });
-          }}
-        >
-          Reset All
-        </Button>
+            {/* Readyness Checklist */}
+            <Box
+              p={3.5}
+              borderRadius="16px"
+              bg="#F8FAFC"
+              border="1px solid #E2E8F0"
+              mb={4}
+            >
+              <Text fontSize="11px" fontWeight="700" color="#334155" mb={2}>
+                Assessment Launch Readiness:
+              </Text>
+              <VStack spacing={1.5} align="stretch">
+                <HStack spacing={2} fontSize="11px">
+                  <Icon
+                    as={hasTitle ? FaCheck : FaTimes}
+                    color={hasTitle ? "#059669" : "#DC2626"}
+                    boxSize={2.5}
+                  />
+                  <Text color={hasTitle ? "#0F172A" : "#64748B"}>
+                    Exam Title Specified
+                  </Text>
+                </HStack>
+                <HStack spacing={2} fontSize="11px">
+                  <Icon
+                    as={hasDuration && hasMarks ? FaCheck : FaTimes}
+                    color={hasDuration && hasMarks ? "#059669" : "#DC2626"}
+                    boxSize={2.5}
+                  />
+                  <Text color={hasDuration && hasMarks ? "#0F172A" : "#64748B"}>
+                    Duration & Total Marks Configured
+                  </Text>
+                </HStack>
+                <HStack spacing={2} fontSize="11px">
+                  <Icon
+                    as={hasSections ? FaCheck : FaTimes}
+                    color={hasSections ? "#059669" : "#DC2626"}
+                    boxSize={2.5}
+                  />
+                  <Text color={hasSections ? "#0F172A" : "#64748B"}>
+                    At Least 1 Section Added ({sections.length} Ready)
+                  </Text>
+                </HStack>
+              </VStack>
+            </Box>
 
-        <Button
-          h="48px"
-          px={8}
-          bg="linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)"
-          color="white"
-          borderRadius="xl"
-          fontWeight="bold"
-          fontSize="14px"
-          boxShadow="0 4px 16px rgba(99, 102, 241, 0.35)"
-          _hover={{
-            transform: "translateY(-1px)",
-            boxShadow: "0 6px 20px rgba(99, 102, 241, 0.45)",
-          }}
-          onClick={handleCreateExam}
-          isDisabled={
-            !examForm.examTitle ||
-            !examForm.duration ||
-            !examForm.totalMarks ||
-            sections.length === 0
-          }
-          rightIcon={<Icon as={FaArrowRight} />}
-        >
-          Proceed to Scheduling & Publish ({sections.length} Sections)
-        </Button>
-      </Flex>
+            {/* Primary Action Button in Right Rail */}
+            <Button
+              w="100%"
+              h="46px"
+              bg="linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)"
+              color="white"
+              borderRadius="xl"
+              fontWeight="bold"
+              fontSize="13px"
+              boxShadow="0 4px 16px rgba(99, 102, 241, 0.35)"
+              _hover={{
+                transform: "translateY(-1px)",
+                boxShadow: "0 6px 20px rgba(99, 102, 241, 0.45)",
+              }}
+              onClick={handleCreateExam}
+              isDisabled={!isReadyToProceed}
+              rightIcon={<Icon as={FaArrowRight} />}
+            >
+              Configure Schedule & Publish →
+            </Button>
+          </Box>
+        </Box>
+      </SimpleGrid>
     </Box>
   );
 }

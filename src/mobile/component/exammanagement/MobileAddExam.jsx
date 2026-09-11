@@ -12,7 +12,7 @@ import {
   VStack,
   Icon,
 } from "@chakra-ui/react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { getQuestions } from "../../../api-endpoint/exam/exams";
 import { toaster } from "../../../components/ui/toaster";
 import { useNavigate } from "react-router-dom";
@@ -75,22 +75,27 @@ export default function MobileAddExam() {
     }
   };
 
-  const handleSelectAll = () => {
-    if (selectedQuestions.length === questions.length) {
-      setSelectedQuestions([]);
-    } else {
-      setSelectedQuestions(questions);
-    }
+  const selectedIdSet = useMemo(() => {
+    return new Set(selectedQuestions.map((item) => item.id));
+  }, [selectedQuestions]);
+
+  const selectAllQuestions = () => {
+    setSelectedQuestions([...questions]);
+  };
+
+  const deselectAllQuestions = () => {
+    setSelectedQuestions([]);
   };
 
   const toggleSelectQuestion = (q) => {
-    if (selectedQuestions.some((item) => item.id === q.id)) {
-      setSelectedQuestions(
-        selectedQuestions.filter((item) => item.id !== q.id)
-      );
-    } else {
-      setSelectedQuestions([...selectedQuestions, q]);
-    }
+    setSelectedQuestions((prev) => {
+      const exists = prev.some((item) => item.id === q.id);
+      if (exists) {
+        return prev.filter((item) => item.id !== q.id);
+      } else {
+        return [...prev, q];
+      }
+    });
   };
 
   const handleCreateExam = async (e) => {
@@ -302,22 +307,34 @@ export default function MobileAddExam() {
                 Tap to include in this exam
               </Text>
             </Box>
-            <Button
-              size="xs"
-              variant="outline"
-              borderColor="#CBD5E1"
-              onClick={handleSelectAll}
-              borderRadius="md"
-            >
-              {selectedQuestions.length === questions.length
-                ? "Deselect All"
-                : "Select All"}
-            </Button>
+            <HStack spacing={1.5}>
+              {selectedQuestions.length > 0 && (
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  bg="rgba(239, 68, 68, 0.15)"
+                  color="#DC2626"
+                  onClick={deselectAllQuestions}
+                  borderRadius="md"
+                >
+                  Clear ({selectedQuestions.length})
+                </Button>
+              )}
+              <Button
+                size="xs"
+                variant="outline"
+                borderColor="#CBD5E1"
+                onClick={selectAllQuestions}
+                borderRadius="md"
+              >
+                Select All
+              </Button>
+            </HStack>
           </Flex>
 
           <VStack spacing={2} align="stretch" maxH="320px" overflowY="auto" pr={1}>
             {questions.map((q) => {
-              const isSelected = selectedQuestions.some((item) => item.id === q.id);
+              const isSelected = selectedIdSet.has(q.id);
               return (
                 <Box
                   key={q.id}
@@ -328,12 +345,12 @@ export default function MobileAddExam() {
                   bg={isSelected ? "rgba(99, 102, 241, 0.04)" : "#F8FAFC"}
                   cursor="pointer"
                   onClick={() => toggleSelectQuestion(q)}
-                  transition="all 0.15s ease"
+                  transition="all 0.1s ease"
                 >
                   <HStack spacing={2} align="flex-start">
                     <Checkbox.Root
                       checked={isSelected}
-                      onCheckedChange={() => toggleSelectQuestion(q)}
+                      pointerEvents="none"
                       colorPalette="purple"
                       mt={0.5}
                     >

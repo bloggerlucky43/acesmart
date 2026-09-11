@@ -131,11 +131,11 @@ export default function ResultDetails() {
   return (
     <Box
       w={{ base: "100%", lg: "calc(100% - 240px)" }}
-      mt="68px"
+      mt="84px"
       ml={{ base: 0, lg: "240px" }}
       p={{ base: 4, md: 8 }}
       bg="#F8FAFC"
-      minH="calc(100vh - 68px)"
+      minH="calc(100vh - 84px)"
     >
       <Box maxW="1200px" mx="auto">
         {/* Top Header & Export Toolbar */}
