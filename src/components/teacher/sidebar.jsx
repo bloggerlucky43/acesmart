@@ -41,7 +41,7 @@ const navGroups = [
   {
     title: "QUESTION BANK",
     links: [
-      { name: "Add Questions", path: "/teacher/add_questions", icon: FaQuestionCircle },
+      { name: "Question Bank & OCR", path: "/teacher/add_questions", icon: FaQuestionCircle },
     ],
   },
   {

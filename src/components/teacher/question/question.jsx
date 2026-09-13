@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Flex,
@@ -7,170 +8,476 @@ import {
   VStack,
   Icon,
   Badge,
-  Field,
   NativeSelect,
   HStack,
+  SimpleGrid,
+  Textarea,
 } from "@chakra-ui/react";
-import { useState } from "react";
 import {
   FaBookOpen,
   FaPlusCircle,
   FaTrash,
   FaCheckCircle,
   FaBrain,
-  FaTag,
+  FaSearch,
+  FaCamera,
+  FaFileAlt,
+  FaCloudUploadAlt,
+  FaLightbulb,
+  FaDownload,
+  FaEye,
+  FaEyeSlash,
+  FaSyncAlt,
   FaLayerGroup,
+  FaPen,
+  FaCheck,
+  FaTimes,
 } from "react-icons/fa";
 import { toaster } from "../../ui/toaster";
-import { autoTagQuestions } from "../../../api-endpoint/ai/ai";
+import {
+  fetchQuestions,
+  createSingleQuestion,
+  bulkSaveQuestions,
+  deleteQuestionById,
+  ocrHandwrittenImage,
+  parseBulkTextWithAI,
+} from "../../../api-endpoint/questions/questions";
+import {
+  getEnrichmentStatus,
+  triggerBankEnrichment,
+} from "../../../api-endpoint/ai/ai";
+import { TableSkeleton, CardGridSkeleton } from "../../ui/skeletons";
 
-const Question = () => {
-  const [subject, setSubject] = useState("");
-  const [questions, setQuestions] = useState([
-    {
-      question: "",
-      type: "multiple",
-      options: ["", "", "", ""],
-      answer: "",
-      topic: "",
-      difficulty: "medium",
-      cognitiveLevel: "Application",
-      tags: [],
-    },
-  ]);
-  const [loading, setLoading] = useState(false);
-  const [taggingLoading, setTaggingLoading] = useState(false);
+const SUBJECTS_LIST = [
+  "All",
+  "Mathematics",
+  "English",
+  "Biology",
+  "Physics",
+  "Chemistry",
+  "Economics",
+  "Government",
+  "Agricultural Science",
+  "Literature",
+  "Commerce",
+  "Accounting",
+];
 
-  const addQuestion = () => {
-    if (questions.length >= 20) {
-      toaster.create({
-        title: "Maximum batch limit reached (20 questions)",
-        type: "warning",
-      });
-      return;
-    }
-    setQuestions([
-      ...questions,
-      {
-        question: "",
-        type: "multiple",
-        options: ["", "", "", ""],
-        answer: "",
-        topic: "",
-        difficulty: "medium",
-        cognitiveLevel: "Application",
-        tags: [],
-      },
-    ]);
-  };
+export default function QuestionBankHub() {
+  const [activeTab, setActiveTab] = useState("explorer"); // 'explorer' | 'ocr' | 'bulk' | 'single'
 
-  const removeQuestion = (index) => {
-    setQuestions(questions.filter((_, i) => i !== index));
-  };
+  // -------------------------------------------------------------
+  // TAB 1: QUESTION BANK EXPLORER STATE (DUAL-SOURCING & AI HEALTH)
+  // -------------------------------------------------------------
+  const [explorerQuestions, setExplorerQuestions] = useState([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState("all"); // 'all' | 'teacher' | 'api'
+  const [subjectFilter, setSubjectFilter] = useState("All");
+  const [difficultyFilter, setDifficultyFilter] = useState("all");
+  const [cognitiveFilter, setCognitiveFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [expandedExplanations, setExpandedExplanations] = useState({});
 
-  const handleQuestionChange = (qIndex, fieldOrOptIndex, value) => {
-    const updated = [...questions];
-    if (typeof fieldOrOptIndex === "number") {
-      updated[qIndex].options[fieldOrOptIndex] = value;
-    } else {
-      updated[qIndex][fieldOrOptIndex] = value;
-    }
-    setQuestions(updated);
-  };
+  // AI Bank Health State
+  const [bankHealth, setBankHealth] = useState(null);
+  const [enrichingBank, setEnrichingBank] = useState(false);
 
-  const handleTypeChange = (qIndex, newType) => {
-    const updated = [...questions];
-    updated[qIndex].type = newType;
-    if (newType === "boolean") {
-      updated[qIndex].options = ["True", "False"];
-    } else {
-      updated[qIndex].options = ["", "", "", ""];
-    }
-    setQuestions(updated);
-  };
-
-  // AI Auto-Tagging & Categorization
-  const handleAutoTagAll = async () => {
-    const hasText = questions.some((q) => q.question.trim().length > 0);
-    if (!hasText) {
-      toaster.create({
-        title: "Please enter at least one question text before running AI auto-tagging",
-        type: "warning",
-      });
-      return;
-    }
-
-    setTaggingLoading(true);
+  const loadHealth = async () => {
     try {
-      const payload = questions.map((q) => ({
-        question: q.question,
-        questionText: q.question,
-        options: q.options,
-        subject: subject || "General",
-      }));
+      const data = await getEnrichmentStatus();
+      if (data) setBankHealth(data);
+    } catch (err) {
+      console.warn("Error loading bank health:", err);
+    }
+  };
 
-      const tagged = await autoTagQuestions(payload);
-      if (Array.isArray(tagged) && tagged.length > 0) {
-        setQuestions((prev) =>
-          prev.map((q, i) => {
-            const aiData = tagged[i] || {};
-            return {
-              ...q,
-              topic: aiData.topic || q.topic || "Core Concept",
-              difficulty: aiData.difficulty || q.difficulty || "medium",
-              cognitiveLevel: aiData.cognitiveLevel || q.cognitiveLevel || "Application",
-              tags: Array.isArray(aiData.tags) && aiData.tags.length > 0 ? aiData.tags : q.tags,
-            };
-          })
-        );
+  const loadQuestions = async () => {
+    setLoadingQuestions(true);
+    try {
+      const res = await fetchQuestions({
+        source: sourceFilter,
+        subject: subjectFilter === "All" ? "" : subjectFilter.toLowerCase(),
+        difficulty: difficultyFilter === "all" ? "" : difficultyFilter,
+        cognitiveLevel: cognitiveFilter === "all" ? "" : cognitiveFilter,
+        search: searchTerm,
+        page,
+        limit: 12,
+      });
 
+      setExplorerQuestions(res.data || []);
+      setTotalPages(res.totalPages || 1);
+      setTotalCount(res.total || 0);
+    } catch (err) {
+      console.warn("Error loading questions:", err);
+    } finally {
+      setLoadingQuestions(false);
+    }
+  };
+
+  const handleEnrichBank = async () => {
+    setEnrichingBank(true);
+    try {
+      const targetSub = subjectFilter === "All" ? "all" : subjectFilter.toLowerCase();
+      const res = await triggerBankEnrichment({
+        subject: targetSub,
+        chunkSize: 200,
+        useAI: false,
+      });
+      toaster.create({
+        title: "Question Bank Enriched!",
+        description: res.message || "Curriculum topics, difficulty, and Bloom's taxonomy updated.",
+        type: "success",
+      });
+      await loadHealth();
+      await loadQuestions();
+    } catch (err) {
+      toaster.create({
+        title: "Enrichment Error",
+        description: err.response?.data?.message || err.message,
+        type: "error",
+      });
+    } finally {
+      setEnrichingBank(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "explorer") {
+      loadHealth();
+      loadQuestions();
+    }
+  }, [activeTab, sourceFilter, subjectFilter, difficultyFilter, cognitiveFilter, page]);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setPage(1);
+    loadQuestions();
+  };
+
+  const toggleExplanation = (id) => {
+    setExpandedExplanations((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const handleDeleteQuestion = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this question?")) return;
+    try {
+      await deleteQuestionById(id);
+      toaster.create({
+        title: "Question deleted successfully",
+        type: "success",
+      });
+      loadQuestions();
+    } catch (err) {
+      toaster.create({
+        title: "Failed to delete question",
+        description: err.response?.data?.message || err.message,
+        type: "error",
+      });
+    }
+  };
+
+  // -------------------------------------------------------------
+  // TAB 2: AI HANDWRITTEN / PAPER OCR STATE
+  // -------------------------------------------------------------
+  const fileInputRef = useRef(null);
+  const [selectedImageBase64, setSelectedImageBase64] = useState("");
+  const [imageFileName, setImageFileName] = useState("");
+  const [ocrSubject, setOcrSubject] = useState("Mathematics");
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [extractedOcrQuestions, setExtractedOcrQuestions] = useState([]);
+  const [savingOcr, setSavingOcr] = useState(false);
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toaster.create({
+        title: "Please select an image file (PNG, JPG, WEBP)",
+        type: "warning",
+      });
+      return;
+    }
+
+    setImageFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSelectedImageBase64(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRunOCR = async () => {
+    if (!selectedImageBase64) {
+      toaster.create({
+        title: "Please upload an image of handwritten questions first",
+        type: "warning",
+      });
+      return;
+    }
+
+    setOcrLoading(true);
+    try {
+      const results = await ocrHandwrittenImage({
+        imageBase64: selectedImageBase64,
+        defaultSubject: ocrSubject,
+      });
+
+      if (Array.isArray(results) && results.length > 0) {
+        setExtractedOcrQuestions(results);
         toaster.create({
-          title: `AI successfully analyzed and auto-tagged ${tagged.length} question(s)!`,
+          title: `AI successfully transcribed and solved ${results.length} question(s)!`,
+          description: "Review solutions and step-by-step explanations below.",
           type: "success",
+        });
+      } else {
+        toaster.create({
+          title: "No questions detected in the uploaded image",
+          description: "Ensure the handwriting is legible and well-lit.",
+          type: "info",
         });
       }
     } catch (err) {
-      console.warn("Auto-tagging notification:", err);
       toaster.create({
-        title: "AI Auto-Tagging completed with heuristic taxonomy classifier",
-        type: "info",
+        title: "OCR Extraction Notice",
+        description: err.response?.data?.message || err.message,
+        type: "error",
       });
     } finally {
-      setTaggingLoading(false);
+      setOcrLoading(false);
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!subject.trim()) {
+  const handleSaveOcrQuestions = async () => {
+    if (!extractedOcrQuestions.length) return;
+    setSavingOcr(true);
+    try {
+      const res = await bulkSaveQuestions({
+        questions: extractedOcrQuestions,
+        defaultSubject: ocrSubject,
+      });
+
       toaster.create({
-        title: "Please enter a subject or course name",
+        title: res.message || `Saved ${extractedOcrQuestions.length} questions to Question Bank!`,
+        type: "success",
+      });
+      setExtractedOcrQuestions([]);
+      setSelectedImageBase64("");
+      setImageFileName("");
+      setActiveTab("explorer");
+    } catch (err) {
+      toaster.create({
+        title: "Failed to save questions",
+        description: err.response?.data?.message || err.message,
+        type: "error",
+      });
+    } finally {
+      setSavingOcr(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // TAB 3: BULK TEXT & CSV UPLOAD STATE
+  // -------------------------------------------------------------
+  const [bulkRawText, setBulkRawText] = useState("");
+  const [bulkSubject, setBulkSubject] = useState("Mathematics");
+  const [bulkParsing, setBulkParsing] = useState(false);
+  const [parsedBulkQuestions, setParsedBulkQuestions] = useState([]);
+  const [savingBulk, setSavingBulk] = useState(false);
+  const csvInputRef = useRef(null);
+
+  const handleParseBulkText = async () => {
+    if (!bulkRawText.trim()) {
+      toaster.create({
+        title: "Please paste your questions into the text area",
         type: "warning",
       });
       return;
     }
 
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    setBulkParsing(true);
+    try {
+      const parsed = await parseBulkTextWithAI({
+        rawText: bulkRawText,
+        defaultSubject: bulkSubject,
+      });
+
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setParsedBulkQuestions(parsed);
+        toaster.create({
+          title: `AI converted and auto-solved ${parsed.length} questions!`,
+          type: "success",
+        });
+      } else {
+        toaster.create({
+          title: "Could not parse questions from the provided text",
+          type: "warning",
+        });
+      }
+    } catch (err) {
       toaster.create({
-        title: `Successfully saved ${questions.length} questions to ${subject}!`,
+        title: "Bulk parse error",
+        description: err.response?.data?.message || err.message,
+        type: "error",
+      });
+    } finally {
+      setBulkParsing(false);
+    }
+  };
+
+  const handleSaveBulkQuestions = async () => {
+    if (!parsedBulkQuestions.length) return;
+    setSavingBulk(true);
+    try {
+      const res = await bulkSaveQuestions({
+        questions: parsedBulkQuestions,
+        defaultSubject: bulkSubject,
+      });
+
+      toaster.create({
+        title: res.message || `Saved ${parsedBulkQuestions.length} questions to Question Bank!`,
         type: "success",
       });
-      setSubject("");
-      setQuestions([
-        {
-          question: "",
-          type: "multiple",
-          options: ["", "", "", ""],
-          answer: "",
-          topic: "",
-          difficulty: "medium",
-          cognitiveLevel: "Application",
-          tags: [],
-        },
-      ]);
-    }, 600);
+      setParsedBulkQuestions([]);
+      setBulkRawText("");
+      setActiveTab("explorer");
+    } catch (err) {
+      toaster.create({
+        title: "Failed to save questions",
+        description: err.response?.data?.message || err.message,
+        type: "error",
+      });
+    } finally {
+      setSavingBulk(false);
+    }
+  };
+
+  const handleDownloadCsvTemplate = () => {
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      "Question,OptionA,OptionB,OptionC,OptionD,CorrectAnswer,Explanation,Subject,Topic,Difficulty\n" +
+      '"What is 15% of 200?","20","30","40","50","b","15% of 200 is 0.15 * 200 = 30","mathematics","Percentages","easy"\n' +
+      '"Which organelle synthesizes ATP?","Ribosome","Mitochondria","Nucleus","Chloroplast","b","Mitochondria are the powerhouses of the cell producing ATP.","biology","Cell Biology","easy"';
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "acesmart_question_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleCsvFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result;
+      if (typeof text !== "string") return;
+
+      const lines = text.split("\n").filter((l) => l.trim().length > 0);
+      if (lines.length <= 1) {
+        toaster.create({ title: "CSV file is empty or missing data rows", type: "warning" });
+        return;
+      }
+
+      const rows = lines.slice(1);
+      const parsed = [];
+
+      rows.forEach((row) => {
+        // Basic CSV regex split
+        const matches = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+        const clean = matches.map((m) => m.replace(/^"|"$/g, "").trim());
+
+        if (clean.length >= 6) {
+          parsed.push({
+            questionText: clean[0],
+            options: {
+              a: clean[1] || "",
+              b: clean[2] || "",
+              c: clean[3] || "",
+              d: clean[4] || "",
+            },
+            correctAnswer: (clean[5] || "a").toLowerCase(),
+            explanation: clean[6] || "Standard curriculum explanation.",
+            subject: clean[7] || bulkSubject,
+            topic: clean[8] || "General Concepts",
+            difficulty: clean[9] || "medium",
+          });
+        }
+      });
+
+      if (parsed.length > 0) {
+        setParsedBulkQuestions(parsed);
+        toaster.create({
+          title: `Imported ${parsed.length} questions from CSV!`,
+          type: "success",
+        });
+      } else {
+        toaster.create({ title: "No valid rows found in CSV", type: "warning" });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // -------------------------------------------------------------
+  // TAB 4: SINGLE QUESTION STATE
+  // -------------------------------------------------------------
+  const [singleQ, setSingleQ] = useState({
+    questionText: "",
+    options: { a: "", b: "", c: "", d: "" },
+    correctAnswer: "a",
+    explanation: "",
+    subject: "Mathematics",
+    topic: "",
+    difficulty: "medium",
+  });
+  const [savingSingle, setSavingSingle] = useState(false);
+
+  const handleSaveSingleQuestion = async (e) => {
+    e.preventDefault();
+    if (!singleQ.questionText.trim() || !singleQ.options.a || !singleQ.options.b) {
+      toaster.create({
+        title: "Please provide question text and at least options A and B",
+        type: "warning",
+      });
+      return;
+    }
+
+    setSavingSingle(true);
+    try {
+      await createSingleQuestion(singleQ);
+      toaster.create({
+        title: "Question saved to Question Bank successfully!",
+        type: "success",
+      });
+      setSingleQ({
+        questionText: "",
+        options: { a: "", b: "", c: "", d: "" },
+        correctAnswer: "a",
+        explanation: "",
+        subject: singleQ.subject,
+        topic: "",
+        difficulty: "medium",
+      });
+      setActiveTab("explorer");
+    } catch (err) {
+      toaster.create({
+        title: "Failed to save question",
+        description: err.response?.data?.message || err.message,
+        type: "error",
+      });
+    } finally {
+      setSavingSingle(false);
+    }
   };
 
   return (
@@ -182,20 +489,20 @@ const Question = () => {
       minH="calc(100vh - 84px)"
       bg="#F8FAFC"
     >
-      <Box maxW="1000px" mx="auto">
-        {/* Page Header */}
+      <Box maxW="1200px" mx="auto">
+        {/* Header Title */}
         <Flex
           direction={{ base: "column", md: "row" }}
           justify="space-between"
           align={{ base: "flex-start", md: "center" }}
           gap={4}
-          mb={8}
+          mb={6}
         >
           <Box>
             <Flex align="center" gap={2.5} mb={1}>
               <Flex
-                w="38px"
-                h="38px"
+                w="42px"
+                h="42px"
                 borderRadius="xl"
                 bg="purple.50"
                 color="#6A1B9A"
@@ -205,367 +512,1220 @@ const Question = () => {
                 <Icon as={FaBookOpen} boxSize={5} />
               </Flex>
               <Text
-                fontSize={{ base: "22px", md: "26px" }}
+                fontSize={{ base: "22px", md: "28px" }}
                 fontWeight="800"
                 color="#0F172A"
                 fontFamily="'Outfit', sans-serif"
               >
-                Question Bank Authoring
+                Question Bank Hub
               </Text>
             </Flex>
             <Text fontSize="14px" color="#64748B">
-              Create and organize standardized questions with AI topic tagging, difficulty ratings, and Bloom's taxonomy.
+              Browse platform questions, upload bulk batches, and transcribe handwritten test sheets with AI auto-solving.
             </Text>
           </Box>
 
-          <Flex gap={2.5} flexWrap="wrap">
+          <Flex gap={2} flexWrap="wrap">
             <Button
-              variant="outline"
-              borderColor="purple.300"
-              bg="purple.50"
-              color="#6A1B9A"
+              size="sm"
+              variant={activeTab === "explorer" ? "solid" : "outline"}
+              bg={activeTab === "explorer" ? "#6A1B9A" : "white"}
+              color={activeTab === "explorer" ? "white" : "#6A1B9A"}
+              borderColor="#6A1B9A"
               borderRadius="xl"
-              px={4}
-              h="40px"
-              fontSize="13px"
-              fontWeight="700"
-              onClick={handleAutoTagAll}
-              loading={taggingLoading}
-              loadingText="Analyzing..."
-              _hover={{ bg: "purple.100" }}
+              onClick={() => setActiveTab("explorer")}
             >
-              <Icon as={FaBrain} mr={1.5} boxSize={3.5} />
-              AI Auto-Tag Questions
+              <Icon as={FaLayerGroup} mr={1.5} />
+              Question Bank ({totalCount})
             </Button>
 
             <Button
-              bg="#6A1B9A"
-              color="white"
+              size="sm"
+              variant={activeTab === "ocr" ? "solid" : "outline"}
+              bg={activeTab === "ocr" ? "#6A1B9A" : "white"}
+              color={activeTab === "ocr" ? "white" : "#6A1B9A"}
+              borderColor="#6A1B9A"
               borderRadius="xl"
-              px={4}
-              h="40px"
-              fontSize="13px"
-              fontWeight="700"
-              onClick={addQuestion}
+              onClick={() => setActiveTab("ocr")}
             >
-              <Icon as={FaPlusCircle} mr={1.5} boxSize={3.5} />
-              Add Question
+              <Icon as={FaCamera} mr={1.5} />
+              AI Handwritten OCR
+            </Button>
+
+            <Button
+              size="sm"
+              variant={activeTab === "bulk" ? "solid" : "outline"}
+              bg={activeTab === "bulk" ? "#6A1B9A" : "white"}
+              color={activeTab === "bulk" ? "white" : "#6A1B9A"}
+              borderColor="#6A1B9A"
+              borderRadius="xl"
+              onClick={() => setActiveTab("bulk")}
+            >
+              <Icon as={FaCloudUploadAlt} mr={1.5} />
+              Bulk Upload
+            </Button>
+
+            <Button
+              size="sm"
+              variant={activeTab === "single" ? "solid" : "outline"}
+              bg={activeTab === "single" ? "#6A1B9A" : "white"}
+              color={activeTab === "single" ? "white" : "#6A1B9A"}
+              borderColor="#6A1B9A"
+              borderRadius="xl"
+              onClick={() => setActiveTab("single")}
+            >
+              <Icon as={FaPlusCircle} mr={1.5} />
+              Add Single
             </Button>
           </Flex>
         </Flex>
 
-        <form onSubmit={handleSubmit}>
-          {/* Subject Card */}
-          <Box
-            bg="white"
-            borderRadius="24px"
-            p={6}
-            border="1px solid"
-            borderColor="#E2E8F0"
-            boxShadow="0 2px 12px rgba(0, 0, 0, 0.03)"
-            mb={6}
-          >
-            <Field.Root required>
-              <Field.Label fontWeight="700" fontSize="13px" color="#334155" mb={1.5}>
-                Subject or Examination Course *
-              </Field.Label>
-              <Input
-                placeholder="e.g. Mathematics, English Language, Physics, Biology..."
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                borderRadius="xl"
-                h="48px"
-                fontSize="14px"
-                borderColor="#CBD5E1"
-                _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
-                required
-              />
-            </Field.Root>
-          </Box>
-
-          {/* Questions Stack */}
-          <VStack gap={6} align="stretch" mb={8}>
-            {questions.map((q, qIdx) => (
-              <Box
-                key={qIdx}
-                bg="white"
-                borderRadius="24px"
-                p={6}
-                border="1px solid"
-                borderColor="#E2E8F0"
-                boxShadow="0 2px 12px rgba(0, 0, 0, 0.03)"
+        {/* ============================================================== */}
+        {/* TAB 1: QUESTION BANK EXPLORER (DUAL SOURCING)                  */}
+        {/* ============================================================== */}
+        {activeTab === "explorer" && (
+          <Box>
+            {/* AI Health & Classification Status Banner */}
+            <Box
+              bg="linear-gradient(135deg, #FAF5FF 0%, #F3E8FF 50%, #EEF2FF 100%)"
+              borderRadius="2xl"
+              p={{ base: 4, md: 5 }}
+              border="1px solid"
+              borderColor="purple.200"
+              boxShadow="sm"
+              mb={6}
+            >
+              <Flex
+                direction={{ base: "column", md: "row" }}
+                justify="space-between"
+                align={{ base: "flex-start", md: "center" }}
+                gap={4}
               >
-                <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={2}>
-                  <Flex align="center" gap={2}>
-                    <Badge
-                      bg="purple.50"
-                      color="#6A1B9A"
-                      borderRadius="full"
-                      px={3}
-                      py={1}
-                      fontSize="12px"
-                      fontWeight="800"
-                      border="1px solid #E9D5FF"
+                <Box flex={1}>
+                  <Flex align="center" gap={2} mb={1}>
+                    <Flex
+                      w="32px"
+                      h="32px"
+                      borderRadius="lg"
+                      bg="#6A1B9A"
+                      color="white"
+                      align="center"
+                      justify="center"
                     >
-                      Question {qIdx + 1}
-                    </Badge>
-
-                    {/* AI Tagged Metadata Badges */}
-                    {q.topic && (
-                      <Badge bg="blue.50" color="blue.700" borderRadius="md" px={2} py={0.5} fontSize="11px">
-                        <Icon as={FaLayerGroup} mr={1} boxSize={2.5} />
-                        {q.topic}
-                      </Badge>
-                    )}
-
-                    <Badge
-                      bg={
-                        q.difficulty === "hard"
-                          ? "red.50"
-                          : q.difficulty === "easy"
-                          ? "green.50"
-                          : "orange.50"
-                      }
-                      color={
-                        q.difficulty === "hard"
-                          ? "red.700"
-                          : q.difficulty === "easy"
-                          ? "green.700"
-                          : "orange.700"
-                      }
-                      borderRadius="md"
-                      px={2}
-                      py={0.5}
-                      fontSize="11px"
-                      textTransform="capitalize"
-                    >
-                      {q.difficulty}
-                    </Badge>
-
-                    <Badge bg="purple.50" color="purple.700" borderRadius="md" px={2} py={0.5} fontSize="11px">
-                      {q.cognitiveLevel}
+                      <Icon as={FaBrain} boxSize={4} />
+                    </Flex>
+                    <Text fontSize="16px" fontWeight="800" color="#4A154B">
+                      AI Curriculum Taxonomy & Health
+                    </Text>
+                    <Badge bg="purple.200" color="#4A154B" borderRadius="md" px={2} fontSize="11px">
+                      {bankHealth?.healthPercentage || 0}% Classified
                     </Badge>
                   </Flex>
+                  <Text fontSize="13px" color="#6B21A8" maxW="600px">
+                    {bankHealth
+                      ? `${bankHealth.enrichedCount?.toLocaleString()} of ${bankHealth.totalQuestions?.toLocaleString()} questions classified with granular topics & Bloom's taxonomy. ${bankHealth.pendingCount?.toLocaleString()} pending.`
+                      : "Analyzing question bank curriculum topic coverage..."}
+                  </Text>
 
-                  {questions.length > 1 && (
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      color="#EF4444"
-                      _hover={{ bg: "red.50" }}
-                      onClick={() => removeQuestion(qIdx)}
-                    >
-                      <Icon as={FaTrash} mr={1} boxSize={3} />
-                      Remove
-                    </Button>
-                  )}
-                </Flex>
-
-                {/* Question Text & Type */}
-                <Flex gap={4} mb={4} direction={{ base: "column", md: "row" }}>
-                  <Box flex={1}>
-                    <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
-                      Question Text *
-                    </Text>
-                    <Input
-                      placeholder="Type the full exam question statement..."
-                      value={q.question}
-                      onChange={(e) => handleQuestionChange(qIdx, "question", e.target.value)}
-                      borderRadius="xl"
-                      h="46px"
-                      fontSize="14px"
-                      borderColor="#CBD5E1"
-                      _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
-                      required
+                  {/* Progress Track */}
+                  <Box w="100%" maxW="500px" bg="purple.100" h="6px" borderRadius="full" mt={3} overflow="hidden">
+                    <Box
+                      bg="linear-gradient(90deg, #9333EA 0%, #6A1B9A 100%)"
+                      h="100%"
+                      w={`${bankHealth?.healthPercentage || 0}%`}
+                      borderRadius="full"
+                      transition="width 0.5s ease-in-out"
                     />
                   </Box>
+                </Box>
 
-                  <Box w={{ base: "100%", md: "200px" }}>
-                    <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
-                      Answer Type
-                    </Text>
-                    <NativeSelect.Root>
+                <Flex gap={2} flexWrap="wrap">
+                  <Button
+                    size="sm"
+                    bg="#6A1B9A"
+                    color="white"
+                    borderRadius="xl"
+                    px={4}
+                    loading={enrichingBank}
+                    onClick={handleEnrichBank}
+                    _hover={{ bg: "#581c87" }}
+                  >
+                    <Icon as={FaSyncAlt} mr={2} />
+                    {enrichingBank
+                      ? "Classifying Bank..."
+                      : `Auto-Enrich ${subjectFilter === "All" ? "All Bank" : subjectFilter}`}
+                  </Button>
+                </Flex>
+              </Flex>
+            </Box>
+
+            {/* Filter & Search Toolbar */}
+            <Box
+              bg="white"
+              p={{ base: 4, md: 5 }}
+              borderRadius="2xl"
+              border="1px solid"
+              borderColor="gray.200"
+              boxShadow="sm"
+              mb={6}
+            >
+              <Flex
+                direction={{ base: "column", xl: "row" }}
+                gap={4}
+                align={{ base: "stretch", xl: "center" }}
+                justify="space-between"
+              >
+                {/* Source Segmented Control */}
+                <HStack
+                  bg="#F1F5F9"
+                  p="3px"
+                  borderRadius="xl"
+                  w={{ base: "100%", xl: "auto" }}
+                >
+                  <Button
+                    size="xs"
+                    borderRadius="lg"
+                    px={3}
+                    py={2}
+                    bg={sourceFilter === "all" ? "white" : "transparent"}
+                    color={sourceFilter === "all" ? "#6A1B9A" : "#64748B"}
+                    fontWeight={sourceFilter === "all" ? "700" : "500"}
+                    boxShadow={sourceFilter === "all" ? "xs" : "none"}
+                    onClick={() => {
+                      setSourceFilter("all");
+                      setPage(1);
+                    }}
+                  >
+                    All Questions
+                  </Button>
+                  <Button
+                    size="xs"
+                    borderRadius="lg"
+                    px={3}
+                    py={2}
+                    bg={sourceFilter === "teacher" ? "white" : "transparent"}
+                    color={sourceFilter === "teacher" ? "#6A1B9A" : "#64748B"}
+                    fontWeight={sourceFilter === "teacher" ? "700" : "500"}
+                    boxShadow={sourceFilter === "teacher" ? "xs" : "none"}
+                    onClick={() => {
+                      setSourceFilter("teacher");
+                      setPage(1);
+                    }}
+                  >
+                    Teacher Uploaded
+                  </Button>
+                  <Button
+                    size="xs"
+                    borderRadius="lg"
+                    px={3}
+                    py={2}
+                    bg={sourceFilter === "api" ? "white" : "transparent"}
+                    color={sourceFilter === "api" ? "#6A1B9A" : "#64748B"}
+                    fontWeight={sourceFilter === "api" ? "700" : "500"}
+                    boxShadow={sourceFilter === "api" ? "xs" : "none"}
+                    onClick={() => {
+                      setSourceFilter("api");
+                      setPage(1);
+                    }}
+                  >
+                    Platform General Bank
+                  </Button>
+                </HStack>
+
+                {/* Filter Controls & Search Box */}
+                <Flex
+                  gap={2.5}
+                  direction={{ base: "column", md: "row" }}
+                  flex={1}
+                  flexWrap="wrap"
+                >
+                  {/* Subject */}
+                  <Box minW="150px" flex={1}>
+                    <NativeSelect.Root size="sm">
                       <NativeSelect.Field
-                        value={q.type}
-                        onChange={(e) => handleTypeChange(qIdx, e.target.value)}
+                        value={subjectFilter}
+                        onChange={(e) => {
+                          setSubjectFilter(e.target.value);
+                          setPage(1);
+                        }}
                         borderRadius="xl"
-                        h="46px"
-                        fontSize="13px"
-                        borderColor="#CBD5E1"
+                        borderColor="gray.200"
+                        fontWeight="600"
+                        color="#334155"
                       >
-                        <option value="multiple">Multiple Choice (4)</option>
-                        <option value="boolean">True / False</option>
+                        {SUBJECTS_LIST.map((s) => (
+                          <option key={s} value={s}>
+                            {s === "All" ? "All Subjects" : s}
+                          </option>
+                        ))}
                       </NativeSelect.Field>
-                      <NativeSelect.Indicator />
                     </NativeSelect.Root>
                   </Box>
-                </Flex>
 
-                {/* AI Granular Categorization Inputs */}
-                <Flex gap={3} mb={4} flexWrap="wrap">
-                  <Box flex={1} minW="160px">
-                    <Text fontSize="12px" fontWeight="600" color="#64748B" mb={1}>
-                      AI Topic Classification
-                    </Text>
-                    <Input
-                      placeholder="e.g. Trigonometry, Kinematics..."
-                      value={q.topic}
-                      onChange={(e) => handleQuestionChange(qIdx, "topic", e.target.value)}
-                      borderRadius="lg"
-                      h="38px"
-                      fontSize="12px"
-                      borderColor="#E2E8F0"
-                    />
-                  </Box>
-
-                  <Box w="140px">
-                    <Text fontSize="12px" fontWeight="600" color="#64748B" mb={1}>
-                      Difficulty Tier
-                    </Text>
-                    <NativeSelect.Root>
+                  {/* Difficulty */}
+                  <Box minW="130px">
+                    <NativeSelect.Root size="sm">
                       <NativeSelect.Field
-                        value={q.difficulty}
-                        onChange={(e) => handleQuestionChange(qIdx, "difficulty", e.target.value)}
-                        borderRadius="lg"
-                        h="38px"
-                        fontSize="12px"
-                        borderColor="#E2E8F0"
+                        value={difficultyFilter}
+                        onChange={(e) => {
+                          setDifficultyFilter(e.target.value);
+                          setPage(1);
+                        }}
+                        borderRadius="xl"
+                        borderColor="gray.200"
+                        fontWeight="600"
+                        color="#334155"
                       >
+                        <option value="all">All Difficulties</option>
                         <option value="easy">Easy</option>
                         <option value="medium">Medium</option>
                         <option value="hard">Hard</option>
                       </NativeSelect.Field>
-                      <NativeSelect.Indicator />
                     </NativeSelect.Root>
                   </Box>
 
-                  <Box w="150px">
-                    <Text fontSize="12px" fontWeight="600" color="#64748B" mb={1}>
-                      Cognitive Level
-                    </Text>
-                    <NativeSelect.Root>
+                  {/* Cognitive Level */}
+                  <Box minW="150px">
+                    <NativeSelect.Root size="sm">
                       <NativeSelect.Field
-                        value={q.cognitiveLevel}
-                        onChange={(e) => handleQuestionChange(qIdx, "cognitiveLevel", e.target.value)}
-                        borderRadius="lg"
-                        h="38px"
-                        fontSize="12px"
-                        borderColor="#E2E8F0"
+                        value={cognitiveFilter}
+                        onChange={(e) => {
+                          setCognitiveFilter(e.target.value);
+                          setPage(1);
+                        }}
+                        borderRadius="xl"
+                        borderColor="gray.200"
+                        fontWeight="600"
+                        color="#334155"
                       >
+                        <option value="all">All Bloom Levels</option>
                         <option value="Recall">Recall</option>
+                        <option value="Comprehension">Comprehension</option>
                         <option value="Application">Application</option>
                         <option value="Analysis">Analysis</option>
                       </NativeSelect.Field>
-                      <NativeSelect.Indicator />
                     </NativeSelect.Root>
                   </Box>
+
+                  {/* Search */}
+                  <form onSubmit={handleSearchSubmit} style={{ flex: 2, display: "flex", gap: "8px", minWidth: "180px" }}>
+                    <Input
+                      size="sm"
+                      placeholder="Search question or topic..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      borderRadius="xl"
+                      borderColor="gray.200"
+                      bg="white"
+                    />
+                    <Button
+                      size="sm"
+                      type="submit"
+                      bg="#6A1B9A"
+                      color="white"
+                      borderRadius="xl"
+                      px={4}
+                      _hover={{ bg: "#581c87" }}
+                    >
+                      <Icon as={FaSearch} />
+                    </Button>
+                  </form>
+                </Flex>
+              </Flex>
+            </Box>
+
+            {/* Questions Grid / Loading State */}
+            {loadingQuestions ? (
+              <CardGridSkeleton count={6} />
+            ) : explorerQuestions.length === 0 ? (
+              <Box
+                bg="white"
+                borderRadius="2xl"
+                p={12}
+                textAlign="center"
+                border="1px solid"
+                borderColor="gray.200"
+              >
+                <Icon as={FaBookOpen} boxSize={12} color="#CBD5E1" mb={3} />
+                <Text fontSize="18px" fontWeight="700" color="#1E293B">
+                  No questions found in this category
+                </Text>
+                <Text fontSize="14px" color="#64748B" maxW="450px" mx="auto" mt={1} mb={5}>
+                  {sourceFilter === "teacher"
+                    ? "You haven't uploaded any custom questions yet. Use AI Handwritten OCR or Bulk Upload to add your first batch!"
+                    : "Try adjusting your subject filter or search keyword."}
+                </Text>
+                <Button
+                  size="sm"
+                  bg="#6A1B9A"
+                  color="white"
+                  borderRadius="xl"
+                  onClick={() => setActiveTab("ocr")}
+                >
+                  <Icon as={FaCamera} mr={2} />
+                  Scan Questions with AI
+                </Button>
+              </Box>
+            ) : (
+              <VStack gap={4} align="stretch">
+                {explorerQuestions.map((q, idx) => {
+                  const isExpanded = !!expandedExplanations[q.id];
+                  const isTeacher = q.source === "teacher";
+                  const opts = q.options || {};
+                  const optionsEntries = Object.entries(opts);
+
+                  return (
+                    <Box
+                      key={q.id || idx}
+                      bg="white"
+                      borderRadius="2xl"
+                      p={{ base: 4, md: 5 }}
+                      border="1px solid"
+                      borderColor="gray.200"
+                      boxShadow="xs"
+                      transition="all 0.2s"
+                      _hover={{ borderColor: "purple.300", boxShadow: "sm" }}
+                    >
+                      {/* Top Badges */}
+                      <Flex justify="space-between" align="center" mb={3} flexWrap="wrap" gap={2}>
+                        <HStack gap={2} flexWrap="wrap">
+                          <Badge
+                            bg={isTeacher ? "purple.50" : "blue.50"}
+                            color={isTeacher ? "#6A1B9A" : "blue.700"}
+                            border="1px solid"
+                            borderColor={isTeacher ? "purple.200" : "blue.200"}
+                            borderRadius="lg"
+                            px={2.5}
+                            py={0.5}
+                            fontSize="11px"
+                            fontWeight="700"
+                          >
+                            {isTeacher ? "Teacher Uploaded" : "Platform Bank"}
+                          </Badge>
+
+                          <Badge
+                            bg="gray.100"
+                            color="gray.700"
+                            borderRadius="lg"
+                            px={2}
+                            py={0.5}
+                            fontSize="11px"
+                          >
+                            {q.subject?.toUpperCase() || "GENERAL"}
+                          </Badge>
+
+                          {q.topic && (
+                            <Badge
+                              bg="purple.50"
+                              color="#6A1B9A"
+                              borderRadius="lg"
+                              px={2}
+                              py={0.5}
+                              fontSize="11px"
+                            >
+                              {q.topic}
+                            </Badge>
+                          )}
+
+                          <Badge
+                            bg={
+                              q.difficulty === "hard"
+                                ? "red.50"
+                                : q.difficulty === "easy"
+                                ? "green.50"
+                                : "amber.50"
+                            }
+                            color={
+                              q.difficulty === "hard"
+                                ? "red.700"
+                                : q.difficulty === "easy"
+                                ? "green.700"
+                                : "amber.700"
+                            }
+                            borderRadius="lg"
+                            px={2}
+                            py={0.5}
+                            fontSize="11px"
+                          >
+                            {q.difficulty || "medium"}
+                          </Badge>
+
+                          {q.cognitiveLevel && (
+                            <Badge
+                              bg="cyan.50"
+                              color="cyan.800"
+                              border="1px solid"
+                              borderColor="cyan.200"
+                              borderRadius="lg"
+                              px={2}
+                              py={0.5}
+                              fontSize="11px"
+                              fontWeight="600"
+                            >
+                              Bloom: {q.cognitiveLevel}
+                            </Badge>
+                          )}
+                        </HStack>
+
+                        {isTeacher && (
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            colorScheme="red"
+                            color="red.600"
+                            onClick={() => handleDeleteQuestion(q.id)}
+                          >
+                            <Icon as={FaTrash} mr={1} />
+                            Delete
+                          </Button>
+                        )}
+                      </Flex>
+
+                      {/* Question Text */}
+                      <Text
+                        fontSize={{ base: "15px", md: "16px" }}
+                        fontWeight="700"
+                        color="#0F172A"
+                        mb={4}
+                        lineHeight="1.5"
+                      >
+                        {q.questionText || q.question}
+                      </Text>
+
+                      {/* Options Grid */}
+                      <SimpleGrid columns={{ base: 1, md: 2 }} gap={2.5} mb={3}>
+                        {optionsEntries.map(([key, val]) => {
+                          const isCorrect =
+                            String(q.correctAnswer || "").toLowerCase() === String(key).toLowerCase();
+                          return (
+                            <Flex
+                              key={key}
+                              align="center"
+                              gap={3}
+                              p={2.5}
+                              borderRadius="xl"
+                              border="1px solid"
+                              borderColor={isCorrect ? "green.300" : "gray.200"}
+                              bg={isCorrect ? "green.50" : "#F8FAFC"}
+                            >
+                              <Flex
+                                w="24px"
+                                h="24px"
+                                borderRadius="full"
+                                bg={isCorrect ? "green.600" : "gray.200"}
+                                color={isCorrect ? "white" : "gray.700"}
+                                fontSize="12px"
+                                fontWeight="800"
+                                align="center"
+                                justify="center"
+                              >
+                                {key.toUpperCase()}
+                              </Flex>
+                              <Text
+                                fontSize="13px"
+                                fontWeight={isCorrect ? "700" : "500"}
+                                color={isCorrect ? "green.900" : "#334155"}
+                                flex={1}
+                              >
+                                {val}
+                              </Text>
+                              {isCorrect && (
+                                <Icon as={FaCheckCircle} color="green.600" boxSize={3.5} />
+                              )}
+                            </Flex>
+                          );
+                        })}
+                      </SimpleGrid>
+
+                      {/* AI Explanation Toggle & Content */}
+                      <Box mt={3} pt={2.5} borderTop="1px dashed" borderColor="gray.200">
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          color="#6A1B9A"
+                          fontWeight="700"
+                          p={0}
+                          onClick={() => toggleExplanation(q.id || idx)}
+                        >
+                          <Icon as={FaLightbulb} mr={1.5} color="amber.500" />
+                          {isExpanded ? "Hide AI Explanation" : "View AI Explanation & Solution"}
+                          <Icon as={isExpanded ? FaEyeSlash : FaEye} ml={1.5} />
+                        </Button>
+
+                        {isExpanded && (
+                          <Box
+                            mt={2.5}
+                            p={3.5}
+                            borderRadius="xl"
+                            bg="purple.50"
+                            border="1px solid"
+                            borderColor="purple.200"
+                          >
+                            <Text fontSize="12px" fontWeight="700" color="#6A1B9A" mb={1}>
+                              Pedagogical Explanation:
+                            </Text>
+                            <Text fontSize="13px" color="#334155" lineHeight="1.6">
+                              {q.explanation ||
+                                "Detailed pedagogical step-by-step solution derived from core curriculum taxonomy."}
+                            </Text>
+                          </Box>
+                        )}
+                      </Box>
+                    </Box>
+                  );
+                })}
+
+                {/* Pagination Bar */}
+                <Flex justify="space-between" align="center" mt={4} px={2}>
+                  <Text fontSize="13px" color="#64748B">
+                    Showing page {page} of {totalPages} ({totalCount} total)
+                  </Text>
+                  <HStack gap={2}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      borderRadius="xl"
+                      disabled={page <= 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      borderRadius="xl"
+                      disabled={page >= totalPages}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    >
+                      Next
+                    </Button>
+                  </HStack>
+                </Flex>
+              </VStack>
+            )}
+          </Box>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 2: AI HANDWRITTEN / PAPER OCR & AUTO-SOLVE                 */}
+        {/* ============================================================== */}
+        {activeTab === "ocr" && (
+          <Box>
+            <Box
+              bg="white"
+              p={{ base: 5, md: 6 }}
+              borderRadius="2xl"
+              border="1px solid"
+              borderColor="gray.200"
+              boxShadow="sm"
+              mb={6}
+            >
+              <Flex align="center" gap={3} mb={3}>
+                <Flex
+                  w="36px"
+                  h="36px"
+                  borderRadius="xl"
+                  bg="purple.50"
+                  color="#6A1B9A"
+                  align="center"
+                  justify="center"
+                >
+                  <Icon as={FaCamera} boxSize={4.5} />
+                </Flex>
+                <Box>
+                  <Text fontSize="17px" fontWeight="800" color="#0F172A">
+                    AI Vision OCR: Handwritten & Paper Exam Digitizer
+                  </Text>
+                  <Text fontSize="13px" color="#64748B">
+                    Snap or upload a photo of handwritten exam questions or test papers. Gemini 3.5 Flash will transcribe the text, solve unanswered questions, and generate step-by-step pedagogical explanations.
+                  </Text>
+                </Box>
+              </Flex>
+
+              {/* Subject selector & File Dropzone */}
+              <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} my={4}>
+                <Box>
+                  <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                    Target Subject / Course
+                  </Text>
+                  <NativeSelect.Root size="md">
+                    <NativeSelect.Field
+                      value={ocrSubject}
+                      onChange={(e) => setOcrSubject(e.target.value)}
+                      borderRadius="xl"
+                    >
+                      {SUBJECTS_LIST.filter((s) => s !== "All").map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </NativeSelect.Field>
+                  </NativeSelect.Root>
+                </Box>
+
+                <Box>
+                  <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                    Select / Capture Test Sheet Image
+                  </Text>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    style={{ display: "none" }}
+                    onChange={handleImageUpload}
+                  />
+                  <Button
+                    w="100%"
+                    variant="outline"
+                    borderRadius="xl"
+                    borderColor="purple.300"
+                    color="#6A1B9A"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Icon as={FaCamera} mr={2} />
+                    {imageFileName || "Choose Image from Device or Camera"}
+                  </Button>
+                </Box>
+              </SimpleGrid>
+
+              {/* Image Preview & Scan Action */}
+              {selectedImageBase64 && (
+                <Box mt={4} p={4} borderRadius="xl" bg="#F8FAFC" border="1px solid" borderColor="gray.200">
+                  <Flex justify="space-between" align="center" mb={3}>
+                    <Text fontSize="13px" fontWeight="700" color="#0F172A">
+                      Selected Image Preview ({imageFileName})
+                    </Text>
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      color="red.600"
+                      onClick={() => {
+                        setSelectedImageBase64("");
+                        setImageFileName("");
+                      }}
+                    >
+                      <Icon as={FaTimes} mr={1} />
+                      Remove
+                    </Button>
+                  </Flex>
+
+                  <Box maxH="260px" overflow="hidden" borderRadius="lg" mb={4} textAlign="center">
+                    <img
+                      src={selectedImageBase64}
+                      alt="Uploaded Handwritten Sheet"
+                      style={{ maxHeight: "250px", margin: "0 auto", borderRadius: "8px", objectFit: "contain" }}
+                    />
+                  </Box>
+
+                  <Button
+                    w="100%"
+                    bg="#6A1B9A"
+                    color="white"
+                    borderRadius="xl"
+                    h="44px"
+                    fontWeight="700"
+                    onClick={handleRunOCR}
+                    loading={ocrLoading}
+                    loadingText="Gemini 3.5 Flash is transcribing and auto-solving..."
+                    _hover={{ bg: "#53127a" }}
+                  >
+                    <Icon as={FaBrain} mr={2} />
+                    Run AI OCR & Solve Questions
+                  </Button>
+                </Box>
+              )}
+            </Box>
+
+            {/* Extracted Questions Review & Save Workspace */}
+            {extractedOcrQuestions.length > 0 && (
+              <Box>
+                <Flex justify="space-between" align="center" mb={4}>
+                  <Text fontSize="18px" fontWeight="800" color="#0F172A">
+                    Extracted & Solved Questions ({extractedOcrQuestions.length})
+                  </Text>
+                  <Button
+                    bg="#6A1B9A"
+                    color="white"
+                    borderRadius="xl"
+                    px={5}
+                    fontWeight="700"
+                    onClick={handleSaveOcrQuestions}
+                    loading={savingOcr}
+                    loadingText="Saving..."
+                  >
+                    <Icon as={FaCheck} mr={2} />
+                    Save All to Question Bank
+                  </Button>
                 </Flex>
 
-                {/* AI Keyword Tags */}
-                {Array.isArray(q.tags) && q.tags.length > 0 && (
-                  <Flex gap={1.5} mb={4} flexWrap="wrap" align="center">
-                    <Icon as={FaTag} color="#6A1B9A" boxSize={3} />
-                    <Text fontSize="11px" fontWeight="600" color="#64748B">Tags:</Text>
-                    {q.tags.map((tag, tagI) => (
-                      <Badge key={tagI} bg="gray.100" color="gray.700" borderRadius="md" px={2} py={0.5} fontSize="10px">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </Flex>
-                )}
+                <VStack gap={4} align="stretch">
+                  {extractedOcrQuestions.map((q, idx) => (
+                    <Box
+                      key={idx}
+                      bg="white"
+                      borderRadius="2xl"
+                      p={5}
+                      border="1px solid"
+                      borderColor="purple.200"
+                      boxShadow="xs"
+                    >
+                      <Flex justify="space-between" align="center" mb={2}>
+                        <Badge bg="purple.50" color="#6A1B9A" borderRadius="md" px={2} py={0.5}>
+                          Question {idx + 1}
+                        </Badge>
+                        <Badge bg="green.50" color="green.700" borderRadius="md" px={2} py={0.5}>
+                          Solved Answer: Option {q.correctAnswer?.toUpperCase()}
+                        </Badge>
+                      </Flex>
 
-                {/* Options Selection */}
-                {q.type === "multiple" ? (
-                  <Box mb={5}>
-                    <Text fontSize="13px" fontWeight="700" color="#334155" mb={2}>
-                      Options (A, B, C, D)
-                    </Text>
-                    <VStack gap={2.5} align="stretch">
-                      {q.options.map((opt, oIndex) => {
-                        const label = String.fromCharCode(65 + oIndex);
-                        return (
-                          <Flex key={oIndex} align="center" gap={3}>
+                      <Textarea
+                        value={q.questionText}
+                        onChange={(e) => {
+                          const updated = [...extractedOcrQuestions];
+                          updated[idx].questionText = e.target.value;
+                          setExtractedOcrQuestions(updated);
+                        }}
+                        size="sm"
+                        borderRadius="xl"
+                        mb={3}
+                        rows={2}
+                      />
+
+                      <SimpleGrid columns={{ base: 1, md: 2 }} gap={2} mb={3}>
+                        {["a", "b", "c", "d"].map((optKey) => (
+                          <Flex key={optKey} align="center" gap={2}>
                             <Flex
-                              w="32px"
-                              h="32px"
-                              borderRadius="lg"
-                              bg="#F1F5F9"
-                              color="#475569"
+                              w="26px"
+                              h="26px"
+                              borderRadius="full"
+                              bg={q.correctAnswer === optKey ? "green.600" : "gray.200"}
+                              color={q.correctAnswer === optKey ? "white" : "gray.700"}
                               align="center"
                               justify="center"
                               fontSize="12px"
                               fontWeight="800"
                             >
-                              {label}
+                              {optKey.toUpperCase()}
                             </Flex>
                             <Input
-                              placeholder={`Option ${label} text...`}
-                              value={opt}
-                              onChange={(e) => handleQuestionChange(qIdx, oIndex, e.target.value)}
-                              borderRadius="xl"
-                              h="42px"
-                              fontSize="13px"
-                              borderColor="#E2E8F0"
-                              _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
-                              required
+                              size="xs"
+                              borderRadius="lg"
+                              value={q.options?.[optKey] || ""}
+                              onChange={(e) => {
+                                const updated = [...extractedOcrQuestions];
+                                updated[idx].options[optKey] = e.target.value;
+                                setExtractedOcrQuestions(updated);
+                              }}
                             />
                           </Flex>
-                        );
-                      })}
-                    </VStack>
-                  </Box>
-                ) : (
-                  <Box p={3} bg="#F8FAFC" borderRadius="xl" mb={4} color="#64748B" fontSize="13px">
-                    Options configured as <strong>True</strong> and <strong>False</strong>.
-                  </Box>
-                )}
+                        ))}
+                      </SimpleGrid>
 
-                {/* Correct Answer */}
-                <Box>
-                  <Text fontSize="13px" fontWeight="700" color="#059669" mb={1.5}>
-                    Correct Answer Key *
+                      {/* Explanation Field */}
+                      <Box bg="purple.50" p={3} borderRadius="xl" border="1px solid" borderColor="purple.200">
+                        <Text fontSize="12px" fontWeight="700" color="#6A1B9A" mb={1}>
+                          AI Step-by-Step Explanation:
+                        </Text>
+                        <Textarea
+                          value={q.explanation}
+                          onChange={(e) => {
+                            const updated = [...extractedOcrQuestions];
+                            updated[idx].explanation = e.target.value;
+                            setExtractedOcrQuestions(updated);
+                          }}
+                          size="xs"
+                          borderRadius="lg"
+                          bg="white"
+                          rows={2}
+                        />
+                      </Box>
+                    </Box>
+                  ))}
+                </VStack>
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 3: BULK TEXT & CSV UPLOAD                                  */}
+        {/* ============================================================== */}
+        {activeTab === "bulk" && (
+          <Box>
+            <Box
+              bg="white"
+              p={{ base: 5, md: 6 }}
+              borderRadius="2xl"
+              border="1px solid"
+              borderColor="gray.200"
+              boxShadow="sm"
+              mb={6}
+            >
+              <Flex align="center" justify="space-between" mb={4} flexWrap="wrap" gap={3}>
+                <Flex align="center" gap={3}>
+                  <Flex
+                    w="36px"
+                    h="36px"
+                    borderRadius="xl"
+                    bg="purple.50"
+                    color="#6A1B9A"
+                    align="center"
+                    justify="center"
+                  >
+                    <Icon as={FaCloudUploadAlt} boxSize={5} />
+                  </Flex>
+                  <Box>
+                    <Text fontSize="17px" fontWeight="800" color="#0F172A">
+                      Bulk Question Batch Upload
+                    </Text>
+                    <Text fontSize="13px" color="#64748B">
+                      Paste dozens of questions at once or upload a CSV spreadsheet.
+                    </Text>
+                  </Box>
+                </Flex>
+
+                <HStack gap={2}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    borderRadius="xl"
+                    onClick={handleDownloadCsvTemplate}
+                  >
+                    <Icon as={FaDownload} mr={1.5} />
+                    Download CSV Template
+                  </Button>
+
+                  <input
+                    type="file"
+                    accept=".csv"
+                    ref={csvInputRef}
+                    style={{ display: "none" }}
+                    onChange={handleCsvFileUpload}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    borderColor="purple.300"
+                    color="#6A1B9A"
+                    borderRadius="xl"
+                    onClick={() => csvInputRef.current?.click()}
+                  >
+                    <Icon as={FaFileAlt} mr={1.5} />
+                    Import CSV File
+                  </Button>
+                </HStack>
+              </Flex>
+
+              <Box mb={4}>
+                <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                  Default Subject
+                </Text>
+                <NativeSelect.Root size="sm" maxW="280px">
+                  <NativeSelect.Field
+                    value={bulkSubject}
+                    onChange={(e) => setBulkSubject(e.target.value)}
+                    borderRadius="xl"
+                  >
+                    {SUBJECTS_LIST.filter((s) => s !== "All").map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </NativeSelect.Field>
+                </NativeSelect.Root>
+              </Box>
+
+              <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                Paste Questions in Any Format (Text, Word, or Past Papers):
+              </Text>
+              <Textarea
+                rows={7}
+                placeholder={`Example:
+1. What is the derivative of x^3?
+A) 3x^2
+B) x^2
+C) 3x
+D) 2x
+Ans: A
+Exp: By the power rule, d/dx(x^n) = n*x^(n-1).
+
+2. What is the SI unit of electric current?
+A) Volt
+B) Ampere
+C) Ohm
+D) Joule
+(No answer needed - AI will solve it automatically!)`}
+                value={bulkRawText}
+                onChange={(e) => setBulkRawText(e.target.value)}
+                borderRadius="xl"
+                fontSize="13px"
+                fontFamily="monospace"
+                mb={4}
+              />
+
+              <Button
+                bg="#6A1B9A"
+                color="white"
+                borderRadius="xl"
+                h="44px"
+                fontWeight="700"
+                onClick={handleParseBulkText}
+                loading={bulkParsing}
+                loadingText="AI is parsing, solving, and generating explanations..."
+                _hover={{ bg: "#53127a" }}
+              >
+                <Icon as={FaBrain} mr={2} />
+                AI Parse & Auto-Solve Questions
+              </Button>
+            </Box>
+
+            {/* Parsed Questions Preview */}
+            {parsedBulkQuestions.length > 0 && (
+              <Box>
+                <Flex justify="space-between" align="center" mb={4}>
+                  <Text fontSize="18px" fontWeight="800" color="#0F172A">
+                    Ready to Save ({parsedBulkQuestions.length} Questions)
+                  </Text>
+                  <Button
+                    bg="#6A1B9A"
+                    color="white"
+                    borderRadius="xl"
+                    px={5}
+                    fontWeight="700"
+                    onClick={handleSaveBulkQuestions}
+                    loading={savingBulk}
+                    loadingText="Saving to DB..."
+                  >
+                    <Icon as={FaCheck} mr={2} />
+                    Save All to Question Bank
+                  </Button>
+                </Flex>
+
+                <VStack gap={4} align="stretch">
+                  {parsedBulkQuestions.map((q, idx) => (
+                    <Box
+                      key={idx}
+                      bg="white"
+                      borderRadius="2xl"
+                      p={5}
+                      border="1px solid"
+                      borderColor="gray.200"
+                    >
+                      <Flex justify="space-between" align="center" mb={2}>
+                        <Badge bg="purple.50" color="#6A1B9A" borderRadius="md" px={2} py={0.5}>
+                          Question {idx + 1}
+                        </Badge>
+                        <Badge bg="green.50" color="green.700" borderRadius="md" px={2} py={0.5}>
+                          Correct Answer: Option {q.correctAnswer?.toUpperCase()}
+                        </Badge>
+                      </Flex>
+
+                      <Text fontSize="15px" fontWeight="700" color="#0F172A" mb={3}>
+                        {q.questionText}
+                      </Text>
+
+                      <SimpleGrid columns={{ base: 1, md: 2 }} gap={2} mb={3}>
+                        {Object.entries(q.options || {}).map(([optKey, val]) => (
+                          <Flex
+                            key={optKey}
+                            align="center"
+                            gap={2.5}
+                            p={2}
+                            borderRadius="lg"
+                            bg={q.correctAnswer === optKey ? "green.50" : "#F8FAFC"}
+                            border="1px solid"
+                            borderColor={q.correctAnswer === optKey ? "green.300" : "gray.200"}
+                          >
+                            <Flex
+                              w="22px"
+                              h="22px"
+                              borderRadius="full"
+                              bg={q.correctAnswer === optKey ? "green.600" : "gray.200"}
+                              color={q.correctAnswer === optKey ? "white" : "gray.700"}
+                              fontSize="11px"
+                              fontWeight="800"
+                              align="center"
+                              justify="center"
+                            >
+                              {optKey.toUpperCase()}
+                            </Flex>
+                            <Text fontSize="13px">{val}</Text>
+                          </Flex>
+                        ))}
+                      </SimpleGrid>
+
+                      <Box bg="purple.50" p={3} borderRadius="xl" border="1px solid" borderColor="purple.200">
+                        <Text fontSize="12px" fontWeight="700" color="#6A1B9A" mb={1}>
+                          AI Explanation:
+                        </Text>
+                        <Text fontSize="13px" color="#334155">
+                          {q.explanation}
+                        </Text>
+                      </Box>
+                    </Box>
+                  ))}
+                </VStack>
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 4: SINGLE QUESTION AUTHORING                               */}
+        {/* ============================================================== */}
+        {activeTab === "single" && (
+          <Box
+            as="form"
+            onSubmit={handleSaveSingleQuestion}
+            bg="white"
+            p={{ base: 5, md: 7 }}
+            borderRadius="2xl"
+            border="1px solid"
+            borderColor="gray.200"
+            boxShadow="sm"
+          >
+            <Text fontSize="18px" fontWeight="800" color="#0F172A" mb={4}>
+              Author a Custom Single Question
+            </Text>
+
+            <SimpleGrid columns={{ base: 1, md: 3 }} gap={4} mb={4}>
+              <Box>
+                <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                  Subject
+                </Text>
+                <NativeSelect.Root size="sm">
+                  <NativeSelect.Field
+                    value={singleQ.subject}
+                    onChange={(e) => setSingleQ({ ...singleQ, subject: e.target.value })}
+                    borderRadius="xl"
+                  >
+                    {SUBJECTS_LIST.filter((s) => s !== "All").map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </NativeSelect.Field>
+                </NativeSelect.Root>
+              </Box>
+
+              <Box>
+                <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                  Topic / Subtopic
+                </Text>
+                <Input
+                  size="sm"
+                  placeholder="e.g. Organic Chemistry"
+                  value={singleQ.topic}
+                  onChange={(e) => setSingleQ({ ...singleQ, topic: e.target.value })}
+                  borderRadius="xl"
+                />
+              </Box>
+
+              <Box>
+                <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                  Difficulty Level
+                </Text>
+                <NativeSelect.Root size="sm">
+                  <NativeSelect.Field
+                    value={singleQ.difficulty}
+                    onChange={(e) => setSingleQ({ ...singleQ, difficulty: e.target.value })}
+                    borderRadius="xl"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </NativeSelect.Field>
+                </NativeSelect.Root>
+              </Box>
+            </SimpleGrid>
+
+            <Box mb={4}>
+              <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                Question Statement
+              </Text>
+              <Textarea
+                rows={3}
+                placeholder="Enter question text here..."
+                value={singleQ.questionText}
+                onChange={(e) => setSingleQ({ ...singleQ, questionText: e.target.value })}
+                borderRadius="xl"
+              />
+            </Box>
+
+            <SimpleGrid columns={{ base: 1, md: 2 }} gap={3} mb={4}>
+              {["a", "b", "c", "d"].map((optKey) => (
+                <Box key={optKey}>
+                  <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
+                    Option {optKey.toUpperCase()}
                   </Text>
                   <Input
-                    placeholder="e.g. Enter matching option text or A/B/C/D"
-                    value={q.answer}
-                    onChange={(e) => handleQuestionChange(qIdx, "answer", e.target.value)}
+                    size="sm"
+                    placeholder={`Option ${optKey.toUpperCase()}`}
+                    value={singleQ.options[optKey]}
+                    onChange={(e) =>
+                      setSingleQ({
+                        ...singleQ,
+                        options: { ...singleQ.options, [optKey]: e.target.value },
+                      })
+                    }
                     borderRadius="xl"
-                    h="44px"
-                    fontSize="13px"
-                    borderColor="#A7F3D0"
-                    bg="#F0FDF4"
-                    _focus={{ borderColor: "#10B981", boxShadow: "0 0 0 1px #10B981" }}
-                    required
                   />
                 </Box>
-              </Box>
-            ))}
-          </VStack>
+              ))}
+            </SimpleGrid>
 
-          {/* Submit Toolbar */}
-          <Flex justify="flex-end" gap={3}>
+            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} mb={5}>
+              <Box>
+                <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                  Correct Answer Option
+                </Text>
+                <NativeSelect.Root size="sm">
+                  <NativeSelect.Field
+                    value={singleQ.correctAnswer}
+                    onChange={(e) => setSingleQ({ ...singleQ, correctAnswer: e.target.value })}
+                    borderRadius="xl"
+                  >
+                    <option value="a">Option A</option>
+                    <option value="b">Option B</option>
+                    <option value="c">Option C</option>
+                    <option value="d">Option D</option>
+                  </NativeSelect.Field>
+                </NativeSelect.Root>
+              </Box>
+
+              <Box>
+                <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                  Explanation & Educational Solution
+                </Text>
+                <Textarea
+                  size="sm"
+                  rows={2}
+                  placeholder="Explain why the answer is correct for candidates to review..."
+                  value={singleQ.explanation}
+                  onChange={(e) => setSingleQ({ ...singleQ, explanation: e.target.value })}
+                  borderRadius="xl"
+                />
+              </Box>
+            </SimpleGrid>
+
             <Button
               type="submit"
-              bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
+              bg="#6A1B9A"
               color="white"
-              px={8}
-              h="48px"
               borderRadius="xl"
-              fontSize="14px"
+              px={6}
+              h="42px"
               fontWeight="700"
-              boxShadow="0 4px 12px rgba(106, 27, 154, 0.25)"
-              _hover={{ opacity: 0.95 }}
-              loading={loading}
-              loadingText="Saving to Repository..."
+              loading={savingSingle}
+              loadingText="Saving..."
+              _hover={{ bg: "#53127a" }}
             >
-              <Icon as={FaCheckCircle} mr={2} boxSize={4} />
-              Save Questions to Bank
+              <Icon as={FaCheck} mr={2} />
+              Save Question to Bank
             </Button>
-          </Flex>
-        </form>
+          </Box>
+        )}
       </Box>
     </Box>
   );
-};
-
-export default Question;
+}

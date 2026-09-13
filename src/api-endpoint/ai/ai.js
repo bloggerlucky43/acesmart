@@ -81,12 +81,50 @@ export const autoTagQuestions = async (questions) => {
 /**
  * Request AI Class-Level Insights & Readiness Summary for Teachers
  */
-export const getClassInsights = async (examId) => {
+export const getClassInsights = async (params) => {
   try {
-    const res = await api.post("/ai/class-insights", { examId });
+    const payload = typeof params === "object" && params !== null ? params : { examId: params };
+    const res = await api.post("/ai/class-insights", payload);
     return res.data?.data;
   } catch (error) {
     console.warn("Class insights endpoint error:", error);
     return null;
   }
 };
+
+/**
+ * Fetch Question Bank Classification Health & Topic Coverage Statistics
+ */
+export const getEnrichmentStatus = async () => {
+  try {
+    const res = await api.get("/ai/enrichment-status");
+    return res.data?.data;
+  } catch (error) {
+    console.warn("Enrichment status endpoint error:", error);
+    return null;
+  }
+};
+
+/**
+ * Trigger Scalable AI Question Bank Classification & Enrichment
+ */
+export const triggerBankEnrichment = async ({
+  subject = "all",
+  chunkSize = 250,
+  useAI = false,
+  forceAll = false,
+} = {}) => {
+  try {
+    const res = await api.post("/ai/enrich-bank", {
+      subject,
+      chunkSize,
+      useAI,
+      forceAll,
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Trigger enrichment error:", error);
+    throw error;
+  }
+};
+

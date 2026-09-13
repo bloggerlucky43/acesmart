@@ -1,20 +1,25 @@
 import {
   Box,
   Text,
+  Image,
   Input,
   Button,
-  Field,
   Flex,
-  Fieldset,
-  SimpleGrid,
-  Image,
+  Icon,
+  VStack,
 } from "@chakra-ui/react";
-import { addStudent } from "../../../../api-endpoint/student/students";
 import { useState, useRef } from "react";
+import { addStudent } from "../../../../api-endpoint/student/students";
 import { toaster } from "../../../../components/ui/toaster";
 import imageCompression from "browser-image-compression";
 import CropModal from "../../../../components/CropModal";
 import { getCroppedImg } from "../../../../components/CropImage";
+import {
+  FaUserPlus,
+  FaCamera,
+  FaCheckCircle,
+  FaShieldAlt,
+} from "react-icons/fa";
 
 const MNewStudent = () => {
   const [form, setForm] = useState({
@@ -29,6 +34,7 @@ const MNewStudent = () => {
   const [showCrop, setShowCrop] = useState(false);
 
   const fileInputRef = useRef(null);
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -40,36 +46,32 @@ const MNewStudent = () => {
 
     const reader = new FileReader();
     reader.onload = () => {
-      setRawImage(reader.result); // base64
-      setShowCrop(true); // open crop modal
+      setRawImage(reader.result);
+      setShowCrop(true);
     };
     reader.readAsDataURL(file);
   };
 
   const handleCropComplete = async (pixelCrop) => {
     try {
-      // Crop
       if (!rawImage || !pixelCrop) return;
 
       const croppedFile = await getCroppedImg(rawImage, pixelCrop);
 
-      // Compress
       const compressed = await imageCompression(croppedFile, {
         maxSizeMB: 0.3,
         maxWidthOrHeight: 800,
         useWebWorker: true,
       });
 
-      setImage(compressed); // this is what gets uploaded
-      setPreview(URL.createObjectURL(compressed));
-
-      setShowCrop(false);
-      setRawImage(null);
-
+      setImage(compressed);
       if (preview) {
         URL.revokeObjectURL(preview);
       }
       setPreview(URL.createObjectURL(compressed));
+
+      setShowCrop(false);
+      setRawImage(null);
     } catch (err) {
       toaster.error({ title: "Image processing failed" });
     }
@@ -80,7 +82,6 @@ const MNewStudent = () => {
 
     if (!form.firstName || !form.lastName || !form.studentemail) {
       toaster.warning({ title: "All fields are required" });
-      setLoading(false);
       return;
     }
 
@@ -97,11 +98,9 @@ const MNewStudent = () => {
       setLoading(true);
       const res = await addStudent(formData);
 
-      console.log("at res", res);
-
       if (res?.success && res?.message === "Student Added Successfully") {
         toaster.create({
-          title: "Student added successfully",
+          title: "Student enrolled successfully",
           type: "success",
         });
 
@@ -110,168 +109,244 @@ const MNewStudent = () => {
         setPreview(null);
       }
     } catch (error) {
+      console.error("Error querying server", error);
+      toaster.create({
+        title: error?.response?.data?.message || "Failed to add student",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box
-      bg="#F8FAFC"
-      p={2}
-      align="center"
-      justify="center"
-      minH="calc(100vh - 58px)"
-    >
-      <Flex
-        rounded="md"
-        justifySelf={"center"}
-        py={12}
-        px={4}
-        maxH="80vh"
-        alignSelf="center"
-        color="gray.900"
-        bg="white"
-      >
-        <Fieldset.Root size="lg" maxW="lg">
-          <form onSubmit={handleSubmit}>
-            <Box>
-              <Text fontSize="xl" mt={2} fontWeight="bold">
-                Add New Student
-              </Text>
-              <Text mb={2}>
-                Fill in the details below to add a student to the system
-              </Text>
-            </Box>
-            <Fieldset.Content>
-              <Flex gap={4} align="flex-start" wrap="wrap">
-                <Box mt={6}>
-                  <Text fontSize="sm" mb={2}>
-                    Student Image
-                  </Text>
+    <Box pb={8} className="animate-scale-in">
+      {/* Page Header */}
+      <Box mb={5}>
+        <Flex align="center" gap={2.5} mb={1}>
+          <Flex
+            w="38px"
+            h="38px"
+            borderRadius="xl"
+            bg="purple.50"
+            color="#6A1B9A"
+            align="center"
+            justify="center"
+          >
+            <Icon as={FaUserPlus} boxSize={5} />
+          </Flex>
+          <Text
+            fontSize="20px"
+            fontWeight="800"
+            color="#0F172A"
+            fontFamily="'Outfit', sans-serif"
+          >
+            Enroll Candidate
+          </Text>
+        </Flex>
+        <Text fontSize="13px" color="#64748B">
+          Register biometric face profile & credentials for proctored CBT examination access.
+        </Text>
+      </Box>
 
-                  {/* Clickable Upload Box */}
-                  <Box
-                    w="180px"
-                    h="180px"
-                    border="2px dashed"
-                    borderColor="gray.400"
-                    borderRadius="md"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    cursor="pointer"
-                    bg="gray.100"
-                    _hover={{ borderColor: "primary" }}
-                    onClick={() => fileInputRef.current.click()}
-                    overflow="hidden"
-                  >
-                    {preview ? (
-                      <Image
-                        src={preview}
-                        alt="Student preview"
-                        w="100%"
-                        h="100%"
-                        objectFit="cover"
-                      />
-                    ) : (
-                      <Text fontSize="sm" color="gray.500" textAlign="center">
-                        Click to upload image
-                      </Text>
-                    )}
-                  </Box>
+      <form onSubmit={handleSubmit} encType="multipart/form-data">
+        <VStack gap={4} align="stretch">
+          {/* Biometric Photo Card */}
+          <Box
+            bg="white"
+            borderRadius="24px"
+            p={5}
+            border="1px solid"
+            borderColor="#E2E8F0"
+            boxShadow="0 2px 10px rgba(0, 0, 0, 0.02)"
+            textAlign="center"
+          >
+            <Text fontSize="15px" fontWeight="800" color="#0F172A" mb={0.5}>
+              Biometric Photo
+            </Text>
+            <Text fontSize="12px" color="#64748B" mb={4}>
+              Captured headshot used for AI face proctoring verification
+            </Text>
 
-                  {/* Hidden File Input */}
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    display="none"
-                    onChange={handleImageChange}
-                  />
-                </Box>
-
-                <Field.Root required>
-                  <Field.Label>
-                    First name
-                    <Field.RequiredIndicator />
-                  </Field.Label>
-                  <Input
-                    name="name"
-                    placeholder="Enter your firstname"
-                    value={form.firstName}
-                    borderColor="gray.800"
-                    _focus={{ outline: "none", borderColor: "primary" }}
-                    onChange={(e) =>
-                      setForm({ ...form, firstName: e.target.value })
-                    }
-                    required
-                  />
-                </Field.Root>
-                <Field.Root required>
-                  <Field.Label>
-                    Last name
-                    <Field.RequiredIndicator />
-                  </Field.Label>
-                  <Input
-                    name="lastname"
-                    placeholder="Enter your surname"
-                    value={form.lastName}
-                    borderColor="gray.800"
-                    _focus={{ outline: "none", borderColor: "primary" }}
-                    onChange={(e) =>
-                      setForm({ ...form, lastName: e.target.value })
-                    }
-                    required
-                  />
-                </Field.Root>
-                <Field.Root required>
-                  <Field.Label>
-                    Student Email
-                    <Field.RequiredIndicator />
-                  </Field.Label>
-                  <Input
-                    type="email"
-                    name="email"
-                    placeholder="e.g example@gmail.com"
-                    value={form.studentemail}
-                    borderColor="gray.800"
-                    _focus={{ outline: "none", borderColor: "primary" }}
-                    onChange={(e) =>
-                      setForm({ ...form, studentemail: e.target.value })
-                    }
-                    required
-                  />
-                </Field.Root>
-              </Flex>
-            </Fieldset.Content>
-            <Button
-              type="submit"
-              w="full"
-              mt={4}
-              h="46px"
-              borderRadius="xl"
-              bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
-              color="white"
-              fontWeight="bold"
-              boxShadow="0 4px 12px rgba(106, 27, 154, 0.25)"
-              loading={loading}
-              spinnerPlacement="center"
+            {/* Upload Drop Zone */}
+            <Box
+              w="160px"
+              h="160px"
+              mx="auto"
+              border="2px dashed"
+              borderColor={preview ? "#10B981" : "#CBD5E1"}
+              borderRadius="24px"
+              display="flex"
+              flexDirection="column"
+              alignItems="center"
+              justifyContent="center"
+              cursor="pointer"
+              bg={preview ? "transparent" : "#F8FAFC"}
+              _hover={{ borderColor: "#6A1B9A", bg: "#FAF5FF" }}
+              onClick={() => fileInputRef.current.click()}
+              overflow="hidden"
+              position="relative"
+              transition="all 0.2s ease"
             >
-              Enroll Student
-            </Button>
-          </form>
-        </Fieldset.Root>
+              {preview ? (
+                <Image
+                  src={preview}
+                  alt="Student Face Preview"
+                  w="100%"
+                  h="100%"
+                  objectFit="cover"
+                />
+              ) : (
+                <Flex direction="column" align="center" gap={2} p={4}>
+                  <Flex
+                    w="44px"
+                    h="44px"
+                    borderRadius="full"
+                    bg="purple.50"
+                    color="#6A1B9A"
+                    align="center"
+                    justify="center"
+                  >
+                    <Icon as={FaCamera} boxSize={5} />
+                  </Flex>
+                  <Text fontSize="12px" fontWeight="700" color="#475569">
+                    Upload Headshot
+                  </Text>
+                  <Text fontSize="10px" color="#94A3B8">
+                    JPG or PNG under 5MB
+                  </Text>
+                </Flex>
+              )}
+            </Box>
 
-        {showCrop && (
-          <CropModal
-            image={rawImage}
-            onComplete={handleCropComplete}
-            onClose={() => setShowCrop(false)}
-          />
-        )}
-      </Flex>
+            <Input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              display="none"
+              onChange={handleImageChange}
+            />
+
+            <Button
+              size="sm"
+              variant="outline"
+              borderColor="#E2E8F0"
+              mt={3.5}
+              w="100%"
+              borderRadius="xl"
+              fontSize="12px"
+              fontWeight="600"
+              onClick={() => fileInputRef.current.click()}
+            >
+              {preview ? "Change Photo" : "Browse Image"}
+            </Button>
+
+            <Flex align="center" justify="center" gap={1.5} color="#059669" fontSize="11px" fontWeight="600" mt={3}>
+              <Icon as={FaShieldAlt} />
+              <Text>Auto-compressed with AI crop</Text>
+            </Flex>
+          </Box>
+
+          {/* Candidate Profile Details Card */}
+          <Box
+            bg="white"
+            borderRadius="24px"
+            p={5}
+            border="1px solid"
+            borderColor="#E2E8F0"
+            boxShadow="0 2px 10px rgba(0, 0, 0, 0.02)"
+          >
+            <Text fontSize="15px" fontWeight="800" color="#0F172A" mb={4}>
+              Candidate Credentials
+            </Text>
+
+            <VStack gap={3.5} align="stretch">
+              <Box>
+                <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
+                  First Name *
+                </Text>
+                <Input
+                  placeholder="e.g. Babatunde"
+                  value={form.firstName}
+                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                  borderRadius="xl"
+                  h="46px"
+                  fontSize="14px"
+                  borderColor="#CBD5E1"
+                  _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
+                  required
+                />
+              </Box>
+
+              <Box>
+                <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
+                  Surname / Last Name *
+                </Text>
+                <Input
+                  placeholder="e.g. Adeleke"
+                  value={form.lastName}
+                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                  borderRadius="xl"
+                  h="46px"
+                  fontSize="14px"
+                  borderColor="#CBD5E1"
+                  _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
+                  required
+                />
+              </Box>
+
+              <Box mb={2}>
+                <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
+                  Student Email Address *
+                </Text>
+                <Input
+                  type="email"
+                  placeholder="e.g. b.adeleke@school.edu.ng"
+                  value={form.studentemail}
+                  onChange={(e) => setForm({ ...form, studentemail: e.target.value })}
+                  borderRadius="xl"
+                  h="46px"
+                  fontSize="14px"
+                  borderColor="#CBD5E1"
+                  _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
+                  required
+                />
+                <Text fontSize="11px" color="#94A3B8" mt={1}>
+                  Exam invitation codes and test schedules will be dispatched here.
+                </Text>
+              </Box>
+
+              <Button
+                type="submit"
+                w="100%"
+                h="48px"
+                bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
+                color="white"
+                borderRadius="xl"
+                fontSize="14px"
+                fontWeight="700"
+                boxShadow="0 4px 14px rgba(106, 27, 154, 0.3)"
+                _hover={{ opacity: 0.95 }}
+                loading={loading}
+                loadingText="Registering Candidate..."
+              >
+                <Icon as={FaCheckCircle} mr={2} boxSize={4} />
+                Complete Enrollment
+              </Button>
+            </VStack>
+          </Box>
+        </VStack>
+      </form>
+
+      {showCrop && (
+        <CropModal
+          image={rawImage}
+          onComplete={handleCropComplete}
+          onClose={() => setShowCrop(false)}
+        />
+      )}
     </Box>
   );
 };
+
 export default MNewStudent;
