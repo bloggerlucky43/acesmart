@@ -12,6 +12,12 @@ import {
   FaTimes,
   FaSignOutAlt,
   FaCreditCard,
+  FaQrcode,
+  FaCalendarCheck,
+  FaGraduationCap,
+  FaMoneyBillWave,
+  FaUniversity,
+  FaCog,
 } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
@@ -20,7 +26,25 @@ const navGroups = [
   {
     title: "OVERVIEW",
     links: [
-      { name: "Dashboard", path: "/teacher_dashboard", icon: FaTachometerAlt },
+      { name: "CBT Dashboard", path: "/teacher_dashboard", icon: FaTachometerAlt },
+    ],
+  },
+  {
+    title: "INSTITUTION SUITE (ERP)",
+    links: [
+      { name: "School Overview", path: "/institution/dashboard", icon: FaUniversity },
+      { name: "Faculty Directory", path: "/institution/staff", icon: FaUsers },
+      { name: "Staff Attendance QR", path: "/institution/staff-qr", icon: FaQrcode },
+      { name: "Debtor Defaulters", path: "/institution/debtors", icon: FaMoneyBillWave },
+      { name: "School Settings", path: "/institution/settings", icon: FaCog },
+    ],
+  },
+  {
+    title: "SCHOOL MANAGEMENT (SMS)",
+    links: [
+      { name: "Staff Clock-In (QR)", path: "/teacher/scan-clockin", icon: FaQrcode },
+      { name: "Student Attendance", path: "/teacher/attendance", icon: FaCalendarCheck },
+      { name: "Report Cards & Broadsheets", path: "/teacher/report-cards", icon: FaGraduationCap },
     ],
   },
   {

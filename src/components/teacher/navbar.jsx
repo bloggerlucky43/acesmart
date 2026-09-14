@@ -6,13 +6,16 @@ import {
   Button,
   Box,
 } from "@chakra-ui/react";
-import { FaBell, FaPlus, FaCalendarAlt } from "react-icons/fa";
+import { useState } from "react";
+import { FaBell, FaPlus, FaCalendarAlt, FaBars } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
+import MobileSideBar from "../../mobile/component/MobileSidebar";
 
 const Navbar = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const teacherName = user?.name || user?.username || "Educator";
   const today = new Date().toLocaleDateString("en-US", {
@@ -22,7 +25,9 @@ const Navbar = () => {
   });
 
   return (
-    <Flex
+    <>
+      {mobileMenuOpen && <MobileSideBar onClose={() => setMobileMenuOpen(false)} />}
+      <Flex
       as="header"
       position="fixed"
       top={0}
@@ -41,8 +46,36 @@ const Navbar = () => {
       boxShadow="0 1px 12px rgba(0, 0, 0, 0.03)"
     >
       {/* Left Greeting & Context */}
-      <Box>
-        <Flex align="center" gap={2}>
+      <Flex align="center" gap={3}>
+        {/* Mobile Hamburger Button */}
+        <Flex
+          as="button"
+          display={{ base: "flex", lg: "none" }}
+          w="38px"
+          h="38px"
+          borderRadius="xl"
+          bg="#F1F5F9"
+          color="#0F172A"
+          align="center"
+          justify="center"
+          cursor="pointer"
+          _hover={{ bg: "#E2E8F0" }}
+          onClick={() => setMobileMenuOpen(true)}
+        >
+          <Icon as={FaBars} boxSize={4} color="#6A1B9A" />
+        </Flex>
+
+        <Box>
+          <Flex align="center" gap={2}>
+            {user?.institution?.logoUrl && (
+              <Box w="28px" h="28px" borderRadius="md" bg="white" p={0.5} border="1px solid #E2E8F0">
+                <img
+                  src={user.institution.logoUrl}
+                  alt="Crest"
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                />
+              </Box>
+            )}
           <Text
             fontSize={{ base: "16px", md: "18px" }}
             fontWeight="800"
@@ -62,9 +95,12 @@ const Navbar = () => {
         </Flex>
         <Flex align="center" gap={1.5} color="#64748B" fontSize="12px">
           <Icon as={FaCalendarAlt} boxSize={3} />
-          <Text>{today} • CBT Center Management</Text>
+          <Text>
+            {today} • {user?.institution?.name || "CBT Center Management"}
+          </Text>
         </Flex>
       </Box>
+    </Flex>
 
       {/* Right Controls */}
       <Flex gap={3.5} align="center">
@@ -143,7 +179,8 @@ const Navbar = () => {
         </Flex>
       </Flex>
     </Flex>
-  );
+  </>
+);
 };
 
 export default Navbar;

@@ -66,6 +66,18 @@ export default function BillingPage() {
       JSON.stringify({ planId: plan.id, cycle, updated: date })
     );
 
+    // If upgrading to Institution or Enterprise, grant institution admin privileges
+    if (plan.id === "institution" || plan.id === "enterprise") {
+      const userRaw = localStorage.getItem("USER_KEY");
+      if (userRaw) {
+        try {
+          const u = JSON.parse(userRaw);
+          u.role = "institution_admin";
+          localStorage.setItem("USER_KEY", JSON.stringify(u));
+        } catch (e) {}
+      }
+    }
+
     const newInvoice = {
       id: reference,
       date,

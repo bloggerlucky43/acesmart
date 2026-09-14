@@ -48,7 +48,11 @@ export default function LoginPage() {
 
         localStorage.setItem("USER_KEY", JSON.stringify(res.data));
         setUser(res.data);
-        navigate("/teacher_dashboard", { replace: true });
+        if (res.data.role === "institution_admin") {
+          navigate("/institution/dashboard", { replace: true });
+        } else {
+          navigate("/teacher_dashboard", { replace: true });
+        }
       }
     } catch (error) {
       toaster.create({
@@ -387,6 +391,29 @@ export default function LoginPage() {
                 onClick={() => navigate("/take_exam")}
               >
                 Take Exam
+              </Button>
+            </Flex>
+          </Box>
+
+          {/* Student & Parent Portal shortcut */}
+          <Box mt={3} p={4} borderRadius="xl" bg="blue.50" border="1px solid" borderColor="blue.100">
+            <Flex justify="space-between" align="center">
+              <Box>
+                <Text fontSize="13px" fontWeight="700" color="#1D4ED8">
+                  Student & Parent Portal
+                </Text>
+                <Text fontSize="12px" color="gray.600">
+                  Check term school fees, pay online & unlock report cards
+                </Text>
+              </Box>
+              <Button
+                size="xs"
+                bg="#1D4ED8"
+                color="white"
+                borderRadius="lg"
+                onClick={() => navigate("/student/portal")}
+              >
+                Enter Portal
               </Button>
             </Flex>
           </Box>

@@ -18,47 +18,16 @@ import {
   FaUserEdit,
   FaSignOutAlt,
   FaCreditCard,
+  FaQrcode,
+  FaCalendarCheck,
+  FaGraduationCap,
+  FaMoneyBillWave,
+  FaUniversity,
+  FaCog,
 } from "react-icons/fa";
 import { NavLink, useNavigate } from "react-router-dom";
 import { logoutUser } from "../../api-endpoint/auth/auths";
 import { useAuth } from "../../libs/AuthProvider";
-
-const navGroups = [
-  {
-    title: "OVERVIEW",
-    links: [
-      { name: "Dashboard", path: "/teacher_dashboard", icon: FaTachometerAlt },
-    ],
-  },
-  {
-    title: "EXAMINATIONS",
-    links: [
-      { name: "Create Exam", path: "/teacher/create_exam", icon: FaPlusCircle },
-      { name: "All Exams", path: "/teacher/exams", icon: FaFileAlt },
-      { name: "Results & Analytics", path: "/teacher/exam_result", icon: FaChartLine },
-    ],
-  },
-  {
-    title: "QUESTION BANK",
-    links: [
-      { name: "Question Bank & OCR", path: "/teacher/add_questions", icon: FaQuestionCircle },
-    ],
-  },
-  {
-    title: "STUDENTS",
-    links: [
-      { name: "Add Student", path: "/teacher/add_student", icon: FaUserPlus },
-      { name: "Student Directory", path: "/teacher/view", icon: FaUsers },
-      { name: "Edit Student", path: "/teacher/edit", icon: FaUserEdit },
-    ],
-  },
-  {
-    title: "SUBSCRIPTION & BILLING",
-    links: [
-      { name: "Billing & Plans", path: "/teacher/billing", icon: FaCreditCard },
-    ],
-  },
-];
 
 const Sidebar = () => {
   const { user, setUser } = useAuth();
@@ -77,7 +46,69 @@ const Sidebar = () => {
   };
 
   const displayName = user?.name || user?.username || "Educator";
-  const displayRole = user?.role ? user.role.toUpperCase() : "TEACHER";
+  const displayRole = user?.role ? user.role.toUpperCase().replace("_", " ") : "TEACHER";
+  const isInstitutionAdmin = user?.role === "institution_admin" || user?.role === "admin";
+  const institution = user?.institution;
+  const schoolLogo = institution?.logoUrl;
+  const schoolName = institution?.name;
+
+  // Dynamically constructed navigation groups
+  const navGroups = [
+    {
+      title: "OVERVIEW",
+      links: [
+        { name: "CBT Dashboard", path: "/teacher_dashboard", icon: FaTachometerAlt },
+      ],
+    },
+    // Institutional Management Section (Admin & ERP)
+    {
+      title: "INSTITUTION SUITE",
+      links: [
+        { name: "School Overview", path: "/institution/dashboard", icon: FaUniversity },
+        { name: "Faculty Directory", path: "/institution/staff", icon: FaUsers },
+        { name: "Staff Attendance QR", path: "/institution/staff-qr", icon: FaQrcode },
+        { name: "Debtor Defaulters", path: "/institution/debtors", icon: FaMoneyBillWave },
+        { name: "School Settings", path: "/institution/settings", icon: FaCog },
+      ],
+    },
+    // School Management System (Staff tools)
+    {
+      title: "SCHOOL MANAGEMENT (SMS)",
+      links: [
+        { name: "Staff Clock-In (QR)", path: "/teacher/scan-clockin", icon: FaQrcode },
+        { name: "Student Attendance", path: "/teacher/attendance", icon: FaCalendarCheck },
+        { name: "Report Cards & Broadsheets", path: "/teacher/report-cards", icon: FaGraduationCap },
+      ],
+    },
+    {
+      title: "EXAMINATIONS",
+      links: [
+        { name: "Create Exam", path: "/teacher/create_exam", icon: FaPlusCircle },
+        { name: "All Exams", path: "/teacher/exams", icon: FaFileAlt },
+        { name: "CBT Results", path: "/teacher/exam_result", icon: FaChartLine },
+      ],
+    },
+    {
+      title: "QUESTION BANK",
+      links: [
+        { name: "Question Bank & OCR", path: "/teacher/add_questions", icon: FaQuestionCircle },
+      ],
+    },
+    {
+      title: "STUDENTS",
+      links: [
+        { name: "Add Student", path: "/teacher/add_student", icon: FaUserPlus },
+        { name: "Student Directory", path: "/teacher/view", icon: FaUsers },
+        { name: "Edit Student", path: "/teacher/edit", icon: FaUserEdit },
+      ],
+    },
+    {
+      title: "SUBSCRIPTION & BILLING",
+      links: [
+        { name: "Billing & Plans", path: "/teacher/billing", icon: FaCreditCard },
+      ],
+    },
+  ];
 
   return (
     <Box
@@ -97,30 +128,61 @@ const Sidebar = () => {
       borderColor="#1E293B"
       boxShadow="4px 0 24px rgba(0, 0, 0, 0.15)"
     >
-      {/* Brand Header */}
-      <Box p={5} borderBottom="1px solid" borderColor="#1E293B">
-        <Flex align="center" gap={3} cursor="pointer" onClick={() => navigate("/teacher_dashboard")}>
-          <Flex
-            w="40px"
-            h="40px"
-            borderRadius="xl"
-            bg="linear-gradient(135deg, #6A1B9A 0%, #9C27B0 100%)"
-            align="center"
-            justify="center"
-            boxShadow="0 4px 14px rgba(106, 27, 154, 0.4)"
-          >
-            <Icon as={FaBrain} boxSize={5} color="white" />
-          </Flex>
-          <Box>
+      {/* Brand Header with School Crest if present */}
+      <Box p={4} borderBottom="1px solid" borderColor="#1E293B">
+        <Flex
+          align="center"
+          gap={3}
+          cursor="pointer"
+          onClick={() => navigate(isInstitutionAdmin ? "/institution/dashboard" : "/teacher_dashboard")}
+        >
+          {schoolLogo ? (
+            <Box
+              w="40px"
+              h="40px"
+              borderRadius="xl"
+              bg="white"
+              p={1}
+              flexShrink={0}
+              boxShadow="0 2px 8px rgba(0,0,0,0.2)"
+            >
+              <img
+                src={schoolLogo}
+                alt="School Crest"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </Box>
+          ) : (
+            <Flex
+              w="40px"
+              h="40px"
+              borderRadius="xl"
+              bg="linear-gradient(135deg, #6A1B9A 0%, #9C27B0 100%)"
+              align="center"
+              justify="center"
+              boxShadow="0 4px 14px rgba(106, 27, 154, 0.4)"
+              flexShrink={0}
+            >
+              <Icon as={FaBrain} boxSize={5} color="white" />
+            </Flex>
+          )}
+
+          <Box minW={0}>
             <Flex align="center" gap={1.5}>
               <Text
-                fontSize="18px"
+                fontSize="15px"
                 fontWeight="800"
                 fontFamily="'Outfit', sans-serif"
                 letterSpacing="-0.3px"
-                lineHeight="1.1"
+                lineHeight="1.2"
+                isTruncated
+                maxW="130px"
               >
-                Ace<span style={{ color: "#C084FC" }}>Smart</span>
+                {schoolName || (
+                  <>
+                    Ace<span style={{ color: "#C084FC" }}>Smart</span>
+                  </>
+                )}
               </Text>
               <Badge
                 bg="#3B0764"
@@ -131,11 +193,11 @@ const Sidebar = () => {
                 borderRadius="full"
                 border="1px solid #581C87"
               >
-                PRO
+                {isInstitutionAdmin ? "ERP" : "PRO"}
               </Badge>
             </Flex>
-            <Text fontSize="11px" color="#94A3B8" fontWeight="500">
-              Teacher Portal
+            <Text fontSize="11px" color="#94A3B8" fontWeight="500" isTruncated>
+              {isInstitutionAdmin ? "Admin Suite" : "Teacher Portal"}
             </Text>
           </Box>
         </Flex>
@@ -181,7 +243,7 @@ const Sidebar = () => {
                       py={2.5}
                       borderRadius="xl"
                       cursor="pointer"
-                      fontSize="13.5px"
+                      fontSize="13px"
                       fontWeight={isActive ? "700" : "500"}
                       color={isActive ? "#FFFFFF" : "#94A3B8"}
                       bg={isActive ? "linear-gradient(135deg, #6A1B9A 0%, #7E22CE 100%)" : "transparent"}
@@ -195,10 +257,10 @@ const Sidebar = () => {
                     >
                       <Icon
                         as={link.icon}
-                        boxSize={4}
+                        boxSize={3.5}
                         color={isActive ? "#FFFFFF" : "#94A3B8"}
                       />
-                      <Text flex={1}>{link.name}</Text>
+                      <Text flex={1} isTruncated>{link.name}</Text>
                       {isActive && (
                         <Box
                           w="6px"
@@ -259,7 +321,7 @@ const Sidebar = () => {
             _hover={{ bg: "#EF4444", color: "white" }}
             transition="all 0.2s ease"
             onClick={handleLogout}
-            title="Sign out of teacher account"
+            title="Sign out"
           >
             <Icon as={FaSignOutAlt} boxSize={3.5} />
           </Flex>
