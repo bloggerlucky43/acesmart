@@ -27,11 +27,12 @@ import {
   FaDownload,
   FaEye,
   FaEyeSlash,
-  FaSyncAlt,
   FaLayerGroup,
   FaPen,
   FaCheck,
   FaTimes,
+  FaFilePdf,
+  FaFileWord,
 } from "react-icons/fa";
 import { toaster } from "../../ui/toaster";
 import {
@@ -39,13 +40,9 @@ import {
   createSingleQuestion,
   bulkSaveQuestions,
   deleteQuestionById,
-  ocrHandwrittenImage,
+  parseDocumentQuestions,
   parseBulkTextWithAI,
 } from "../../../api-endpoint/questions/questions";
-import {
-  getEnrichmentStatus,
-  triggerBankEnrichment,
-} from "../../../api-endpoint/ai/ai";
 import { TableSkeleton, CardGridSkeleton } from "../../ui/skeletons";
 
 const SUBJECTS_LIST = [
@@ -61,6 +58,11 @@ const SUBJECTS_LIST = [
   "Literature",
   "Commerce",
   "Accounting",
+  "Yoruba",
+  "Geography",
+  "Civic Education",
+  "CRK",
+  "IRK",
 ];
 
 export default function QuestionBankHub() {
@@ -80,19 +82,6 @@ export default function QuestionBankHub() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [expandedExplanations, setExpandedExplanations] = useState({});
-
-  // AI Bank Health State
-  const [bankHealth, setBankHealth] = useState(null);
-  const [enrichingBank, setEnrichingBank] = useState(false);
-
-  const loadHealth = async () => {
-    try {
-      const data = await getEnrichmentStatus();
-      if (data) setBankHealth(data);
-    } catch (err) {
-      console.warn("Error loading bank health:", err);
-    }
-  };
 
   const loadQuestions = async () => {
     setLoadingQuestions(true);
@@ -117,36 +106,8 @@ export default function QuestionBankHub() {
     }
   };
 
-  const handleEnrichBank = async () => {
-    setEnrichingBank(true);
-    try {
-      const targetSub = subjectFilter === "All" ? "all" : subjectFilter.toLowerCase();
-      const res = await triggerBankEnrichment({
-        subject: targetSub,
-        chunkSize: 200,
-        useAI: false,
-      });
-      toaster.create({
-        title: "Question Bank Enriched!",
-        description: res.message || "Curriculum topics, difficulty, and Bloom's taxonomy updated.",
-        type: "success",
-      });
-      await loadHealth();
-      await loadQuestions();
-    } catch (err) {
-      toaster.create({
-        title: "Enrichment Error",
-        description: err.response?.data?.message || err.message,
-        type: "error",
-      });
-    } finally {
-      setEnrichingBank(false);
-    }
-  };
-
   useEffect(() => {
     if (activeTab === "explorer") {
-      loadHealth();
       loadQuestions();
     }
   }, [activeTab, sourceFilter, subjectFilter, difficultyFilter, cognitiveFilter, page]);
@@ -183,93 +144,158 @@ export default function QuestionBankHub() {
   };
 
   // -------------------------------------------------------------
-  // TAB 2: AI HANDWRITTEN / PAPER OCR STATE
+  // TAB 2: AI DOCUMENT & PAPER SCANNER (PDF, DOCX, IMAGES) STATE
   // -------------------------------------------------------------
   const fileInputRef = useRef(null);
-  const [selectedImageBase64, setSelectedImageBase64] = useState("");
-  const [imageFileName, setImageFileName] = useState("");
-  const [ocrSubject, setOcrSubject] = useState("Mathematics");
-  const [ocrLoading, setOcrLoading] = useState(false);
-  const [extractedOcrQuestions, setExtractedOcrQuestions] = useState([]);
-  const [savingOcr, setSavingOcr] = useState(false);
+  const [selectedFileBase64, setSelectedFileBase64] = useState("");
+  const [selectedFileName, setSelectedFileName] = useState("");
+  const [selectedFileType, setSelectedFileType] = useState(""); // 'pdf' | 'doc' | 'image'
+  const [selectedFileSize, setSelectedFileSize] = useState("");
+  const [docSubject, setDocSubject] = useState("Mathematics");
+  const [docLoading, setDocLoading] = useState(false);
+  const [extractedQuestions, setExtractedQuestions] = useState([]);
+  const [savingQuestions, setSavingQuestions] = useState(false);
 
-  const handleImageUpload = (e) => {
+  const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
+    const lowerName = file.name.toLowerCase();
+    const isImage = file.type.startsWith("image/");
+    const isPdf = file.type === "application/pdf" || lowerName.endsWith(".pdf");
+    const isDoc =
+      lowerName.endsWith(".docx") ||
+      lowerName.endsWith(".doc") ||
+      file.type.includes("wordprocessingml") ||
+      file.type.includes("msword");
+
+    if (!isImage && !isPdf && !isDoc) {
       toaster.create({
-        title: "Please select an image file (PNG, JPG, WEBP)",
+        title: "Unsupported file format",
+        description: "Please select a PDF (.pdf), Word Document (.docx, .doc), or Image (.png, .jpg, .webp).",
         type: "warning",
       });
       return;
     }
 
-    setImageFileName(file.name);
+    if (file.size > 25 * 1024 * 1024) {
+      toaster.create({
+        title: "File exceeds 25MB limit",
+        description: "Please upload an exam document or test sheet under 25MB.",
+        type: "warning",
+      });
+      return;
+    }
+
+    setSelectedFileName(file.name);
+    setSelectedFileType(isPdf ? "pdf" : isDoc ? "doc" : "image");
+    setSelectedFileSize(
+      file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+        : `${Math.round(file.size / 1024)} KB`
+    );
+
     const reader = new FileReader();
     reader.onload = () => {
-      setSelectedImageBase64(reader.result);
+      const result = reader.result;
+      if (isImage) {
+        // Compress large photo images in-browser to optimize payload
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1920;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL("image/jpeg", 0.85);
+          setSelectedFileBase64(compressed);
+        };
+        img.onerror = () => setSelectedFileBase64(result);
+        img.src = result;
+      } else {
+        setSelectedFileBase64(result);
+      }
     };
     reader.readAsDataURL(file);
   };
 
-  const handleRunOCR = async () => {
-    if (!selectedImageBase64) {
+  const handleRunExtraction = async () => {
+    if (!selectedFileBase64) {
       toaster.create({
-        title: "Please upload an image of handwritten questions first",
+        title: "Please select a PDF, Word document, or image first",
         type: "warning",
       });
       return;
     }
 
-    setOcrLoading(true);
+    setDocLoading(true);
     try {
-      const results = await ocrHandwrittenImage({
-        imageBase64: selectedImageBase64,
-        defaultSubject: ocrSubject,
+      const results = await parseDocumentQuestions({
+        fileBase64: selectedFileBase64,
+        mimeType:
+          selectedFileType === "pdf"
+            ? "application/pdf"
+            : selectedFileType === "doc"
+            ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            : "image/png",
+        fileName: selectedFileName,
+        defaultSubject: docSubject,
       });
 
       if (Array.isArray(results) && results.length > 0) {
-        setExtractedOcrQuestions(results);
+        setExtractedQuestions(results);
         toaster.create({
-          title: `AI successfully transcribed and solved ${results.length} question(s)!`,
-          description: "Review solutions and step-by-step explanations below.",
+          title: `AI successfully parsed and auto-solved ${results.length} question(s)!`,
+          description: "All questions have been auto-categorized into curriculum topics and Bloom's taxonomy.",
           type: "success",
         });
       } else {
         toaster.create({
-          title: "No questions detected in the uploaded image",
-          description: "Ensure the handwriting is legible and well-lit.",
+          title: "No questions detected in the uploaded file",
+          description: "Ensure the document contains recognizable question statements and options.",
           type: "info",
         });
       }
     } catch (err) {
       toaster.create({
-        title: "OCR Extraction Notice",
+        title: "Document Extraction Notice",
         description: err.response?.data?.message || err.message,
         type: "error",
       });
     } finally {
-      setOcrLoading(false);
+      setDocLoading(false);
     }
   };
 
-  const handleSaveOcrQuestions = async () => {
-    if (!extractedOcrQuestions.length) return;
-    setSavingOcr(true);
+  const handleSaveQuestions = async () => {
+    if (!extractedQuestions.length) return;
+    setSavingQuestions(true);
     try {
       const res = await bulkSaveQuestions({
-        questions: extractedOcrQuestions,
-        defaultSubject: ocrSubject,
+        questions: extractedQuestions,
+        defaultSubject: docSubject,
       });
 
       toaster.create({
-        title: res.message || `Saved ${extractedOcrQuestions.length} questions to Question Bank!`,
+        title: res.message || `Saved ${extractedQuestions.length} questions to Question Bank!`,
         type: "success",
       });
-      setExtractedOcrQuestions([]);
-      setSelectedImageBase64("");
-      setImageFileName("");
+      setExtractedQuestions([]);
+      setSelectedFileBase64("");
+      setSelectedFileName("");
+      setSelectedFileType("");
+      setSelectedFileSize("");
       setActiveTab("explorer");
     } catch (err) {
       toaster.create({
@@ -278,7 +304,7 @@ export default function QuestionBankHub() {
         type: "error",
       });
     } finally {
-      setSavingOcr(false);
+      setSavingQuestions(false);
     }
   };
 
@@ -521,7 +547,7 @@ export default function QuestionBankHub() {
               </Text>
             </Flex>
             <Text fontSize="14px" color="#64748B">
-              Browse platform questions, upload bulk batches, and transcribe handwritten test sheets with AI auto-solving.
+              Browse platform questions, extract from PDF/Word exam papers with AI, or upload bulk batches.
             </Text>
           </Box>
 
@@ -548,8 +574,8 @@ export default function QuestionBankHub() {
               borderRadius="xl"
               onClick={() => setActiveTab("ocr")}
             >
-              <Icon as={FaCamera} mr={1.5} />
-              AI Handwritten OCR
+              <Icon as={FaFileAlt} mr={1.5} />
+              AI Document & Paper Scanner (PDF, DOCX, Images)
             </Button>
 
             <Button
@@ -585,79 +611,6 @@ export default function QuestionBankHub() {
         {/* ============================================================== */}
         {activeTab === "explorer" && (
           <Box>
-            {/* AI Health & Classification Status Banner */}
-            <Box
-              bg="linear-gradient(135deg, #FAF5FF 0%, #F3E8FF 50%, #EEF2FF 100%)"
-              borderRadius="2xl"
-              p={{ base: 4, md: 5 }}
-              border="1px solid"
-              borderColor="purple.200"
-              boxShadow="sm"
-              mb={6}
-            >
-              <Flex
-                direction={{ base: "column", md: "row" }}
-                justify="space-between"
-                align={{ base: "flex-start", md: "center" }}
-                gap={4}
-              >
-                <Box flex={1}>
-                  <Flex align="center" gap={2} mb={1}>
-                    <Flex
-                      w="32px"
-                      h="32px"
-                      borderRadius="lg"
-                      bg="#6A1B9A"
-                      color="white"
-                      align="center"
-                      justify="center"
-                    >
-                      <Icon as={FaBrain} boxSize={4} />
-                    </Flex>
-                    <Text fontSize="16px" fontWeight="800" color="#4A154B">
-                      AI Curriculum Taxonomy & Health
-                    </Text>
-                    <Badge bg="purple.200" color="#4A154B" borderRadius="md" px={2} fontSize="11px">
-                      {bankHealth?.healthPercentage || 0}% Classified
-                    </Badge>
-                  </Flex>
-                  <Text fontSize="13px" color="#6B21A8" maxW="600px">
-                    {bankHealth
-                      ? `${bankHealth.enrichedCount?.toLocaleString()} of ${bankHealth.totalQuestions?.toLocaleString()} questions classified with granular topics & Bloom's taxonomy. ${bankHealth.pendingCount?.toLocaleString()} pending.`
-                      : "Analyzing question bank curriculum topic coverage..."}
-                  </Text>
-
-                  {/* Progress Track */}
-                  <Box w="100%" maxW="500px" bg="purple.100" h="6px" borderRadius="full" mt={3} overflow="hidden">
-                    <Box
-                      bg="linear-gradient(90deg, #9333EA 0%, #6A1B9A 100%)"
-                      h="100%"
-                      w={`${bankHealth?.healthPercentage || 0}%`}
-                      borderRadius="full"
-                      transition="width 0.5s ease-in-out"
-                    />
-                  </Box>
-                </Box>
-
-                <Flex gap={2} flexWrap="wrap">
-                  <Button
-                    size="sm"
-                    bg="#6A1B9A"
-                    color="white"
-                    borderRadius="xl"
-                    px={4}
-                    loading={enrichingBank}
-                    onClick={handleEnrichBank}
-                    _hover={{ bg: "#581c87" }}
-                  >
-                    <Icon as={FaSyncAlt} mr={2} />
-                    {enrichingBank
-                      ? "Classifying Bank..."
-                      : `Auto-Enrich ${subjectFilter === "All" ? "All Bank" : subjectFilter}`}
-                  </Button>
-                </Flex>
-              </Flex>
-            </Box>
 
             {/* Filter & Search Toolbar */}
             <Box
@@ -1107,7 +1060,7 @@ export default function QuestionBankHub() {
         )}
 
         {/* ============================================================== */}
-        {/* TAB 2: AI HANDWRITTEN / PAPER OCR & AUTO-SOLVE                 */}
+        {/* TAB 2: AI DOCUMENT & PAPER SCANNER (PDF, DOCX, IMAGES)         */}
         {/* ============================================================== */}
         {activeTab === "ocr" && (
           <Box>
@@ -1122,22 +1075,22 @@ export default function QuestionBankHub() {
             >
               <Flex align="center" gap={3} mb={3}>
                 <Flex
-                  w="36px"
-                  h="36px"
+                  w="42px"
+                  h="42px"
                   borderRadius="xl"
                   bg="purple.50"
                   color="#6A1B9A"
                   align="center"
                   justify="center"
                 >
-                  <Icon as={FaCamera} boxSize={4.5} />
+                  <Icon as={FaFileAlt} boxSize={5} />
                 </Flex>
                 <Box>
                   <Text fontSize="17px" fontWeight="800" color="#0F172A">
-                    AI Vision OCR: Handwritten & Paper Exam Digitizer
+                    AI Document & Paper Scanner (PDF, Word DOCX, & Images)
                   </Text>
                   <Text fontSize="13px" color="#64748B">
-                    Snap or upload a photo of handwritten exam questions or test papers. Gemini 3.5 Flash will transcribe the text, solve unanswered questions, and generate step-by-step pedagogical explanations.
+                    Upload digital exam papers (.pdf, .docx, .doc) or snap photos of handwritten test sheets. Gemini AI parses questions, solves correct answers, generates step-by-step explanations, and classifies them into the West African curriculum taxonomy.
                   </Text>
                 </Box>
               </Flex>
@@ -1150,8 +1103,8 @@ export default function QuestionBankHub() {
                   </Text>
                   <NativeSelect.Root size="md">
                     <NativeSelect.Field
-                      value={ocrSubject}
-                      onChange={(e) => setOcrSubject(e.target.value)}
+                      value={docSubject}
+                      onChange={(e) => setDocSubject(e.target.value)}
                       borderRadius="xl"
                     >
                       {SUBJECTS_LIST.filter((s) => s !== "All").map((s) => (
@@ -1165,14 +1118,14 @@ export default function QuestionBankHub() {
 
                 <Box>
                   <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
-                    Select / Capture Test Sheet Image
+                    Select Exam Document or Test Sheet
                   </Text>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="application/pdf, .pdf, .docx, .doc, image/*, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/msword"
                     ref={fileInputRef}
                     style={{ display: "none" }}
-                    onChange={handleImageUpload}
+                    onChange={handleFileUpload}
                   />
                   <Button
                     w="100%"
@@ -1181,27 +1134,71 @@ export default function QuestionBankHub() {
                     borderColor="purple.300"
                     color="#6A1B9A"
                     onClick={() => fileInputRef.current?.click()}
+                    h="42px"
                   >
-                    <Icon as={FaCamera} mr={2} />
-                    {imageFileName || "Choose Image from Device or Camera"}
+                    <Icon
+                      as={
+                        selectedFileType === "pdf"
+                          ? FaFilePdf
+                          : selectedFileType === "doc"
+                          ? FaFileWord
+                          : selectedFileType === "image"
+                          ? FaCamera
+                          : FaCloudUploadAlt
+                      }
+                      mr={2}
+                      color={
+                        selectedFileType === "pdf"
+                          ? "red.500"
+                          : selectedFileType === "doc"
+                          ? "blue.500"
+                          : "#6A1B9A"
+                      }
+                    />
+                    {selectedFileName ? (
+                      <Text as="span" isTruncated maxW="240px">
+                        {selectedFileName}
+                      </Text>
+                    ) : (
+                      "Choose PDF, Word (.docx), or Image"
+                    )}
                   </Button>
                 </Box>
               </SimpleGrid>
 
-              {/* Image Preview & Scan Action */}
-              {selectedImageBase64 && (
+              {/* Document / Image Preview & Extraction Action */}
+              {selectedFileBase64 && (
                 <Box mt={4} p={4} borderRadius="xl" bg="#F8FAFC" border="1px solid" borderColor="gray.200">
                   <Flex justify="space-between" align="center" mb={3}>
-                    <Text fontSize="13px" fontWeight="700" color="#0F172A">
-                      Selected Image Preview ({imageFileName})
-                    </Text>
+                    <HStack gap={2}>
+                      {selectedFileType === "pdf" && (
+                        <Badge bg="red.50" color="red.700" px={2.5} py={1} borderRadius="md" fontWeight="700">
+                          <Icon as={FaFilePdf} mr={1} /> PDF Document
+                        </Badge>
+                      )}
+                      {selectedFileType === "doc" && (
+                        <Badge bg="blue.50" color="blue.700" px={2.5} py={1} borderRadius="md" fontWeight="700">
+                          <Icon as={FaFileWord} mr={1} /> Word Document
+                        </Badge>
+                      )}
+                      {selectedFileType === "image" && (
+                        <Badge bg="purple.50" color="purple.700" px={2.5} py={1} borderRadius="md" fontWeight="700">
+                          <Icon as={FaCamera} mr={1} /> Exam Photo
+                        </Badge>
+                      )}
+                      <Text fontSize="13px" fontWeight="700" color="#0F172A">
+                        {selectedFileName} ({selectedFileSize})
+                      </Text>
+                    </HStack>
                     <Button
                       size="xs"
                       variant="ghost"
                       color="red.600"
                       onClick={() => {
-                        setSelectedImageBase64("");
-                        setImageFileName("");
+                        setSelectedFileBase64("");
+                        setSelectedFileName("");
+                        setSelectedFileType("");
+                        setSelectedFileSize("");
                       }}
                     >
                       <Icon as={FaTimes} mr={1} />
@@ -1209,49 +1206,93 @@ export default function QuestionBankHub() {
                     </Button>
                   </Flex>
 
-                  <Box maxH="260px" overflow="hidden" borderRadius="lg" mb={4} textAlign="center">
-                    <img
-                      src={selectedImageBase64}
-                      alt="Uploaded Handwritten Sheet"
-                      style={{ maxHeight: "250px", margin: "0 auto", borderRadius: "8px", objectFit: "contain" }}
-                    />
-                  </Box>
+                  {/* Format-specific preview box */}
+                  {selectedFileType === "image" ? (
+                    <Box maxH="260px" overflow="hidden" borderRadius="lg" mb={4} textAlign="center">
+                      <img
+                        src={selectedFileBase64}
+                        alt="Uploaded Exam Sheet"
+                        style={{ maxHeight: "250px", margin: "0 auto", borderRadius: "8px", objectFit: "contain" }}
+                      />
+                    </Box>
+                  ) : selectedFileType === "pdf" ? (
+                    <Box
+                      p={5}
+                      borderRadius="xl"
+                      bg="red.50"
+                      border="1px dashed"
+                      borderColor="red.300"
+                      mb={4}
+                      textAlign="center"
+                    >
+                      <Icon as={FaFilePdf} boxSize={10} color="red.600" mb={2} />
+                      <Text fontSize="14px" fontWeight="800" color="red.800">
+                        {selectedFileName}
+                      </Text>
+                      <Text fontSize="12px" color="red.600" mt={1}>
+                        Gemini native visual PDF engine will parse diagrams, formulas, equations, and multi-choice questions directly from the document.
+                      </Text>
+                    </Box>
+                  ) : (
+                    <Box
+                      p={5}
+                      borderRadius="xl"
+                      bg="blue.50"
+                      border="1px dashed"
+                      borderColor="blue.300"
+                      mb={4}
+                      textAlign="center"
+                    >
+                      <Icon as={FaFileWord} boxSize={10} color="blue.600" mb={2} />
+                      <Text fontSize="14px" fontWeight="800" color="blue.800">
+                        {selectedFileName}
+                      </Text>
+                      <Text fontSize="12px" color="blue.600" mt={1}>
+                        OpenXML decompression will extract clean text, tables, and question statements for AI solving and curriculum categorization.
+                      </Text>
+                    </Box>
+                  )}
 
                   <Button
                     w="100%"
                     bg="#6A1B9A"
                     color="white"
                     borderRadius="xl"
-                    h="44px"
+                    h="46px"
                     fontWeight="700"
-                    onClick={handleRunOCR}
-                    loading={ocrLoading}
-                    loadingText="Gemini 3.5 Flash is transcribing and auto-solving..."
+                    onClick={handleRunExtraction}
+                    loading={docLoading}
+                    loadingText="Gemini AI is parsing document, solving & auto-classifying..."
                     _hover={{ bg: "#53127a" }}
                   >
                     <Icon as={FaBrain} mr={2} />
-                    Run AI OCR & Solve Questions
+                    Parse Document & Auto-Solve Questions
                   </Button>
                 </Box>
               )}
             </Box>
 
             {/* Extracted Questions Review & Save Workspace */}
-            {extractedOcrQuestions.length > 0 && (
+            {extractedQuestions.length > 0 && (
               <Box>
-                <Flex justify="space-between" align="center" mb={4}>
-                  <Text fontSize="18px" fontWeight="800" color="#0F172A">
-                    Extracted & Solved Questions ({extractedOcrQuestions.length})
-                  </Text>
+                <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={3}>
+                  <Box>
+                    <Text fontSize="18px" fontWeight="800" color="#0F172A">
+                      Extracted & Auto-Solved Questions ({extractedQuestions.length})
+                    </Text>
+                    <Text fontSize="12px" color="#64748B">
+                      Review answers, topics, and explanations before saving to your Question Bank.
+                    </Text>
+                  </Box>
                   <Button
                     bg="#6A1B9A"
                     color="white"
                     borderRadius="xl"
                     px={5}
                     fontWeight="700"
-                    onClick={handleSaveOcrQuestions}
-                    loading={savingOcr}
-                    loadingText="Saving..."
+                    onClick={handleSaveQuestions}
+                    loading={savingQuestions}
+                    loadingText="Saving to Question Bank..."
                   >
                     <Icon as={FaCheck} mr={2} />
                     Save All to Question Bank
@@ -1259,7 +1300,7 @@ export default function QuestionBankHub() {
                 </Flex>
 
                 <VStack gap={4} align="stretch">
-                  {extractedOcrQuestions.map((q, idx) => (
+                  {extractedQuestions.map((q, idx) => (
                     <Box
                       key={idx}
                       bg="white"
@@ -1269,21 +1310,65 @@ export default function QuestionBankHub() {
                       borderColor="purple.200"
                       boxShadow="xs"
                     >
-                      <Flex justify="space-between" align="center" mb={2}>
-                        <Badge bg="purple.50" color="#6A1B9A" borderRadius="md" px={2} py={0.5}>
-                          Question {idx + 1}
-                        </Badge>
-                        <Badge bg="green.50" color="green.700" borderRadius="md" px={2} py={0.5}>
-                          Solved Answer: Option {q.correctAnswer?.toUpperCase()}
-                        </Badge>
+                      <Flex justify="space-between" align="center" mb={3} flexWrap="wrap" gap={2}>
+                        <HStack gap={2} flexWrap="wrap">
+                          <Badge bg="purple.50" color="#6A1B9A" borderRadius="md" px={2} py={0.5} fontWeight="700">
+                            Question {idx + 1}
+                          </Badge>
+                          {q.topic && (
+                            <Badge bg="blue.50" color="blue.700" borderRadius="md" px={2} py={0.5}>
+                              Topic: {q.topic}
+                            </Badge>
+                          )}
+                          <Badge
+                            bg={
+                              q.difficulty === "easy"
+                                ? "green.50"
+                                : q.difficulty === "hard"
+                                ? "red.50"
+                                : "yellow.50"
+                            }
+                            color={
+                              q.difficulty === "easy"
+                                ? "green.700"
+                                : q.difficulty === "hard"
+                                ? "red.700"
+                                : "yellow.800"
+                            }
+                            borderRadius="md"
+                            px={2}
+                            py={0.5}
+                          >
+                            {q.difficulty || "medium"}
+                          </Badge>
+                          <Badge bg="cyan.50" color="cyan.800" borderRadius="md" px={2} py={0.5}>
+                            {q.cognitiveLevel || "Application"}
+                          </Badge>
+                          <Badge bg="green.50" color="green.700" borderRadius="md" px={2.5} py={0.5} fontWeight="700">
+                            Solved Answer: Option {q.correctAnswer?.toUpperCase()}
+                          </Badge>
+                        </HStack>
+
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          color="red.600"
+                          onClick={() => {
+                            const updated = extractedQuestions.filter((_, i) => i !== idx);
+                            setExtractedQuestions(updated);
+                          }}
+                        >
+                          <Icon as={FaTrash} mr={1} />
+                          Remove
+                        </Button>
                       </Flex>
 
                       <Textarea
                         value={q.questionText}
                         onChange={(e) => {
-                          const updated = [...extractedOcrQuestions];
+                          const updated = [...extractedQuestions];
                           updated[idx].questionText = e.target.value;
-                          setExtractedOcrQuestions(updated);
+                          setExtractedQuestions(updated);
                         }}
                         size="sm"
                         borderRadius="xl"
@@ -1291,47 +1376,116 @@ export default function QuestionBankHub() {
                         rows={2}
                       />
 
+                      {/* Taxonomy fields: Topic, Difficulty, Cognitive Level */}
+                      <SimpleGrid columns={{ base: 1, md: 3 }} gap={2} mb={3}>
+                        <Box>
+                          <Text fontSize="11px" fontWeight="700" color="#64748B" mb={1}>
+                            Curriculum Topic
+                          </Text>
+                          <Input
+                            size="xs"
+                            borderRadius="lg"
+                            value={q.topic || ""}
+                            placeholder="e.g. Photosynthesis"
+                            onChange={(e) => {
+                              const updated = [...extractedQuestions];
+                              updated[idx].topic = e.target.value;
+                              setExtractedQuestions(updated);
+                            }}
+                          />
+                        </Box>
+                        <Box>
+                          <Text fontSize="11px" fontWeight="700" color="#64748B" mb={1}>
+                            Difficulty
+                          </Text>
+                          <NativeSelect.Root size="xs">
+                            <NativeSelect.Field
+                              value={q.difficulty || "medium"}
+                              borderRadius="lg"
+                              onChange={(e) => {
+                                const updated = [...extractedQuestions];
+                                updated[idx].difficulty = e.target.value;
+                                setExtractedQuestions(updated);
+                              }}
+                            >
+                              <option value="easy">Easy</option>
+                              <option value="medium">Medium</option>
+                              <option value="hard">Hard</option>
+                            </NativeSelect.Field>
+                          </NativeSelect.Root>
+                        </Box>
+                        <Box>
+                          <Text fontSize="11px" fontWeight="700" color="#64748B" mb={1}>
+                            Bloom Cognitive Level
+                          </Text>
+                          <NativeSelect.Root size="xs">
+                            <NativeSelect.Field
+                              value={q.cognitiveLevel || "Application"}
+                              borderRadius="lg"
+                              onChange={(e) => {
+                                const updated = [...extractedQuestions];
+                                updated[idx].cognitiveLevel = e.target.value;
+                                setExtractedQuestions(updated);
+                              }}
+                            >
+                              <option value="Recall">Recall</option>
+                              <option value="Comprehension">Comprehension</option>
+                              <option value="Application">Application</option>
+                              <option value="Analysis">Analysis</option>
+                            </NativeSelect.Field>
+                          </NativeSelect.Root>
+                        </Box>
+                      </SimpleGrid>
+
+                      {/* Options A - D */}
                       <SimpleGrid columns={{ base: 1, md: 2 }} gap={2} mb={3}>
                         {["a", "b", "c", "d"].map((optKey) => (
                           <Flex key={optKey} align="center" gap={2}>
-                            <Flex
-                              w="26px"
-                              h="26px"
+                            <Button
+                              size="xs"
+                              w="28px"
+                              h="28px"
+                              minW="28px"
                               borderRadius="full"
+                              p={0}
                               bg={q.correctAnswer === optKey ? "green.600" : "gray.200"}
                               color={q.correctAnswer === optKey ? "white" : "gray.700"}
-                              align="center"
-                              justify="center"
-                              fontSize="12px"
-                              fontWeight="800"
+                              _hover={{ bg: q.correctAnswer === optKey ? "green.700" : "gray.300" }}
+                              title="Click to mark as correct answer"
+                              onClick={() => {
+                                const updated = [...extractedQuestions];
+                                updated[idx].correctAnswer = optKey;
+                                setExtractedQuestions(updated);
+                              }}
                             >
                               {optKey.toUpperCase()}
-                            </Flex>
+                            </Button>
                             <Input
                               size="xs"
                               borderRadius="lg"
                               value={q.options?.[optKey] || ""}
                               onChange={(e) => {
-                                const updated = [...extractedOcrQuestions];
+                                const updated = [...extractedQuestions];
+                                if (!updated[idx].options) updated[idx].options = {};
                                 updated[idx].options[optKey] = e.target.value;
-                                setExtractedOcrQuestions(updated);
+                                setExtractedQuestions(updated);
                               }}
                             />
                           </Flex>
                         ))}
                       </SimpleGrid>
 
-                      {/* Explanation Field */}
+                      {/* Step-by-Step Explanation */}
                       <Box bg="purple.50" p={3} borderRadius="xl" border="1px solid" borderColor="purple.200">
                         <Text fontSize="12px" fontWeight="700" color="#6A1B9A" mb={1}>
-                          AI Step-by-Step Explanation:
+                          AI Step-by-Step Pedagogical Explanation:
                         </Text>
                         <Textarea
-                          value={q.explanation}
+                          value={q.explanation || ""}
                           onChange={(e) => {
-                            const updated = [...extractedOcrQuestions];
+                            const updated = [...extractedQuestions];
                             updated[idx].explanation = e.target.value;
-                            setExtractedOcrQuestions(updated);
+                            setExtractedQuestions(updated);
                           }}
                           size="xs"
                           borderRadius="lg"

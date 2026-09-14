@@ -67,20 +67,34 @@ export const deleteQuestionById = async (id) => {
 };
 
 /**
- * AI OCR: Extract, transcribe, auto-solve, and explain handwritten or paper question images
+ * AI Document & Paper Scanner: Extract, transcribe, auto-solve, and explain questions from PDF, DOCX, DOC, or Images
  */
-export const ocrHandwrittenImage = async ({
+export const parseDocumentQuestions = async ({
+  fileBase64,
   imageBase64,
-  mimeType = "image/png",
+  mimeType = "application/pdf",
+  fileName = "",
   defaultSubject = "General",
 }) => {
-  const res = await api.post("/ai/ocr-handwritten-questions", {
-    imageBase64,
-    mimeType,
-    defaultSubject,
-  });
+  const payload = fileBase64 || imageBase64;
+  const res = await api.post(
+    "/ai/parse-document-questions",
+    {
+      fileBase64: payload,
+      imageBase64: payload,
+      mimeType,
+      fileName,
+      defaultSubject,
+    },
+    {
+      timeout: 180000, // 3 minutes timeout for multimodal document extraction
+    }
+  );
   return res.data?.data || [];
 };
+
+// Backward compatibility alias
+export const ocrHandwrittenImage = parseDocumentQuestions;
 
 /**
  * AI Bulk Text Parser: Convert unformatted multi-question text blocks into solved questions
