@@ -9,12 +9,14 @@ import {
   Icon,
   Avatar,
   SimpleGrid,
+  Spinner,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { fetchLiveExam } from "../../api-endpoint/exam/exams";
 import { useExam } from "../TakeExam/component/ExamContext";
 import { toaster } from "../../components/ui/toaster";
+import FaceVerificationModal from "./component/face/CaptureImage";
 import {
   FaShieldAlt,
   FaClock,
@@ -24,10 +26,15 @@ import {
   FaPlay,
   FaArrowLeft,
   FaGraduationCap,
+  FaCamera,
+  FaFileAlt,
 } from "react-icons/fa";
 
 function StartExam() {
   const [isLoading, setIsLoading] = useState(false);
+  const [examMeta, setExamMeta] = useState(null);
+  const [isFaceModalOpen, setIsFaceModalOpen] = useState(false);
+  const [biometricVerified, setBiometricVerified] = useState(false);
   const { id } = useParams();
   const [userDetails, setUserDetails] = useState({});
   const navigate = useNavigate();
@@ -45,7 +52,26 @@ function StartExam() {
     }
 
     try {
-      setUserDetails(JSON.parse(storedUser));
+      const parsed = JSON.parse(storedUser);
+      setUserDetails(parsed);
+
+      // Pre-load exam metadata
+      if (parsed?.studentId) {
+        fetchLiveExam({
+          studentId: parsed.studentId,
+          examId: id,
+        }).then((res) => {
+          if (res?.success && res?.exam) {
+            setExamMeta(res.exam);
+            // If biometric check-in is not enforced for this exam, mark as pre-cleared
+            if (!res.exam.enableBiometricCheckin) {
+              setBiometricVerified(true);
+            }
+          }
+        }).catch((err) => {
+          console.warn("Failed pre-fetching exam details:", err);
+        });
+      }
     } catch (e) {
       navigate(`/exam/${id}`, { replace: true });
     }
@@ -57,8 +83,25 @@ function StartExam() {
       return;
     }
 
+    if (examMeta?.enableBiometricCheckin && !biometricVerified) {
+      toaster.warning({
+        title: "Biometric Verification Required",
+        description: "Please complete the AI live facial scan before starting the exam.",
+      });
+      setIsFaceModalOpen(true);
+      return;
+    }
+
     setIsLoading(true);
     try {
+      // If we already have the full exam, load it directly
+      if (examMeta && examMeta.sections?.length > 0) {
+        loadExamData(examMeta, userDetails.studentId);
+        toaster.success({ title: "Assessment loaded. Good luck!" });
+        navigate(`/take_exam?examId=${id}`);
+        return;
+      }
+
       const res = await fetchLiveExam({
         studentId: userDetails?.studentId,
         examId: id,
@@ -179,6 +222,168 @@ function StartExam() {
           </Flex>
         </Box>
 
+        {/* Exam Overview & Negative Marking Banner */}
+        {examMeta && (
+          <Box mb={6}>
+            <Box
+              bg="#0F172A"
+              borderRadius="16px"
+              border="1px solid #334155"
+              p={4}
+              mb={3}
+            >
+              <Flex justify="space-between" align="center" wrap="wrap" gap={2} mb={2}>
+                <HStack spacing={2}>
+                  <Icon as={FaFileAlt} color="#60A5FA" boxSize={4} />
+                  <Text fontSize="14px" fontWeight="bold" color="white">
+                    {examMeta.title || "Examination"}
+                  </Text>
+                </HStack>
+                <HStack spacing={2}>
+                  <Badge bg="#1E293B" color="#94A3B8" fontSize="10px" borderRadius="md" px={2} py={0.5}>
+                    {examMeta.duration || 60} MINS
+                  </Badge>
+                  <Badge bg="#1E293B" color="#38BDF8" fontSize="10px" borderRadius="md" px={2} py={0.5}>
+                    {examMeta.totalMarks || 100} MARKS
+                  </Badge>
+                </HStack>
+              </Flex>
+              {examMeta.description && (
+                <Text fontSize="11px" color="#94A3B8" lineClamp={2}>
+                  {examMeta.description}
+                </Text>
+              )}
+            </Box>
+
+            {/* Negative Marking Alert */}
+            {examMeta.negativeMarking && (
+              <Box
+                bg="rgba(245, 158, 11, 0.08)"
+                border="1px solid rgba(245, 158, 11, 0.25)"
+                borderRadius="14px"
+                p={3.5}
+                mb={3}
+              >
+                <Flex align="flex-start" gap={3}>
+                  <Flex
+                    w="30px"
+                    h="30px"
+                    borderRadius="10px"
+                    bg="rgba(245, 158, 11, 0.15)"
+                    align="center"
+                    justify="center"
+                    flexShrink={0}
+                    mt={0.5}
+                  >
+                    <Icon as={FaExclamationTriangle} color="#F59E0B" boxSize={3.5} />
+                  </Flex>
+                  <Box>
+                    <HStack spacing={2} mb={0.5}>
+                      <Text fontSize="12px" fontWeight="bold" color="#FCD34D">
+                        Negative Marking Active
+                      </Text>
+                      <Badge bg="#F59E0B" color="#78350F" fontSize="9px" px={1.5} borderRadius="sm" fontWeight="bold">
+                        -{examMeta.negativeMarkingPenalty ?? 0.25} / WRONG
+                      </Badge>
+                    </HStack>
+                    <Text fontSize="11px" color="#CBD5E1" lineHeight="1.4">
+                      Each incorrect option choice deducts {examMeta.negativeMarkingPenalty ?? 0.25} marks. Skipped or unanswered questions incur zero penalty.
+                    </Text>
+                  </Box>
+                </Flex>
+              </Box>
+            )}
+
+            {/* AI Facial Biometric Check-in Card */}
+            {examMeta.enableBiometricCheckin && (
+              <Box
+                bg={biometricVerified ? "rgba(16, 185, 129, 0.08)" : "rgba(99, 102, 241, 0.08)"}
+                border={biometricVerified ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(99, 102, 241, 0.3)"}
+                borderRadius="14px"
+                p={3.5}
+                mb={3}
+              >
+                <Flex justify="space-between" align="center" wrap="wrap" gap={3}>
+                  <HStack spacing={3}>
+                    <Flex
+                      w="36px"
+                      h="36px"
+                      borderRadius="12px"
+                      bg={biometricVerified ? "rgba(16, 185, 129, 0.2)" : "rgba(99, 102, 241, 0.2)"}
+                      align="center"
+                      justify="center"
+                    >
+                      <Icon
+                        as={biometricVerified ? FaCheckCircle : FaCamera}
+                        color={biometricVerified ? "#34D399" : "#818CF8"}
+                        boxSize={4}
+                      />
+                    </Flex>
+                    <Box>
+                      <HStack spacing={2}>
+                        <Text fontSize="12px" fontWeight="bold" color="white">
+                          AI Biometric Face Check-in
+                        </Text>
+                        <Badge
+                          bg={biometricVerified ? "rgba(16, 185, 129, 0.2)" : "rgba(245, 158, 11, 0.2)"}
+                          color={biometricVerified ? "#34D399" : "#F59E0B"}
+                          fontSize="9px"
+                          px={2}
+                          py={0.5}
+                          borderRadius="md"
+                          fontWeight="bold"
+                        >
+                          {biometricVerified ? "VERIFIED ✅" : "SCAN REQUIRED ⚠️"}
+                        </Badge>
+                      </HStack>
+                      <Text fontSize="11px" color="#94A3B8">
+                        {biometricVerified
+                          ? "Candidate biometric presence verified. Room access granted."
+                          : "Administrator mandates camera face scan prior to test launch."}
+                      </Text>
+                    </Box>
+                  </HStack>
+
+                  {!biometricVerified && (
+                    <Button
+                      size="xs"
+                      bg="#4F46E5"
+                      color="white"
+                      _hover={{ bg: "#4338CA" }}
+                      borderRadius="lg"
+                      fontWeight="bold"
+                      fontSize="11px"
+                      px={3}
+                      py={1.5}
+                      leftIcon={<Icon as={FaCamera} />}
+                      onClick={() => setIsFaceModalOpen(true)}
+                    >
+                      Verify Face Scan
+                    </Button>
+                  )}
+                </Flex>
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {/* Face Verification Modal Popup */}
+        {isFaceModalOpen && (
+          <FaceVerificationModal
+            isOpen={isFaceModalOpen}
+            onClose={() => setIsFaceModalOpen(false)}
+            studentId={userDetails?.studentId}
+            onSuccess={() => {
+              setBiometricVerified(true);
+              setIsFaceModalOpen(false);
+              toaster.success({
+                title: "Biometric Identity Confirmed",
+                description: "You may now proceed to launch your examination.",
+              });
+            }}
+          />
+        )}
+
         {/* Guidelines & Proctoring Rules */}
         <Box mb={6}>
           <Text fontSize="12px" fontWeight="bold" color="#94A3B8" mb={3} textTransform="uppercase" letterSpacing="0.5px">
@@ -274,18 +479,37 @@ function StartExam() {
           <Button
             flex={1}
             size="md"
-            bg="#2563EB"
+            bg={
+              examMeta?.enableBiometricCheckin && !biometricVerified
+                ? "#4F46E5"
+                : "#2563EB"
+            }
             color="white"
             borderRadius="12px"
             fontWeight="bold"
             fontSize="14px"
-            _hover={{ bg: "#1D4ED8" }}
+            _hover={{
+              bg:
+                examMeta?.enableBiometricCheckin && !biometricVerified
+                  ? "#4338CA"
+                  : "#1D4ED8",
+            }}
             onClick={handleStartExam}
             loading={isLoading}
             loadingText="Initializing Examination Environment..."
-            rightIcon={<Icon as={FaPlay} />}
+            rightIcon={
+              <Icon
+                as={
+                  examMeta?.enableBiometricCheckin && !biometricVerified
+                    ? FaCamera
+                    : FaPlay
+                }
+              />
+            }
           >
-            Launch CBT Examination
+            {examMeta?.enableBiometricCheckin && !biometricVerified
+              ? "Complete Biometric Scan to Launch"
+              : "Launch CBT Examination"}
           </Button>
         </Flex>
       </Box>

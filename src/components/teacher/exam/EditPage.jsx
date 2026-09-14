@@ -26,6 +26,7 @@ import {
   FaAward,
   FaInfoCircle,
   FaExclamationTriangle,
+  FaCamera,
 } from "react-icons/fa";
 
 export default function EditPage() {
@@ -42,6 +43,8 @@ export default function EditPage() {
     endDate: "",
     totalMarks: 100,
     negativeMarking: false,
+    negativeMarkingPenalty: 0.25,
+    enableBiometricCheckin: false,
     sections: [],
     id: examId || null,
   });
@@ -66,6 +69,9 @@ export default function EditPage() {
             duration: parsedData.duration || prev.duration,
             sections: parsedData.sections || [],
             totalMarks: parsedData.totalMarks || prev.totalMarks,
+            negativeMarking: parsedData.negativeMarking ?? prev.negativeMarking,
+            negativeMarkingPenalty: parsedData.negativeMarkingPenalty ?? prev.negativeMarkingPenalty,
+            enableBiometricCheckin: parsedData.enableBiometricCheckin ?? prev.enableBiometricCheckin,
           }));
         } catch (e) {
           console.error("Failed to parse NEW_EXAM", e);
@@ -400,7 +406,7 @@ export default function EditPage() {
                   <HStack spacing={2} mb={1}>
                     <Icon as={FaExclamationTriangle} color="#D97706" boxSize={3.5} />
                     <Text fontSize="13px" fontWeight="700" color="#0F172A">
-                      Negative Marking Policy
+                       Negative Marking Policy
                     </Text>
                   </HStack>
                   <Text fontSize="11px" color="#64748B">
@@ -417,6 +423,81 @@ export default function EditPage() {
                     })
                   }
                   colorPalette="purple"
+                >
+                  <Switch.HiddenInput />
+                  <Switch.Control />
+                </Switch.Root>
+              </Flex>
+
+              {examDetails.negativeMarking && (
+                <Box mt={3.5} pt={3} borderTop="1px solid #E2E8F0">
+                  <Flex justify="space-between" align="center" gap={3}>
+                    <Box>
+                      <Text fontSize="12px" fontWeight="700" color="#334155">
+                        Deduction Per Wrong Answer
+                      </Text>
+                      <Text fontSize="11px" color="#64748B">
+                        Score lost per incorrect question (e.g., 0.25 = -25%)
+                      </Text>
+                    </Box>
+                    <Input
+                      w="100px"
+                      size="sm"
+                      type="number"
+                      step="0.05"
+                      min="0.05"
+                      max="1"
+                      value={examDetails.negativeMarkingPenalty ?? 0.25}
+                      onChange={(e) =>
+                        setExamDetails({
+                          ...examDetails,
+                          negativeMarkingPenalty: parseFloat(e.target.value) || 0.25,
+                        })
+                      }
+                      borderRadius="lg"
+                      bg="white"
+                      borderColor="#CBD5E1"
+                      textAlign="center"
+                      fontWeight="bold"
+                    />
+                  </Flex>
+                </Box>
+              )}
+            </Box>
+
+            {/* AI Biometric Face Check-in Card */}
+            <Box
+              p={4}
+              borderRadius="16px"
+              bg={examDetails.enableBiometricCheckin ? "rgba(79, 70, 229, 0.04)" : "#F8FAFC"}
+              border={examDetails.enableBiometricCheckin ? "1.5px solid #6366F1" : "1px solid #E2E8F0"}
+              transition="all 0.2s ease"
+            >
+              <Flex justify="space-between" align="center">
+                <Box maxW="80%">
+                  <HStack spacing={2} mb={1}>
+                    <Icon as={FaCamera} color="#4F46E5" boxSize={3.5} />
+                    <Text fontSize="13px" fontWeight="700" color="#0F172A">
+                      AI Face Recognition / Biometric Check-in
+                    </Text>
+                    <Badge bg="#EEF2FF" color="#4F46E5" fontSize="10px" px={2} py={0.5} borderRadius="md">
+                      Smart Proctor
+                    </Badge>
+                  </HStack>
+                  <Text fontSize="11px" color="#64748B">
+                    Mandate candidate live webcam facial scan before unlocking the examination portal.
+                  </Text>
+                </Box>
+
+                <Switch.Root
+                  checked={examDetails.enableBiometricCheckin}
+                  onCheckedChange={(e) =>
+                    setExamDetails({
+                      ...examDetails,
+                      enableBiometricCheckin: e.checked,
+                    })
+                  }
+                  colorPalette="indigo"
                 >
                   <Switch.HiddenInput />
                   <Switch.Control />

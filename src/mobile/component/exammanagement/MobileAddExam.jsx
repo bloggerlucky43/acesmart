@@ -11,6 +11,7 @@ import {
   HStack,
   VStack,
   Icon,
+  NativeSelect,
 } from "@chakra-ui/react";
 import { useState, useMemo } from "react";
 import { getQuestions } from "../../../api-endpoint/exam/exams";
@@ -24,10 +25,13 @@ import {
   FaClock,
   FaBook,
 } from "react-icons/fa";
+import { SUBJECTS_LIST, isTeacherQuestion } from "../../../components/teacher/exam/addExam";
 
 export default function MobileAddExam() {
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState("Mathematics");
+  const [customSubject, setCustomSubject] = useState("");
   const [year, setYear] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("all"); // "all" | "teacher" | "api"
   const [questions, setQuestions] = useState([]);
   const [selectedQuestions, setSelectedQuestions] = useState([]);
   const [examForm, setExamForm] = useState({
@@ -38,29 +42,53 @@ export default function MobileAddExam() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const effectiveSubject =
+    subject === "Other / Custom Subject"
+      ? customSubject.trim()
+      : (subject || "").trim();
+
+  const selectedTeacherCount = useMemo(() => {
+    return selectedQuestions.filter((q) => isTeacherQuestion(q)).length;
+  }, [selectedQuestions]);
+
+  const selectedPlatformCount = useMemo(() => {
+    return selectedQuestions.filter((q) => !isTeacherQuestion(q)).length;
+  }, [selectedQuestions]);
+
   const fetchQuestions = async (e) => {
     e.preventDefault();
-    if (!subject) {
+    if (!effectiveSubject) {
       toaster.warning({
-        title: "Subject is required",
+        title: "Please select or enter a subject",
       });
       return;
     }
     setLoading(true);
 
     try {
-      const res = await getQuestions(subject, year);
+      const res = await getQuestions({
+        subject: effectiveSubject,
+        year: year?.trim() || undefined,
+        source: sourceFilter,
+        limit: 100,
+      });
 
       if (res.success && res.data) {
         setQuestions(res.data);
         localStorage.setItem("QUES_TION", JSON.stringify(res.data));
+        const sourceLabel =
+          sourceFilter === "teacher"
+            ? "My Bank"
+            : sourceFilter === "api"
+            ? "Platform Bank"
+            : "All Question Banks";
         toaster.success({
-          title: `Fetched ${res.data.length} questions successfully!`,
+          title: `Fetched ${res.data.length} questions from ${sourceLabel}!`,
         });
       } else {
         setQuestions([]);
         toaster.create({
-          title: res.message || "No questions found for this subject/year",
+          title: res.message || "No questions found for this query",
           type: "warning",
         });
       }
@@ -237,26 +265,79 @@ export default function MobileAddExam() {
           2. Pull Questions from Bank
         </Text>
         <Text fontSize="xs" color="#64748B" mb={3}>
-          Search by subject and optional target examination year
+          Filter by question bank source, subject, and optional exam year
         </Text>
 
-        <Flex gap={2} mb={3}>
-          <Field.Root required flex={1}>
+        {/* Bank Source Pills */}
+        <Box mb={3}>
+          <Text fontSize="xs" fontWeight="bold" color="#475569" mb={1.5}>
+            Bank Source:
+          </Text>
+          <HStack spacing={1.5} wrap="wrap">
+            {[
+              { key: "all", label: "All Banks" },
+              { key: "teacher", label: "🎓 My Bank" },
+              { key: "api", label: "🌐 Platform" },
+            ].map((src) => {
+              const isActive = sourceFilter === src.key;
+              return (
+                <Button
+                  key={src.key}
+                  size="xs"
+                  h="28px"
+                  px={2.5}
+                  borderRadius="full"
+                  variant={isActive ? "solid" : "outline"}
+                  bg={isActive ? "#0F172A" : "white"}
+                  color={isActive ? "white" : "#475569"}
+                  borderColor={isActive ? "#0F172A" : "#CBD5E1"}
+                  fontWeight="bold"
+                  fontSize="11px"
+                  onClick={() => setSourceFilter(src.key)}
+                >
+                  {src.label}
+                </Button>
+              );
+            })}
+          </HStack>
+        </Box>
+
+        <Flex direction="column" gap={3} mb={3}>
+          <Field.Root required>
             <Field.Label fontSize="xs" fontWeight="medium" color="#475569">
               Subject
             </Field.Label>
-            <Input
-              placeholder="e.g., Physics"
-              size="sm"
-              borderRadius="lg"
-              borderColor="#CBD5E1"
-              _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-            />
+            <NativeSelect.Root size="sm" w="100%">
+              <NativeSelect.Field
+                borderRadius="lg"
+                borderColor="#CBD5E1"
+                _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+              >
+                <option value="">-- Select Subject --</option>
+                {SUBJECTS_LIST.map((subj) => (
+                  <option key={subj} value={subj}>
+                    {subj}
+                  </option>
+                ))}
+              </NativeSelect.Field>
+            </NativeSelect.Root>
+            {subject === "Other / Custom Subject" && (
+              <Input
+                mt={2}
+                placeholder="Enter custom subject..."
+                size="sm"
+                borderRadius="lg"
+                borderColor="#CBD5E1"
+                _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                value={customSubject}
+                onChange={(e) => setCustomSubject(e.target.value)}
+              />
+            )}
           </Field.Root>
 
-          <Field.Root flex={1}>
+          <Field.Root>
             <Field.Label fontSize="xs" fontWeight="medium" color="#475569">
               Year (optional)
             </Field.Label>
@@ -335,6 +416,7 @@ export default function MobileAddExam() {
           <VStack spacing={2} align="stretch" maxH="320px" overflowY="auto" pr={1}>
             {questions.map((q) => {
               const isSelected = selectedIdSet.has(q.id);
+              const isTeacher = isTeacherQuestion(q);
               return (
                 <Box
                   key={q.id}
@@ -358,21 +440,33 @@ export default function MobileAddExam() {
                       <Checkbox.Control />
                     </Checkbox.Root>
                     <Box flex={1}>
-                      <Text fontSize="xs" color="#1E293B" fontWeight={isSelected ? "semibold" : "normal"}>
-                        {q.questionText}
-                      </Text>
-                      {q.subject && (
+                      <HStack spacing={1.5} mb={1} wrap="wrap">
                         <Badge
-                          bg="#E2E8F0"
-                          color="#475569"
                           fontSize="9px"
-                          borderRadius="full"
                           px={1.5}
-                          mt={1}
+                          py={0.2}
+                          borderRadius="full"
+                          bg={isTeacher ? "purple.100" : "blue.100"}
+                          color={isTeacher ? "purple.800" : "blue.800"}
+                          fontWeight="bold"
                         >
-                          {q.subject}
+                          {isTeacher ? "🎓 My Bank" : "🌐 Platform"}
                         </Badge>
-                      )}
+                        {q.subject && (
+                          <Badge
+                            bg="#E2E8F0"
+                            color="#475569"
+                            fontSize="9px"
+                            borderRadius="full"
+                            px={1.5}
+                          >
+                            {q.subject}
+                          </Badge>
+                        )}
+                      </HStack>
+                      <Text fontSize="xs" color="#1E293B" fontWeight={isSelected ? "semibold" : "normal"}>
+                        {q.questionText || q.question}
+                      </Text>
                     </Box>
                   </HStack>
                 </Box>
@@ -393,9 +487,19 @@ export default function MobileAddExam() {
           mb={4}
         >
           <Flex justify="space-between" align="center" mb={3}>
-            <Text fontSize="sm" fontWeight="bold" color="#0F172A">
-              Selected Questions
-            </Text>
+            <Box>
+              <Text fontSize="sm" fontWeight="bold" color="#0F172A">
+                Selected Questions ({selectedQuestions.length})
+              </Text>
+              <HStack spacing={1.5} mt={0.5}>
+                <Badge bg="purple.100" color="purple.800" fontSize="9px" borderRadius="full" px={1.5}>
+                  🎓 {selectedTeacherCount} My Bank
+                </Badge>
+                <Badge bg="blue.100" color="blue.800" fontSize="9px" borderRadius="full" px={1.5}>
+                  🌐 {selectedPlatformCount} Platform
+                </Badge>
+              </HStack>
+            </Box>
             <Badge
               bg="rgba(16, 185, 129, 0.1)"
               color="#059669"

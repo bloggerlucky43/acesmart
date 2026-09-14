@@ -234,22 +234,43 @@ export const ExamProvider = ({ children }) => {
     const totalMarks = examData?.totalMarks || 100;
     const numberOfSections = examData?.sections?.length || 1;
     const marksPerSection = totalMarks / numberOfSections;
+    const isNegativeMarking = Boolean(examData?.negativeMarking);
+    const penaltyRate = Number(examData?.negativeMarkingPenalty) || 0.25;
 
     let newScores = {};
     let overall = 0;
+    let totalCorrect = 0;
+    let totalWrong = 0;
+    let totalUnanswered = 0;
+    let totalPenaltyDeducted = 0;
 
     examData?.sections?.forEach((section) => {
       const qCount = section.questions?.length || 1;
       const marksPerQuestion = marksPerSection / qCount;
+      const penaltyPerWrong = marksPerQuestion * penaltyRate;
 
       let sectionScore = 0;
 
       section?.questions?.forEach((q) => {
         const ans = answers[`${section.section}-${q.id}`];
-        if (ans === q.correctAnswer) {
-          sectionScore += marksPerQuestion;
+        if (ans) {
+          if (ans === q.correctAnswer) {
+            sectionScore += marksPerQuestion;
+            totalCorrect++;
+          } else {
+            totalWrong++;
+            if (isNegativeMarking) {
+              sectionScore -= penaltyPerWrong;
+              totalPenaltyDeducted += penaltyPerWrong;
+            }
+          }
+        } else {
+          totalUnanswered++;
         }
       });
+
+      // Section scores have a floor of 0
+      sectionScore = Math.max(0, sectionScore);
 
       newScores[section.section] = parseFloat(sectionScore.toFixed(2));
       overall += sectionScore;
@@ -261,7 +282,14 @@ export const ExamProvider = ({ children }) => {
 
     setAnswers({});
     localStorage.removeItem("activeExamKey");
-    return { sectionScores: newScores, total: roundedOverall };
+    return {
+      sectionScores: newScores,
+      total: roundedOverall,
+      correctCount: totalCorrect,
+      wrongCount: totalWrong,
+      unansweredCount: totalUnanswered,
+      penaltyDeducted: parseFloat(totalPenaltyDeducted.toFixed(2)),
+    };
   };
 
   const formatTime = () => {

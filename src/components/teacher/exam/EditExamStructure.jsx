@@ -9,21 +9,27 @@ import {
   List,
   Accordion,
   Spinner,
+  Badge,
+  HStack,
+  NativeSelect,
 } from "@chakra-ui/react";
 import { STORAGE_KEY } from "../../../libs/helper";
 import { useNavigate, useParams } from "react-router-dom";
 import { toaster } from "../../ui/toaster";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getQuestions } from "../../../api-endpoint/exam/exams";
 import DashboardLayout from "../../../constants/dashboardlayout";
 import { getExamById } from "../../../api-endpoint/exam/exams";
+import { SUBJECTS_LIST, isTeacherQuestion } from "./addExam";
 
 export default function EditExamStructure() {
   const { examId } = useParams();
   console.log("Logging the exam id ", examId);
 
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState("Mathematics");
+  const [customSubject, setCustomSubject] = useState("");
   const [year, setYear] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("all"); // "all" | "teacher" | "api"
   const [selectedQuestionsIds, setSelectedQuestionsIds] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [sections, setSections] = useState([]);
@@ -82,8 +88,10 @@ export default function EditExamStructure() {
           ...parsed?.examForm,
         });
         setSections(parsed.sections || []);
-        setSubject(parsed.subject || "");
+        setSubject(parsed.subject || "Mathematics");
+        setCustomSubject(parsed.customSubject || "");
         setYear(parsed.year || "");
+        setSourceFilter(parsed.sourceFilter || "all");
         setQuestions(parsed.questions || []);
         setSelectedQuestionsIds(parsed.selectedQuestionsIds || []);
 
@@ -94,7 +102,7 @@ export default function EditExamStructure() {
         console.error("Failed to load draft", error);
       }
     }
-  }, []);
+  }, [examId]);
 
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -105,7 +113,9 @@ export default function EditExamStructure() {
         examForm,
         sections,
         subject,
+        customSubject,
         year,
+        sourceFilter,
         questions,
         selectedQuestionsIds,
       };
@@ -114,31 +124,61 @@ export default function EditExamStructure() {
     }, 1000); // wait 1s
 
     return () => clearTimeout(timeout);
-  }, [examForm, sections, subject, year, questions, selectedQuestionsIds]);
+  }, [
+    examForm,
+    sections,
+    subject,
+    customSubject,
+    year,
+    sourceFilter,
+    questions,
+    selectedQuestionsIds,
+  ]);
+
+  const effectiveSubject =
+    subject === "Other / Custom Subject"
+      ? customSubject.trim()
+      : (subject || "").trim();
+
+  const selectedTeacherCount = useMemo(() => {
+    return selectedQuestionsIds.filter((q) => isTeacherQuestion(q)).length;
+  }, [selectedQuestionsIds]);
+
+  const selectedPlatformCount = useMemo(() => {
+    return selectedQuestionsIds.filter((q) => !isTeacherQuestion(q)).length;
+  }, [selectedQuestionsIds]);
 
   const fetchQuestions = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
-    if (!subject?.trim()) {
+    if (!effectiveSubject) {
       toaster.warning({
-        title: "Subject is missing",
+        title: "Please select or enter a subject",
       });
       return;
     }
     setLoading(true);
 
     try {
-      const res = await getQuestions(
-        subject?.toLowerCase().trim(),
-        year?.trim(),
-      );
+      const res = await getQuestions({
+        subject: effectiveSubject,
+        year: year?.trim() || undefined,
+        source: sourceFilter,
+        limit: 100,
+      });
 
       if (res.success && res.data && Array.isArray(res.data)) {
         setQuestions(res.data);
-        setSelectedQuestionsIds([]);
+        // Do NOT clear selectedQuestionsIds here: enables multi-source combinations!
         localStorage.setItem("QUES_TION", JSON.stringify(res.data));
+        const sourceLabel =
+          sourceFilter === "teacher"
+            ? "My Bank"
+            : sourceFilter === "api"
+            ? "Platform Bank"
+            : "All Question Banks";
         toaster.success({
-          title: "Questions fetched successfully",
+          title: `Found ${res.data.length} questions from ${sourceLabel} for ${effectiveSubject}!`,
         });
       } else {
         setQuestions([]);
@@ -150,7 +190,7 @@ export default function EditExamStructure() {
     } catch (error) {
       setQuestions([]);
       toaster.create({
-        title: "Something went wrong.Try again later.",
+        title: "Something went wrong. Try again later.",
         type: "error",
       });
     } finally {
@@ -166,20 +206,35 @@ export default function EditExamStructure() {
         ? [...prev, question]
         : prev.filter((q) => q.id !== question.id),
     );
-    console.log("Selected IDs NOW:", isChecked, question);
   };
 
   const handleSelectAll = () => {
     if (questions.length === 0) return;
-    if (selectedQuestionsIds.length === questions.length) {
-      setSelectedQuestionsIds([]);
+    const poolIds = new Set(questions.map((q) => q.id));
+    const allSelected = questions.every((q) =>
+      selectedQuestionsIds.some((item) => item.id === q.id)
+    );
+
+    if (allSelected) {
+      setSelectedQuestionsIds((prev) =>
+        prev.filter((item) => !poolIds.has(item.id))
+      );
     } else {
-      setSelectedQuestionsIds(questions);
+      setSelectedQuestionsIds((prev) => {
+        const currentIds = new Set(prev.map((item) => item.id));
+        const additions = questions.filter((q) => !currentIds.has(q.id));
+        return [...prev, ...additions];
+      });
     }
   };
 
   const saveSection = () => {
-    if (!subject?.trim()) {
+    const finalSubject =
+      subject === "Other / Custom Subject"
+        ? customSubject.trim()
+        : (subject || "").trim();
+
+    if (!finalSubject) {
       toaster.create({
         title: "Please enter a subject name",
         type: "error",
@@ -195,7 +250,7 @@ export default function EditExamStructure() {
     }
 
     const newSection = {
-      section: subject.trim(),
+      section: finalSubject,
       year: year?.trim() || null,
       questions: selectedQuestionsIds,
     };
@@ -203,7 +258,7 @@ export default function EditExamStructure() {
     if (editingSectionIndex !== null) {
       // update ONLY
       setSections((prev) =>
-        prev.map((sec, i) => (i === editingSectionIndex ? newSection : sec)),
+        prev.map((sec, i) => (i === editingSectionIndex ? newSection : sec))
       );
 
       toaster.success({ title: "Section updated" });
@@ -214,12 +269,14 @@ export default function EditExamStructure() {
       toaster.success({ title: "Section added" });
     }
 
-    setSubject("");
+    setSubject("Mathematics");
+    setCustomSubject("");
     setYear("");
     setQuestions([]);
     setSelectedQuestionsIds([]);
     setEditingSectionIndex(null);
   };
+
   const removeSection = (index) => {
     setSections((prev) => prev.filter((_, i) => i !== index));
     toaster.info({ title: "Section removed" });
@@ -246,7 +303,17 @@ export default function EditExamStructure() {
   const editSection = (index) => {
     const section = sections[index];
 
-    setSubject(section.section);
+    if (
+      SUBJECTS_LIST.filter((s) => s !== "Other / Custom Subject").includes(
+        section.section
+      )
+    ) {
+      setSubject(section.section);
+      setCustomSubject("");
+    } else {
+      setSubject("Other / Custom Subject");
+      setCustomSubject(section.section);
+    }
     setYear(section.year || "");
     setQuestions(section.questions);
     setSelectedQuestionsIds(section.questions);
@@ -330,98 +397,242 @@ export default function EditExamStructure() {
           </Flex>
 
           {/* current section builder */}
-          <Box mb={6}>
-            <Text fontSize={"lg"} fontWeight={"semibold"} mb={2}>
-              Add Section (subject)
+          <Box mb={6} p={4} bg="#F8FAFC" borderRadius="xl" border="1px solid #E2E8F0">
+            <Text fontSize={"md"} fontWeight={"bold"} color="#0F172A" mb={3}>
+              Section Builder (Subject & Source Bank)
             </Text>
 
-            <Flex gap={3} mb={3} wrap="wrap" align="center">
-              <Field.Root required>
-                <Field.Label>
+            {/* Source Bank Selection */}
+            <Box mb={3}>
+              <Text fontSize="xs" fontWeight="bold" color="#475569" mb={1.5}>
+                Question Bank Source:
+              </Text>
+              <HStack spacing={2} wrap="wrap">
+                {[
+                  { key: "all", label: "All Question Banks" },
+                  { key: "teacher", label: "🎓 My Bank (Teacher Uploaded)" },
+                  { key: "api", label: "🌐 Platform General Bank" },
+                ].map((src) => {
+                  const isActive = sourceFilter === src.key;
+                  return (
+                    <Button
+                      key={src.key}
+                      size="xs"
+                      h="30px"
+                      px={3}
+                      borderRadius="full"
+                      variant={isActive ? "solid" : "outline"}
+                      bg={isActive ? "#0F172A" : "white"}
+                      color={isActive ? "white" : "#475569"}
+                      borderColor={isActive ? "#0F172A" : "#CBD5E1"}
+                      fontWeight="bold"
+                      fontSize="11px"
+                      onClick={() => setSourceFilter(src.key)}
+                      _hover={{ bg: isActive ? "#1E293B" : "#F1F5F9" }}
+                    >
+                      {src.label}
+                    </Button>
+                  );
+                })}
+              </HStack>
+            </Box>
+
+            <Flex gap={3} mb={3} wrap="wrap" align="flex-end">
+              <Field.Root required w={{ base: "100%", md: "260px" }}>
+                <Field.Label fontSize="xs" fontWeight="bold" color="#475569">
                   Subject <Field.RequiredIndicator />
                 </Field.Label>
-                <Input
-                  placeholder="Subject  (e.g. english)"
-                  value={subject}
-                  borderColor="gray.500"
-                  _focus={{ borderColor: "primary" }}
-                  onChange={(e) => setSubject(e.target.value)}
-                  w="250px"
-                />
+                <NativeSelect.Root size="sm" w="100%">
+                  <NativeSelect.Field
+                    bg="white"
+                    borderRadius="md"
+                    h="38px"
+                    fontSize="13px"
+                    borderColor="#CBD5E1"
+                    _focus={{ borderColor: "#6366F1" }}
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                  >
+                    <option value="">-- Select Subject --</option>
+                    {SUBJECTS_LIST.map((subj) => (
+                      <option key={subj} value={subj}>
+                        {subj}
+                      </option>
+                    ))}
+                  </NativeSelect.Field>
+                </NativeSelect.Root>
+                {subject === "Other / Custom Subject" && (
+                  <Input
+                    mt={2}
+                    placeholder="Type custom subject..."
+                    value={customSubject}
+                    bg="white"
+                    size="sm"
+                    borderRadius="md"
+                    borderColor="#CBD5E1"
+                    _focus={{ borderColor: "#6366F1" }}
+                    onChange={(e) => setCustomSubject(e.target.value)}
+                  />
+                )}
               </Field.Root>
-              <Field.Root>
-                <Field.Label>Year (optional)</Field.Label>
+
+              <Field.Root w={{ base: "100%", md: "150px" }}>
+                <Field.Label fontSize="xs" fontWeight="bold" color="#475569">
+                  Year (optional)
+                </Field.Label>
                 <Input
-                  placeholder="2023,2022......."
+                  placeholder="e.g. 2024"
                   value={year}
-                  borderColor="gray.500"
-                  _focus={{ borderColor: "primary" }}
+                  bg="white"
+                  size="sm"
+                  h="38px"
+                  borderRadius="md"
+                  borderColor="#CBD5E1"
+                  _focus={{ borderColor: "#6366F1" }}
                   onChange={(e) => setYear(e.target.value)}
-                  w="150px"
                 />
               </Field.Root>
 
               <Button
                 onClick={fetchQuestions}
                 loading={loading}
-                spinnerPlacement="center"
-                bg="secondary"
-                // mb={4}
+                h="38px"
+                px={4}
+                bg="#0F172A"
+                color="white"
+                fontSize="12px"
+                fontWeight="bold"
+                borderRadius="md"
+                _hover={{ bg: "#1E293B" }}
               >
                 Fetch Questions
               </Button>
 
-              <Button onClick={handleSelectAll} variant="outline">
-                {selectedQuestionsIds.length === questions.length &&
-                questions.length > 0
-                  ? "Deselect All"
-                  : "Select All"}
+              <Button
+                onClick={handleSelectAll}
+                variant="outline"
+                h="38px"
+                fontSize="12px"
+                borderRadius="md"
+              >
+                {questions.length > 0 &&
+                questions.every((q) =>
+                  selectedQuestionsIds.some((item) => item.id === q.id)
+                )
+                  ? "Deselect Page"
+                  : "Select All Page"}
               </Button>
 
-              <Button bg="green" onClick={saveSection} ml="auto">
-                {examId ? "Update Exam" : " Create Exam"}
+              <Button
+                bg="#059669"
+                color="white"
+                h="38px"
+                px={5}
+                fontSize="12px"
+                fontWeight="bold"
+                borderRadius="md"
+                _hover={{ bg: "#047857" }}
+                onClick={saveSection}
+                ml="auto"
+                isDisabled={!effectiveSubject || selectedQuestionsIds.length === 0}
+              >
+                {editingSectionIndex !== null
+                  ? "Update Section"
+                  : `Save Section (${selectedQuestionsIds.length} Qs)`}
               </Button>
             </Flex>
+
+            {/* Selection Counter Live Badges */}
+            <HStack spacing={2} pt={2} borderTop="1px dashed #CBD5E1">
+              <Text fontSize="xs" fontWeight="bold" color="#334155">
+                Section Assembly: {selectedQuestionsIds.length} total picked
+              </Text>
+              <Badge
+                bg="purple.100"
+                color="purple.800"
+                fontSize="10px"
+                fontWeight="bold"
+                px={2}
+                py={0.5}
+                borderRadius="full"
+              >
+                🎓 {selectedTeacherCount} My Bank
+              </Badge>
+              <Badge
+                bg="blue.100"
+                color="blue.800"
+                fontSize="10px"
+                fontWeight="bold"
+                px={2}
+                py={0.5}
+                borderRadius="full"
+              >
+                🌐 {selectedPlatformCount} Platform Bank
+              </Badge>
+            </HStack>
           </Box>
 
           {/* Questions List */}
           <Box mb={4}>
-            <Flex justify="space-between" align="center">
-              <Text fontSize="lg" mb={2}>
-                Fetched Questions
+            <Flex justify="space-between" align="center" mb={2}>
+              <Text fontSize="md" fontWeight="bold" color="#0F172A">
+                Available Questions ({questions.length})
               </Text>
-              <Text
-                color="white"
-                fontSize="lg"
-                borderRadius="full"
-                bg="secondary"
-                p={2}
-              >
-                {selectedQuestionsIds?.length}
-              </Text>
+              <Badge bg="#0F172A" color="white" px={2.5} py={1} borderRadius="full" fontSize="11px">
+                {selectedQuestionsIds?.length} Selected
+              </Badge>
             </Flex>
             {questions.length === 0 ? (
-              <Text color="gray.500">
-                No questions fetched for this subject yet.
+              <Text color="gray.500" fontSize="sm">
+                No questions fetched for this query yet. Select a subject and bank source above and click "Fetch Questions".
               </Text>
             ) : (
-              <List.Root>
-                {questions.map((q) => (
-                  <List.Item key={q.id}>
-                    <Checkbox.Root
-                      checked={selectedQuestionsIds.some(
-                        (item) => item.id === q.id,
-                      )}
-                      onCheckedChange={(checked) =>
-                        toggleSelectQuestion(q, checked)
-                      }
+              <List.Root gap={2}>
+                {questions.map((q) => {
+                  const isTeacher = isTeacherQuestion(q);
+                  const isChecked = selectedQuestionsIds.some(
+                    (item) => item.id === q.id
+                  );
+                  return (
+                    <List.Item
+                      key={q.id}
+                      p={2.5}
+                      borderRadius="lg"
+                      border="1px solid"
+                      borderColor={isChecked ? "#6366F1" : "#E2E8F0"}
+                      bg={isChecked ? "purple.50" : "white"}
+                      mb={1}
                     >
-                      <Checkbox.HiddenInput />
-                      <Checkbox.Control />
-                      <Checkbox.Label>{q.questionText}</Checkbox.Label>
-                    </Checkbox.Root>
-                  </List.Item>
-                ))}
+                      <Checkbox.Root
+                        checked={isChecked}
+                        onCheckedChange={(checked) =>
+                          toggleSelectQuestion(q, checked)
+                        }
+                      >
+                        <Checkbox.HiddenInput />
+                        <Checkbox.Control />
+                        <Checkbox.Label>
+                          <HStack spacing={2} align="center" wrap="wrap">
+                            <Badge
+                              fontSize="10px"
+                              px={2}
+                              py={0.5}
+                              borderRadius="full"
+                              bg={isTeacher ? "purple.100" : "blue.100"}
+                              color={isTeacher ? "purple.800" : "blue.800"}
+                              fontWeight="bold"
+                            >
+                              {isTeacher ? "🎓 My Bank" : "🌐 Platform Bank"}
+                            </Badge>
+                            <Text fontSize="xs" fontWeight="semibold" color="#0F172A">
+                              {q.questionText || q.question}
+                            </Text>
+                          </HStack>
+                        </Checkbox.Label>
+                      </Checkbox.Root>
+                    </List.Item>
+                  );
+                })}
               </List.Root>
             )}
           </Box>
@@ -429,23 +640,27 @@ export default function EditExamStructure() {
           {/* saved sections preview */}
           <Box mb={6}>
             <Flex align="center" justify="space-between" mb={2}>
-              <Text fontSize="lg" fontWeight="semibold">
+              <Text fontSize="md" fontWeight="bold">
                 Saved Sections ({sections.length})
               </Text>
-              <Text>
-                Total Questions in Exam:
-                {sections.reduce((s, sec) => s + sec.questions.length, 0)}
+              <Text fontSize="sm" color="#64748B">
+                Total Questions in Exam:{" "}
+                <strong style={{ color: "#0F172A" }}>
+                  {sections.reduce((s, sec) => s + (sec.questions?.length || 0), 0)}
+                </strong>
               </Text>
             </Flex>
 
             {sections.length === 0 ? (
-              <Text color="gray.500">No sections saved yet</Text>
+              <Text color="gray.500" fontSize="sm">No sections saved yet</Text>
             ) : (
               <Accordion.Root collapsible multiple>
                 {sections.map((sec, idx) => (
                   <Accordion.Item key={idx} value={String(idx)}>
                     <Accordion.ItemTrigger>
-                      {sec.section} ({sec.questions.length} questions)
+                      {sec.section} ({sec.questions.length} questions •{" "}
+                      {sec.questions.filter(isTeacherQuestion).length} My Bank,{" "}
+                      {sec.questions.filter((q) => !isTeacherQuestion(q)).length} Platform)
                       <Accordion.ItemIndicator />
                     </Accordion.ItemTrigger>
                     <Accordion.ItemContent>
@@ -453,15 +668,19 @@ export default function EditExamStructure() {
                       <ul style={{ marginLeft: "1rem" }}>
                         {sec.questions.map((q) => (
                           <li key={q.id}>
-                            <strong>{q.questionText}</strong>
-                            <ul>
-                              {Object.entries(q.options).map(([key, value]) => (
-                                <li key={key}>
-                                  <strong>{key.toUpperCase()}:</strong>
-                                  {value}
-                                </li>
-                              ))}
-                            </ul>
+                            <strong>
+                              [{isTeacherQuestion(q) ? "My Bank" : "Platform"}]{" "}
+                              {q.questionText || q.question}
+                            </strong>
+                            {q.options && (
+                              <ul>
+                                {Object.entries(q.options).map(([key, value]) => (
+                                  <li key={key}>
+                                    <strong>{key.toUpperCase()}:</strong> {value}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </li>
                         ))}
                       </ul>

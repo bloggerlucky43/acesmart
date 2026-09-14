@@ -1,16 +1,53 @@
 import { toaster } from "../../components/ui/toaster";
 import api from "../../libs/axios";
 
-export const getQuestions = async (subject, year) => {
+export const getQuestions = async (
+  subjectOrOptions,
+  legacyYear,
+  legacySource = "all",
+  legacyLimit = 100
+) => {
   try {
-    const response = await api.get(
-      `/questions?subject=${subject}&year=${year}`,
-      { withCredentials: true },
-    );
+    const params = new URLSearchParams();
+
+    if (typeof subjectOrOptions === "object" && subjectOrOptions !== null) {
+      const {
+        subject,
+        year,
+        source = "all",
+        limit = 100,
+        search,
+        topic,
+        difficulty,
+      } = subjectOrOptions;
+      if (subject && subject !== "All")
+        params.append("subject", subject.toLowerCase().trim());
+      if (year && String(year).trim())
+        params.append("year", String(year).trim());
+      if (source && source !== "all") params.append("source", source);
+      if (limit) params.append("limit", limit);
+      if (search) params.append("search", search.trim());
+      if (topic && topic !== "All") params.append("topic", topic.trim());
+      if (difficulty && difficulty !== "all")
+        params.append("difficulty", difficulty.trim());
+    } else {
+      const subject = subjectOrOptions;
+      const year = legacyYear;
+      const source = legacySource;
+      const limit = legacyLimit;
+      if (subject && subject !== "All")
+        params.append("subject", String(subject).toLowerCase().trim());
+      if (year && String(year).trim())
+        params.append("year", String(year).trim());
+      if (source && source !== "all") params.append("source", source);
+      if (limit) params.append("limit", limit);
+    }
+
+    const response = await api.get(`/questions?${params.toString()}`, {
+      withCredentials: true,
+    });
 
     const data = response.data;
-    console.log("Response at get questions", data);
-
     if (!data.success) {
       toaster.create({
         title: data.message,
@@ -23,8 +60,33 @@ export const getQuestions = async (subject, year) => {
       title: error?.response?.data?.error || "Question fetch failed",
       type: "error",
     });
+    return { success: false, data: [] };
   }
 };
+
+export const formatSubjectTitle = (rawSubject) => {
+  if (!rawSubject) return "";
+  const sub = String(rawSubject).toLowerCase().trim();
+  const map = {
+    englishlit: "Literature",
+    literature: "Literature",
+    "literature in english": "Literature",
+    civiledu: "Civic Education",
+    "civic education": "Civic Education",
+    crk: "CRK",
+    crs: "CRK",
+    irk: "IRK",
+    irs: "IRK",
+    maths: "Mathematics",
+    mathematics: "Mathematics",
+    currentaffairs: "Current Affairs",
+    agric: "Agricultural Science",
+    "agricultural science": "Agricultural Science",
+  };
+  if (map[sub]) return map[sub];
+  return sub.charAt(0).toUpperCase() + sub.slice(1);
+};
+
 export const updateExam = async (examId, finalExam) => {
   try {
     console.log("At the updating exam", examId);

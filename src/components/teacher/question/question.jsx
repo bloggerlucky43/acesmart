@@ -562,7 +562,7 @@ export default function QuestionBankHub() {
               onClick={() => setActiveTab("explorer")}
             >
               <Icon as={FaLayerGroup} mr={1.5} />
-              Question Bank ({totalCount})
+              Question Bank
             </Button>
 
             <Button
@@ -842,19 +842,21 @@ export default function QuestionBankHub() {
                       {/* Top Badges */}
                       <Flex justify="space-between" align="center" mb={3} flexWrap="wrap" gap={2}>
                         <HStack gap={2} flexWrap="wrap">
-                          <Badge
-                            bg={isTeacher ? "purple.50" : "blue.50"}
-                            color={isTeacher ? "#6A1B9A" : "blue.700"}
-                            border="1px solid"
-                            borderColor={isTeacher ? "purple.200" : "blue.200"}
-                            borderRadius="lg"
-                            px={2.5}
-                            py={0.5}
-                            fontSize="11px"
-                            fontWeight="700"
-                          >
-                            {isTeacher ? "Teacher Uploaded" : "Platform Bank"}
-                          </Badge>
+                          {isTeacher && (
+                            <Badge
+                              bg="purple.50"
+                              color="#6A1B9A"
+                              border="1px solid"
+                              borderColor="purple.200"
+                              borderRadius="lg"
+                              px={2.5}
+                              py={0.5}
+                              fontSize="11px"
+                              fontWeight="700"
+                            >
+                              Teacher Uploaded
+                            </Badge>
+                          )}
 
                           <Badge
                             bg="gray.100"

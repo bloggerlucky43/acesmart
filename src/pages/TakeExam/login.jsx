@@ -21,6 +21,7 @@ import {
 import { useState } from "react";
 import { toaster } from "../../components/ui/toaster";
 import { examLogin } from "../../api-endpoint/exam/exams";
+export { loadFaceModels } from "./component/face/CaptureImage";
 
 const ExamLoginPage = () => {
   const [examDetail, setExamDetail] = useState({

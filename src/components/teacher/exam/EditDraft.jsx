@@ -30,6 +30,8 @@ export default function EditDraft() {
     endDate: "",
     totalMarks: 100,
     negativeMarking: false,
+    negativeMarkingPenalty: 0.25,
+    enableBiometricCheckin: false,
     sections: [],
     id: examId || null,
   });
@@ -45,9 +47,12 @@ export default function EditDraft() {
 
         setExamDetails((prev) => ({
           ...prev,
-          title: parsed.examTitle,
-          duration: parsed.duration,
-          totalMarks: parsed.totalMarks,
+          title: parsed.examTitle || prev.title,
+          duration: parsed.duration || prev.duration,
+          totalMarks: parsed.totalMarks || prev.totalMarks,
+          negativeMarking: parsed.negativeMarking ?? prev.negativeMarking,
+          negativeMarkingPenalty: parsed.negativeMarkingPenalty ?? prev.negativeMarkingPenalty,
+          enableBiometricCheckin: parsed.enableBiometricCheckin ?? prev.enableBiometricCheckin,
           sections: parsed.sections || [],
         }));
 
@@ -87,15 +92,17 @@ export default function EditDraft() {
     }
 
     const finalExam = {
-  ...draft,
-  title: examDetails.title,
-  description: examDetails.description,
-  duration: examDetails.duration,
-  totalMarks: examDetails.totalMarks,
-  startDate: examDetails.startDate,
-  endDate: examDetails.endDate,
-  negativeMarking: examDetails.negativeMarking,
-};
+      ...draft,
+      title: examDetails.title,
+      description: examDetails.description,
+      duration: examDetails.duration,
+      totalMarks: examDetails.totalMarks,
+      startDate: examDetails.startDate,
+      endDate: examDetails.endDate,
+      negativeMarking: examDetails.negativeMarking,
+      negativeMarkingPenalty: Number(examDetails.negativeMarkingPenalty || 0.25),
+      enableBiometricCheckin: Boolean(examDetails.enableBiometricCheckin),
+    };
 
     setLoading(true);
     try {
@@ -254,12 +261,29 @@ export default function EditDraft() {
                     })
                   }
                   _focus={{ borderColor: "primary" }}
-                  colorPalette={"green"}
+                  colorPalette={"purple"}
                   mt={4}
                 >
                   <Switch.HiddenInput />
                   <Switch.Control />
-                  <Switch.Label>Negative Marking</Switch.Label>
+                  <Switch.Label>Negative Marking Policy</Switch.Label>
+                </Switch.Root>
+
+                <Switch.Root
+                  checked={examDetails.enableBiometricCheckin}
+                  onCheckedChange={(e) =>
+                    setExamDetails({
+                      ...examDetails,
+                      enableBiometricCheckin: e.checked,
+                    })
+                  }
+                  _focus={{ borderColor: "primary" }}
+                  colorPalette={"blue"}
+                  mt={2}
+                >
+                  <Switch.HiddenInput />
+                  <Switch.Control />
+                  <Switch.Label>AI Face Recognition / Biometric Check-in</Switch.Label>
                 </Switch.Root>
               </Stack>
             </Grid>
