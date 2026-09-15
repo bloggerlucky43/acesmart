@@ -48,12 +48,15 @@ const Sidebar = () => {
 
   const displayName = user?.name || user?.username || "Educator";
   const displayRole = user?.role ? user.role.toUpperCase().replace("_", " ") : "TEACHER";
-  const isInstitutionAdmin = user?.role === "institution_admin" || user?.role === "admin";
+  const isInstitutionAdmin =
+    user?.role === "institution_admin" ||
+    user?.role === "admin" ||
+    user?.role === "institution";
   const institution = user?.institution;
   const schoolLogo = institution?.logoUrl;
   const schoolName = institution?.name;
 
-  // Dynamically constructed navigation groups
+  // Dynamically constructed navigation groups based on role
   const navGroups = [
     {
       title: "OVERVIEW",
@@ -61,23 +64,27 @@ const Sidebar = () => {
         { name: "CBT Dashboard", path: "/teacher_dashboard", icon: FaTachometerAlt },
       ],
     },
-    // Institutional Management Section (Admin & ERP)
+    // Institutional Management Section (Admin & ERP Only)
+    ...(isInstitutionAdmin
+      ? [
+          {
+            title: "INSTITUTION SUITE (ADMIN)",
+            links: [
+              { name: "School Overview", path: "/institution/dashboard", icon: FaUniversity },
+              { name: "Faculty Directory", path: "/institution/staff", icon: FaUsers },
+              { name: "Staff Attendance QR", path: "/institution/staff-qr", icon: FaQrcode },
+              { name: "Fees & Invoicing", path: "/institution/fees", icon: FaCalculator },
+              { name: "Debtor Defaulters", path: "/institution/debtors", icon: FaMoneyBillWave },
+              { name: "School Settings", path: "/institution/settings", icon: FaCog },
+            ],
+          },
+        ]
+      : []),
+    // School Management System (Staff & Classroom tools)
     {
-      title: "INSTITUTION SUITE",
+      title: "CLASS & TEACHING (SMS)",
       links: [
-        { name: "School Overview", path: "/institution/dashboard", icon: FaUniversity },
-        { name: "Faculty Directory", path: "/institution/staff", icon: FaUsers },
-        { name: "Staff Attendance QR", path: "/institution/staff-qr", icon: FaQrcode },
-        { name: "Fees & Invoicing", path: "/institution/fees", icon: FaCalculator },
-        { name: "Debtor Defaulters", path: "/institution/debtors", icon: FaMoneyBillWave },
-        { name: "School Settings", path: "/institution/settings", icon: FaCog },
-      ],
-    },
-    // School Management System (Staff tools)
-    {
-      title: "SCHOOL MANAGEMENT (SMS)",
-      links: [
-        { name: "Staff Clock-In (QR)", path: "/teacher/scan-clockin", icon: FaQrcode },
+        { name: "My Clock-In (QR)", path: "/teacher/scan-clockin", icon: FaQrcode },
         { name: "Student Attendance", path: "/teacher/attendance", icon: FaCalendarCheck },
         { name: "Report Cards & Broadsheets", path: "/teacher/report-cards", icon: FaGraduationCap },
       ],

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import QRCode from "qrcode";
 import {
   Box,
   Flex,
@@ -25,6 +26,7 @@ import DashboardLayout from "../../constants/dashboardlayout";
 export default function StaffQrGenerator() {
   const { user } = useAuth();
   const [qrData, setQrData] = useState(null);
+  const [qrDataUrl, setQrDataUrl] = useState("");
   const [dailyBoard, setDailyBoard] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -53,6 +55,26 @@ export default function StaffQrGenerator() {
     const interval = setInterval(fetchData, 30000); // refresh every 30s
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (qrData?.qrPayload) {
+      const payloadStr =
+        typeof qrData.qrPayload === "object"
+          ? JSON.stringify(qrData.qrPayload)
+          : String(qrData.qrPayload);
+
+      QRCode.toDataURL(payloadStr, {
+        width: 320,
+        margin: 1,
+        color: {
+          dark: "#312E81",
+          light: "#FFFFFF",
+        },
+      })
+        .then(setQrDataUrl)
+        .catch((err) => console.error("QR render error:", err));
+    }
+  }, [qrData]);
 
   const handlePrint = () => {
     window.print();
@@ -200,37 +222,25 @@ export default function StaffQrGenerator() {
               boxShadow="0 8px 24px rgba(109, 40, 217, 0.12)"
               position="relative"
             >
-              {/* Scalable SVG QR Representation */}
-              <svg viewBox="0 0 100 100" width="100%" height="100%">
-                <rect width="100" height="100" fill="white" rx="4" />
-                {/* QR corner 1 */}
-                <rect x="10" y="10" width="22" height="22" fill="#4338CA" rx="2" />
-                <rect x="14" y="14" width="14" height="14" fill="white" rx="1" />
-                <rect x="17" y="17" width="8" height="8" fill="#4338CA" />
-                {/* QR corner 2 */}
-                <rect x="68" y="10" width="22" height="22" fill="#4338CA" rx="2" />
-                <rect x="72" y="14" width="14" height="14" fill="white" rx="1" />
-                <rect x="75" y="17" width="8" height="8" fill="#4338CA" />
-                {/* QR corner 3 */}
-                <rect x="10" y="68" width="22" height="22" fill="#4338CA" rx="2" />
-                <rect x="14" y="72" width="14" height="14" fill="white" rx="1" />
-                <rect x="17" y="75" width="8" height="8" fill="#4338CA" />
-                {/* Matrix dots */}
-                <rect x="40" y="12" width="6" height="6" fill="#1E1B4B" />
-                <rect x="52" y="16" width="6" height="6" fill="#6D28D9" />
-                <rect x="36" y="24" width="8" height="8" fill="#1E1B4B" />
-                <rect x="48" y="28" width="12" height="6" fill="#4338CA" />
-                <rect x="16" y="44" width="6" height="10" fill="#1E1B4B" />
-                <rect x="28" y="40" width="14" height="6" fill="#6D28D9" />
-                <rect x="46" y="42" width="8" height="8" fill="#4338CA" />
-                <rect x="60" y="38" width="8" height="8" fill="#1E1B4B" />
-                <rect x="72" y="44" width="12" height="6" fill="#6D28D9" />
-                <rect x="38" y="56" width="16" height="8" fill="#1E1B4B" />
-                <rect x="62" y="58" width="10" height="12" fill="#4338CA" />
-                <rect x="40" y="72" width="8" height="8" fill="#6D28D9" />
-                <rect x="54" y="76" width="12" height="10" fill="#1E1B4B" />
-                <rect x="74" y="74" width="8" height="8" fill="#4338CA" />
-              </svg>
+              {/* Real Cryptographic QR Code Graphic */}
+              {qrDataUrl ? (
+                <img
+                  src={qrDataUrl}
+                  alt="Daily Attendance Barcode"
+                  style={{
+                    width: "208px",
+                    height: "208px",
+                    borderRadius: "12px",
+                    objectFit: "contain",
+                    background: "white",
+                  }}
+                />
+              ) : (
+                <Flex align="center" justify="center" h="208px" direction="column" gap={2}>
+                  <Icon as={FaQrcode} boxSize={8} color="#6D28D9" />
+                  <Text fontSize="12px" color="#64748B">Generating Daily Barcode...</Text>
+                </Flex>
+              )}
 
               <Badge
                 position="absolute"

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   Flex,
@@ -7,6 +7,7 @@ import {
   Icon,
   Badge,
   Input,
+  Spinner,
 } from "@chakra-ui/react";
 import {
   FaQrcode,
@@ -15,7 +16,11 @@ import {
   FaShieldAlt,
   FaCamera,
   FaKey,
+  FaStopCircle,
+  FaPlay,
+  FaExclamationCircle,
 } from "react-icons/fa";
+import { Html5Qrcode } from "html5-qrcode";
 import { staffClockInApi } from "../../../api-endpoint/sms/smsEndpoints";
 import { useAuth } from "../../../libs/AuthProvider";
 import { toaster } from "../../../components/ui/toaster";
@@ -27,11 +32,124 @@ export default function TeacherScanClockIn() {
   const [dailyPin, setDailyPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [clockInResult, setClockInResult] = useState(null);
-  const [cameraActive, setCameraActive] = useState(false);
+
+  // Live Camera Scanner States
+  const [scannerStarted, setScannerStarted] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const [startingCamera, setStartingCamera] = useState(false);
+  const scannerRef = useRef(null);
 
   const institutionName = user?.institution?.name || "Institution";
   const institutionLogo = user?.institution?.logoUrl;
   const staffIdNumber = user?.staffIdNumber || "STAFF";
+
+  // Stop camera when unmounting or switching to PIN mode
+  const stopScanner = async () => {
+    if (scannerRef.current) {
+      try {
+        if (scannerRef.current.isScanning) {
+          await scannerRef.current.stop();
+        }
+        await scannerRef.current.clear();
+      } catch (err) {
+        console.warn("Error stopping scanner:", err);
+      }
+      scannerRef.current = null;
+    }
+    setScannerStarted(false);
+    setStartingCamera(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopScanner();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (clockInMode !== "scan") {
+      stopScanner();
+    }
+  }, [clockInMode]);
+
+  const handleProcessQrCode = async (decodedText) => {
+    await stopScanner();
+    setLoading(true);
+    try {
+      const res = await staffClockInApi({ qrPayload: decodedText });
+      if (res.success) {
+        setClockInResult(res.data);
+        toaster.create({
+          title: "Attendance Logged via QR Code!",
+          description: res.message,
+          type: "success",
+        });
+      }
+    } catch (error) {
+      toaster.create({
+        title: error.response?.data?.message || "Invalid or expired school attendance code",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startScanner = async () => {
+    setCameraError("");
+    setStartingCamera(true);
+
+    try {
+      await stopScanner();
+
+      const qrScanner = new Html5Qrcode("staff-qr-reader");
+      scannerRef.current = qrScanner;
+
+      await qrScanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 240, height: 240 },
+          aspectRatio: 1.0,
+        },
+        (decodedText) => {
+          handleProcessQrCode(decodedText);
+        },
+        () => {
+          // ignore transient frame decode failures
+        }
+      );
+
+      setScannerStarted(true);
+    } catch (err) {
+      console.error("Camera scanner start failed:", err);
+      // Fallback: try default camera if environment camera fails
+      try {
+        const qrScanner = new Html5Qrcode("staff-qr-reader");
+        scannerRef.current = qrScanner;
+        await qrScanner.start(
+          { facingMode: "user" },
+          {
+            fps: 10,
+            qrbox: { width: 240, height: 240 },
+            aspectRatio: 1.0,
+          },
+          (decodedText) => {
+            handleProcessQrCode(decodedText);
+          },
+          () => {}
+        );
+        setScannerStarted(true);
+      } catch (fallbackErr) {
+        setCameraError(
+          fallbackErr.message ||
+            "Could not access camera. Please allow camera permissions or enter the 6-digit PIN."
+        );
+      }
+    } finally {
+      setStartingCamera(false);
+    }
+  };
 
   const handleClockInWithPin = async (e) => {
     if (e) e.preventDefault();
@@ -54,29 +172,6 @@ export default function TeacherScanClockIn() {
     } catch (error) {
       toaster.create({
         title: error.response?.data?.message || "Invalid or expired Clock-In PIN",
-        type: "error",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSimulateQrScan = async () => {
-    setLoading(true);
-    try {
-      // Simulate scanning the active school QR code with user's institution
-      const res = await staffClockInApi({ dailyPin: "847291" });
-      if (res.success) {
-        setClockInResult(res.data);
-        toaster.create({
-          title: "Barcode Scanned Successfully!",
-          description: res.message,
-          type: "success",
-        });
-      }
-    } catch (error) {
-      toaster.create({
-        title: error.response?.data?.message || "Clock-in failed. Please verify with school admin.",
         type: "error",
       });
     } finally {
@@ -246,68 +341,140 @@ export default function TeacherScanClockIn() {
                 <Box
                   position="relative"
                   w="100%"
-                  h="280px"
+                  minH="290px"
                   borderRadius="2xl"
                   bg="#0F172A"
                   overflow="hidden"
-                  border="2px dashed"
-                  borderColor="#4338CA"
+                  border="2px solid"
+                  borderColor={scannerStarted ? "#10B981" : "#4338CA"}
                   display="flex"
                   flexDirection="column"
                   alignItems="center"
                   justifyContent="center"
                   color="white"
-                  p={6}
+                  p={2}
                 >
-                  {/* Scanner Crosshair Animation */}
-                  <Box
-                    position="absolute"
-                    top="20%"
-                    left="20%"
-                    right="20%"
-                    bottom="20%"
-                    border="2px solid #818CF8"
-                    borderRadius="xl"
-                    pointerEvents="none"
-                  >
-                    <Box
-                      position="absolute"
-                      top="0"
-                      left="0"
-                      right="0"
-                      h="2px"
-                      bg="#C084FC"
-                      boxShadow="0 0 12px #C084FC"
-                    />
-                  </Box>
+                  {/* The actual video element rendered by html5-qrcode */}
+                  <div
+                    id="staff-qr-reader"
+                    style={{
+                      width: "100%",
+                      maxWidth: "340px",
+                      display: scannerStarted ? "block" : "none",
+                      borderRadius: "14px",
+                      overflow: "hidden",
+                    }}
+                  />
 
-                  <Icon as={FaCamera} boxSize={8} color="#A5B4FC" mb={3} />
-                  <Text fontSize="14px" fontWeight="700">
-                    Align School Attendance Barcode
-                  </Text>
-                  <Text fontSize="12px" color="#94A3B8" mt={1} maxW="240px">
-                    Point camera at the admin daily attendance QR display
-                  </Text>
+                  {/* Fallback/Idle overlay when camera is not scanning */}
+                  {!scannerStarted && (
+                    <Flex
+                      direction="column"
+                      align="center"
+                      justify="center"
+                      p={6}
+                      textAlign="center"
+                    >
+                      <Flex
+                        w="56px"
+                        h="56px"
+                        borderRadius="2xl"
+                        bg="#1E1B4B"
+                        color="#818CF8"
+                        align="center"
+                        justify="center"
+                        mb={3}
+                      >
+                        <Icon as={FaCamera} boxSize={6} />
+                      </Flex>
+                      <Text fontSize="15px" fontWeight="800" color="white">
+                        Live Attendance Barcode Scanner
+                      </Text>
+                      <Text fontSize="12px" color="#94A3B8" mt={1} maxW="280px">
+                        Click below to start your device camera and scan the school daily QR code terminal.
+                      </Text>
+
+                      {cameraError && (
+                        <Box mt={3} p={3} borderRadius="xl" bg="#7F1D1D" color="#FCA5A5" fontSize="12px">
+                          <Flex align="center" gap={1.5} justify="center">
+                            <Icon as={FaExclamationCircle} />
+                            <Text fontWeight="700">Camera Access Notice</Text>
+                          </Flex>
+                          <Text mt={1}>{cameraError}</Text>
+                        </Box>
+                      )}
+                    </Flex>
+                  )}
+
+                  {/* Scanner Active indicator */}
+                  {scannerStarted && (
+                    <Badge
+                      position="absolute"
+                      top="12px"
+                      bg="#065F46"
+                      color="#34D399"
+                      px={3}
+                      py={1}
+                      borderRadius="full"
+                      fontSize="11px"
+                      fontWeight="700"
+                      zIndex={10}
+                    >
+                      ● Camera Active &bull; Point at School Barcode
+                    </Badge>
+                  )}
                 </Box>
 
-                <Button
-                  mt={6}
-                  w="100%"
-                  h="48px"
-                  bg="linear-gradient(135deg, #4338CA 0%, #6D28D9 100%)"
-                  color="white"
-                  borderRadius="xl"
-                  fontSize="14px"
-                  fontWeight="700"
-                  boxShadow="0 4px 14px rgba(67, 56, 202, 0.35)"
-                  _hover={{ opacity: 0.95, transform: "translateY(-1px)" }}
-                  onClick={handleSimulateQrScan}
-                  loading={loading}
-                  loadingText="Verifying School Barcode..."
-                >
-                  <Icon as={FaQrcode} mr={2} boxSize={3.5} />
-                  Scan School Attendance Barcode Now
-                </Button>
+                {/* Camera Control Action Buttons */}
+                <Flex gap={3} mt={4}>
+                  {!scannerStarted ? (
+                    <Button
+                      flex={1}
+                      h="48px"
+                      bg="linear-gradient(135deg, #4338CA 0%, #6D28D9 100%)"
+                      color="white"
+                      borderRadius="xl"
+                      fontSize="14px"
+                      fontWeight="700"
+                      boxShadow="0 4px 14px rgba(67, 56, 202, 0.35)"
+                      _hover={{ opacity: 0.95 }}
+                      onClick={startScanner}
+                      loading={startingCamera || loading}
+                      loadingText="Starting Camera..."
+                    >
+                      <Icon as={FaPlay} mr={2} boxSize={3.5} />
+                      Start Camera & Scan
+                    </Button>
+                  ) : (
+                    <Button
+                      flex={1}
+                      h="48px"
+                      bg="#EF4444"
+                      color="white"
+                      borderRadius="xl"
+                      fontSize="14px"
+                      fontWeight="700"
+                      boxShadow="0 4px 14px rgba(239, 68, 68, 0.3)"
+                      _hover={{ bg: "#DC2626" }}
+                      onClick={stopScanner}
+                    >
+                      <Icon as={FaStopCircle} mr={2} boxSize={4} />
+                      Stop Camera
+                    </Button>
+                  )}
+                </Flex>
+
+                {cameraError && (
+                  <Button
+                    mt={3}
+                    variant="ghost"
+                    size="sm"
+                    color="#6366F1"
+                    onClick={() => setClockInMode("pin")}
+                  >
+                    Use Daily PIN instead &rarr;
+                  </Button>
+                )}
               </Box>
             ) : (
               <form onSubmit={handleClockInWithPin}>

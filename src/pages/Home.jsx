@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Landing from "./Landing";
-import { AuthProvider } from "../libs/AuthProvider";
+import { AuthProvider, useAuth } from "../libs/AuthProvider";
 import { getTenantSubdomain } from "../libs/tenantSubdomain";
 import { getInstitutionBySubdomainApi } from "../api-endpoint/sms/smsEndpoints";
 import {
@@ -43,6 +43,21 @@ import AdminFeeBillingManager from "./institution/AdminFeeBillingManager";
 import InstitutionSettings from "./institution/InstitutionSettings";
 import StaffManager from "./institution/StaffManager";
 import StudentPortalDashboard from "./student/StudentPortalDashboard";
+
+// Role-Guard: Restrict Institution Admin/ERP features from regular teachers
+const InstitutionAdminRoute = ({ children }) => {
+  const { user } = useAuth();
+  const isInstitutionAdmin =
+    user?.role === "institution_admin" ||
+    user?.role === "admin" ||
+    user?.role === "institution";
+
+  if (!isInstitutionAdmin) {
+    return <Navigate to="/teacher_dashboard" replace />;
+  }
+
+  return children;
+};
 
 const Home = () => {
   const [tenantSchool, setTenantSchool] = useState(null);
@@ -87,13 +102,55 @@ const Home = () => {
             {/* Student & Parent Portal */}
             <Route path="/student/portal" element={<StudentPortalDashboard />} />
 
-            {/* Institutional Admin ERP Routes */}
-            <Route path="/institution/dashboard" element={<SchoolAdminDashboard />} />
-            <Route path="/institution/staff" element={<StaffManager />} />
-            <Route path="/institution/staff-qr" element={<StaffQrGenerator />} />
-            <Route path="/institution/fees" element={<AdminFeeBillingManager />} />
-            <Route path="/institution/debtors" element={<AdminDebtorManager />} />
-            <Route path="/institution/settings" element={<InstitutionSettings />} />
+            {/* Institutional Admin ERP Routes (Restricted to Institution Admins only) */}
+            <Route
+              path="/institution/dashboard"
+              element={
+                <InstitutionAdminRoute>
+                  <SchoolAdminDashboard />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
+              path="/institution/staff"
+              element={
+                <InstitutionAdminRoute>
+                  <StaffManager />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
+              path="/institution/staff-qr"
+              element={
+                <InstitutionAdminRoute>
+                  <StaffQrGenerator />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
+              path="/institution/fees"
+              element={
+                <InstitutionAdminRoute>
+                  <AdminFeeBillingManager />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
+              path="/institution/debtors"
+              element={
+                <InstitutionAdminRoute>
+                  <AdminDebtorManager />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
+              path="/institution/settings"
+              element={
+                <InstitutionAdminRoute>
+                  <InstitutionSettings />
+                </InstitutionAdminRoute>
+              }
+            />
 
             {/* Teacher SMS Routes */}
             <Route path="/teacher/scan-clockin" element={<TeacherScanClockIn />} />

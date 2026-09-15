@@ -23,64 +23,72 @@ import {
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
 
-const navGroups = [
-  {
-    title: "OVERVIEW",
-    links: [
-      { name: "CBT Dashboard", path: "/teacher_dashboard", icon: FaTachometerAlt },
-    ],
-  },
-  {
-    title: "INSTITUTION SUITE (ERP)",
-    links: [
-      { name: "School Overview", path: "/institution/dashboard", icon: FaUniversity },
-      { name: "Faculty Directory", path: "/institution/staff", icon: FaUsers },
-      { name: "Staff Attendance QR", path: "/institution/staff-qr", icon: FaQrcode },
-      { name: "Fees & Invoicing", path: "/institution/fees", icon: FaCalculator },
-      { name: "Debtor Defaulters", path: "/institution/debtors", icon: FaMoneyBillWave },
-      { name: "School Settings", path: "/institution/settings", icon: FaCog },
-    ],
-  },
-  {
-    title: "SCHOOL MANAGEMENT (SMS)",
-    links: [
-      { name: "Staff Clock-In (QR)", path: "/teacher/scan-clockin", icon: FaQrcode },
-      { name: "Student Attendance", path: "/teacher/attendance", icon: FaCalendarCheck },
-      { name: "Report Cards & Broadsheets", path: "/teacher/report-cards", icon: FaGraduationCap },
-    ],
-  },
-  {
-    title: "EXAMINATIONS",
-    links: [
-      { name: "Create Exam", path: "/teacher/create_exam", icon: FaPlusCircle },
-      { name: "All Exams", path: "/teacher/exams", icon: FaFileAlt },
-      { name: "Results & Analytics", path: "/teacher/exam_result", icon: FaChartLine },
-    ],
-  },
-  {
-    title: "QUESTION BANK",
-    links: [
-      { name: "Question Bank & OCR", path: "/teacher/add_questions", icon: FaQuestionCircle },
-    ],
-  },
-  {
-    title: "STUDENTS",
-    links: [
-      { name: "Add Student", path: "/teacher/add_student", icon: FaUserPlus },
-      { name: "Student Directory", path: "/teacher/view", icon: FaUsers },
-      { name: "Edit Student", path: "/teacher/edit", icon: FaUserEdit },
-    ],
-  },
-  {
-    title: "SUBSCRIPTION & BILLING",
-    links: [
-      { name: "Billing & Plans", path: "/teacher/billing", icon: FaCreditCard },
-    ],
-  },
-];
-
 const MobileSideBar = ({ onClose }) => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const isInstitutionAdmin =
+    user?.role === "institution_admin" ||
+    user?.role === "admin" ||
+    user?.role === "institution";
+
+  const navGroups = [
+    {
+      title: "OVERVIEW",
+      links: [
+        { name: "CBT Dashboard", path: "/teacher_dashboard", icon: FaTachometerAlt },
+      ],
+    },
+    ...(isInstitutionAdmin
+      ? [
+          {
+            title: "INSTITUTION SUITE (ADMIN)",
+            links: [
+              { name: "School Overview", path: "/institution/dashboard", icon: FaUniversity },
+              { name: "Faculty Directory", path: "/institution/staff", icon: FaUsers },
+              { name: "Staff Attendance QR", path: "/institution/staff-qr", icon: FaQrcode },
+              { name: "Fees & Invoicing", path: "/institution/fees", icon: FaCalculator },
+              { name: "Debtor Defaulters", path: "/institution/debtors", icon: FaMoneyBillWave },
+              { name: "School Settings", path: "/institution/settings", icon: FaCog },
+            ],
+          },
+        ]
+      : []),
+    {
+      title: "CLASS & TEACHING (SMS)",
+      links: [
+        { name: "My Clock-In (QR)", path: "/teacher/scan-clockin", icon: FaQrcode },
+        { name: "Student Attendance", path: "/teacher/attendance", icon: FaCalendarCheck },
+        { name: "Report Cards & Broadsheets", path: "/teacher/report-cards", icon: FaGraduationCap },
+      ],
+    },
+    {
+      title: "EXAMINATIONS",
+      links: [
+        { name: "Create Exam", path: "/teacher/create_exam", icon: FaPlusCircle },
+        { name: "All Exams", path: "/teacher/exams", icon: FaFileAlt },
+        { name: "Results & Analytics", path: "/teacher/exam_result", icon: FaChartLine },
+      ],
+    },
+    {
+      title: "QUESTION BANK",
+      links: [
+        { name: "Question Bank & OCR", path: "/teacher/add_questions", icon: FaQuestionCircle },
+      ],
+    },
+    {
+      title: "STUDENTS",
+      links: [
+        { name: "Add Student", path: "/teacher/add_student", icon: FaUserPlus },
+        { name: "Student Directory", path: "/teacher/view", icon: FaUsers },
+        { name: "Edit Student", path: "/teacher/edit", icon: FaUserEdit },
+      ],
+    },
+    {
+      title: "SUBSCRIPTION & BILLING",
+      links: [
+        { name: "Billing & Plans", path: "/teacher/billing", icon: FaCreditCard },
+      ],
+    },
+  ];
 
   return (
     <Box
