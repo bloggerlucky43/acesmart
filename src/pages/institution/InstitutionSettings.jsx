@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   Flex,
@@ -6,6 +6,7 @@ import {
   Button,
   Icon,
   Input,
+  Badge,
 } from "@chakra-ui/react";
 import {
   FaGraduationCap,
@@ -13,16 +14,21 @@ import {
   FaSave,
   FaUserPlus,
   FaBuilding,
+  FaCloudUploadAlt,
+  FaCamera,
+  FaCheckCircle,
 } from "react-icons/fa";
 import {
   getInstitutionProfileApi,
   updateInstitutionBrandingApi,
+  uploadInstitutionLogoApi,
   enrollStaffApi,
   getStaffListApi,
 } from "../../api-endpoint/sms/smsEndpoints";
 import { useAuth } from "../../libs/AuthProvider";
 import { toaster } from "../../components/ui/toaster";
 import DashboardLayout from "../../constants/dashboardlayout";
+import imageCompression from "browser-image-compression";
 
 export default function InstitutionSettings() {
   const { user } = useAuth();
@@ -49,6 +55,47 @@ export default function InstitutionSettings() {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef(null);
+
+  const handleLogoFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toaster.create({ title: "Please select a valid image file (PNG, JPG)", type: "warning" });
+      return;
+    }
+
+    setLogoUploading(true);
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 0.35,
+        maxWidthOrHeight: 600,
+        useWebWorker: true,
+      });
+
+      const fd = new FormData();
+      fd.append("logo", compressed);
+      const res = await uploadInstitutionLogoApi(fd);
+      if (res.success && res.logoUrl) {
+        setForm((prev) => ({ ...prev, logoUrl: res.logoUrl }));
+        toaster.create({
+          title: "School crest uploaded successfully!",
+          description: "Your official school crest is now live across report cards and exam portals.",
+          type: "success",
+        });
+      }
+    } catch (err) {
+      toaster.create({
+        title: "Failed to upload crest",
+        description: err.response?.data?.message || err.message,
+        type: "error",
+      });
+    } finally {
+      setLogoUploading(false);
+    }
+  };
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -168,33 +215,106 @@ export default function InstitutionSettings() {
 
             <form onSubmit={handleSaveBranding}>
               <Flex direction="column" gap={4}>
-                {/* Logo Preview and Input */}
-                <Box>
-                  <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
-                    INSTITUTION LOGO / CREST URL
-                  </Text>
-                  <Flex gap={3} align="center">
-                    {form.logoUrl ? (
-                      <Box w="56px" h="56px" borderRadius="xl" border="1px solid #E2E8F0" p={1} flexShrink={0}>
+                {/* School Crest / Logo File Upload Section */}
+                <Box
+                  p={4}
+                  borderRadius="2xl"
+                  border="1.5px dashed #CBD5E1"
+                  bg={form.logoUrl ? "#FAF5FF" : "#F8FAFC"}
+                  transition="all 0.2s ease"
+                  _hover={{ borderColor: "#7C3AED" }}
+                >
+                  <Flex justify="space-between" align="center" mb={2.5}>
+                    <Text fontSize="12px" fontWeight="800" color="#334155" letterSpacing="0.5px">
+                      OFFICIAL SCHOOL CREST / LOGO
+                    </Text>
+                    {form.logoUrl && (
+                      <Badge bg="#ECFDF5" color="#059669" fontSize="10px" px={2} py={0.5} borderRadius="full">
+                        <Icon as={FaCheckCircle} mr={1} /> Crest Active
+                      </Badge>
+                    )}
+                  </Flex>
+
+                  <Flex direction={{ base: "column", sm: "row" }} gap={4} align="center">
+                    {/* Crest Preview Box */}
+                    <Box
+                      w="80px"
+                      h="80px"
+                      borderRadius="2xl"
+                      bg="white"
+                      border="2px solid #E2E8F0"
+                      p={1.5}
+                      boxShadow="0 4px 12px rgba(0,0,0,0.04)"
+                      flexShrink={0}
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      overflow="hidden"
+                    >
+                      {form.logoUrl ? (
                         <img
                           src={form.logoUrl}
-                          alt="Crest"
+                          alt="School Crest"
                           style={{ width: "100%", height: "100%", objectFit: "contain" }}
                         />
-                      </Box>
-                    ) : (
-                      <Flex w="56px" h="56px" borderRadius="xl" bg="#F1F5F9" color="#94A3B8" align="center" justify="center" flexShrink={0}>
-                        <Icon as={FaImage} boxSize={5} />
+                      ) : (
+                        <Flex direction="column" align="center" color="#94A3B8">
+                          <Icon as={FaImage} boxSize={6} mb={0.5} />
+                          <Text fontSize="9px" fontWeight="700">NO CREST</Text>
+                        </Flex>
+                      )}
+                    </Box>
+
+                    {/* Upload Actions */}
+                    <Flex direction="column" flex={1} w="100%" gap={2}>
+                      <Text fontSize="12px" color="#64748B">
+                        Upload your school's official badge or crest. It displays on student result sheets, receipts, and custom portals.
+                      </Text>
+
+                      <Flex gap={2} flexWrap="wrap" align="center">
+                        <input
+                          type="file"
+                          ref={logoInputRef}
+                          accept="image/png, image/jpeg, image/jpg"
+                          style={{ display: "none" }}
+                          onChange={handleLogoFileChange}
+                        />
+
+                        <Button
+                          size="sm"
+                          bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
+                          color="white"
+                          borderRadius="xl"
+                          fontSize="12px"
+                          fontWeight="700"
+                          px={4}
+                          onClick={() => logoInputRef.current?.click()}
+                          loading={logoUploading}
+                          loadingText="Uploading Crest..."
+                          _hover={{ opacity: 0.92, transform: "translateY(-1px)" }}
+                        >
+                          <Icon as={FaCloudUploadAlt} mr={1.5} boxSize={3.5} />
+                          {form.logoUrl ? "Replace Crest Image" : "Upload School Crest"}
+                        </Button>
+
+                        {form.logoUrl && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            borderColor="#CBD5E1"
+                            fontSize="11px"
+                            borderRadius="xl"
+                            color="#64748B"
+                            onClick={() => setForm({ ...form, logoUrl: "" })}
+                          >
+                            Remove
+                          </Button>
+                        )}
                       </Flex>
-                    )}
-                    <Input
-                      placeholder="https://... or upload link"
-                      value={form.logoUrl}
-                      onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
-                      h="42px"
-                      borderRadius="xl"
-                      fontSize="13px"
-                    />
+                      <Text fontSize="10px" color="#94A3B8">
+                        Recommended: Transparent PNG or crisp high-resolution JPG (under 5MB).
+                      </Text>
+                    </Flex>
                   </Flex>
                 </Box>
 

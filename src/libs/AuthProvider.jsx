@@ -30,9 +30,12 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const res = await getSingleUser();
-      console.log("Ath authporvider", res);
+      console.log("Auth provider user sync:", res);
 
-      setUser(res.data);
+      if (res?.data) {
+        setUser(res.data);
+        localStorage.setItem("USER_KEY", JSON.stringify(res.data));
+      }
     } catch (error) {
       if (error.response?.status === 401) {
         setUser(null);
@@ -47,11 +50,14 @@ export const AuthProvider = ({ children }) => {
     const storedUser = localStorage.getItem("USER_KEY");
 
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      setLoading(false);
-    } else {
-      fetchUser();
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error("Failed to parse cached user:", e);
+      }
     }
+    // Always re-validate with backend to pick up updated roles / institutions
+    fetchUser();
   }, []);
 
   useEffect(() => {

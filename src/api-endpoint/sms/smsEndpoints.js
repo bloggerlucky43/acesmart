@@ -22,6 +22,14 @@ export const updateInstitutionBrandingApi = async (formData) => {
   return data;
 };
 
+export const uploadInstitutionLogoApi = async (formData) => {
+  const { data } = await api.post("/institution/logo", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    withCredentials: true,
+  });
+  return data;
+};
+
 export const getAttendanceQrApi = async () => {
   const { data } = await api.get("/institution/attendance-qr", { withCredentials: true });
   return data;

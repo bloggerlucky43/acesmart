@@ -28,6 +28,7 @@ import {
 import { useAuth } from "../../libs/AuthProvider";
 import { toaster } from "../../components/ui/toaster";
 import DashboardLayout from "../../constants/dashboardlayout";
+import AllocatePaymentModal from "../../components/sms/AllocatePaymentModal";
 
 export default function AdminDebtorManager() {
   const { user } = useAuth();
@@ -94,8 +95,13 @@ export default function AdminDebtorManager() {
   };
 
   const handleOpenPaymentModal = (debtor) => {
-    setSelectedInvoice(debtor);
-    setPayAmount(debtor.balanceDue.toString());
+    setSelectedInvoice({
+      ...debtor,
+      id: debtor.studentId,
+      firstName: debtor.studentName?.split(" ")[0] || "Student",
+      lastName: debtor.studentName?.split(" ").slice(1).join(" ") || "",
+      studentId: debtor.studentCode || debtor.studentId,
+    });
     setPaymentModalOpen(true);
   };
 
@@ -158,15 +164,33 @@ export default function AdminDebtorManager() {
             </Text>
           </Box>
 
-          <Button
-            variant="outline"
-            size="sm"
-            borderRadius="xl"
-            onClick={() => window.print()}
-          >
-            <Icon as={FaPrint} mr={2} boxSize={3.5} />
-            Print Debtor Report
-          </Button>
+          <Flex gap={2}>
+            <Button
+              bg="#10B981"
+              color="white"
+              size="sm"
+              borderRadius="xl"
+              fontWeight="700"
+              onClick={() => {
+                setSelectedInvoice(null);
+                setPaymentModalOpen(true);
+              }}
+              _hover={{ bg: "#059669" }}
+            >
+              <Icon as={FaMoneyBillWave} mr={1.5} />
+              Allocate Manual Payment
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              borderRadius="xl"
+              onClick={() => window.print()}
+            >
+              <Icon as={FaPrint} mr={2} boxSize={3.5} />
+              Print Debtor Report
+            </Button>
+          </Flex>
         </Flex>
 
         {/* Financial KPI Cards */}
@@ -400,71 +424,14 @@ export default function AdminDebtorManager() {
           </Box>
         </Box>
 
-        {/* Record Payment Modal */}
-        {paymentModalOpen && (
-          <Flex
-            position="fixed"
-            top={0}
-            left={0}
-            w="100vw"
-            h="100vh"
-            bg="rgba(15, 23, 42, 0.7)"
-            backdropFilter="blur(6px)"
-            zIndex={1000}
-            align="center"
-            justify="center"
-            p={4}
-          >
-            <Box bg="white" borderRadius="2xl" maxW="440px" w="100%" p={6} boxShadow="0 20px 40px rgba(0,0,0,0.2)">
-              <Text fontSize="18px" fontWeight="900" color="#0F172A" mb={1}>
-                Record Bursary Payment
-              </Text>
-              <Text fontSize="13px" color="#64748B" mb={4}>
-                Credit payment received at school bursary for <strong>{selectedInvoice?.studentName}</strong>
-              </Text>
-
-              <Box bg="#F8FAFC" p={3.5} borderRadius="xl" border="1px solid #E2E8F0" mb={4}>
-                <Text fontSize="12px" color="#64748B">Outstanding Balance</Text>
-                <Text fontSize="20px" fontWeight="900" color="#EF4444">
-                  ₦{selectedInvoice?.balanceDue?.toLocaleString()}
-                </Text>
-              </Box>
-
-              <Box mb={4}>
-                <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
-                  AMOUNT PAID (₦)
-                </Text>
-                <Input
-                  type="number"
-                  value={payAmount}
-                  onChange={(e) => setPayAmount(e.target.value)}
-                  h="44px"
-                  borderRadius="xl"
-                  border="1px solid #CBD5E1"
-                  fontSize="15px"
-                  fontWeight="700"
-                />
-              </Box>
-
-              <Flex gap={3}>
-                <Button flex={1} variant="ghost" borderRadius="xl" onClick={() => setPaymentModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  flex={1}
-                  bg="#10B981"
-                  color="white"
-                  borderRadius="xl"
-                  fontWeight="700"
-                  onClick={handleConfirmPayment}
-                  loading={submittingPayment}
-                >
-                  Confirm Credit
-                </Button>
-              </Flex>
-            </Box>
-          </Flex>
-        )}
+        {/* Dedicated Manual Payment Allocation Modal with Printable Receipt */}
+        <AllocatePaymentModal
+          isOpen={paymentModalOpen}
+          onClose={() => setPaymentModalOpen(false)}
+          initialStudent={selectedInvoice}
+          initialInvoice={selectedInvoice}
+          onPaymentSuccess={() => fetchData()}
+        />
       </Box>
     </DashboardLayout>
   );

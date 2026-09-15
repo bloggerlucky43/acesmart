@@ -27,7 +27,11 @@ const Login = () => {
 
         localStorage.setItem("USER_KEY", JSON.stringify(res.data));
         setUser(res.data);
-        navigate("/teacher_dashboard", { replace: true });
+        if (res.data.role === "institution_admin") {
+          navigate("/institution/dashboard", { replace: true });
+        } else {
+          navigate("/teacher_dashboard", { replace: true });
+        }
       }
     } catch (error) {
       toaster.create({

@@ -29,7 +29,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    role: "teacher",
+    role: "institution", // Default to institution
     phoneNumber: "",
     username: "",
     password: "",
@@ -90,7 +90,12 @@ export default function RegisterPage() {
 
         setUser(res.data);
         localStorage.setItem("USER_KEY", JSON.stringify(res.data));
-        navigate("/teacher_dashboard", { replace: true });
+
+        if (res.data?.role === "institution_admin" || form.role === "institution") {
+          navigate("/institution/dashboard", { replace: true });
+        } else {
+          navigate("/teacher_dashboard", { replace: true });
+        }
       }
     } catch (error) {
       toaster.create({
@@ -274,13 +279,52 @@ export default function RegisterPage() {
           </Button>
 
           {/* Heading */}
-          <Box mb={6}>
+          <Box mb={4}>
             <Text fontSize="28px" fontWeight="900" color="gray.900" letterSpacing="-0.5px">
-              Register Your Institution
+              {form.role === "institution" ? "Register Your Institution" : "Register Educator Account"}
             </Text>
             <Text fontSize="14px" color="gray.500" mt={1}>
-              Create your teacher/admin profile to launch proctored CBT exams
+              {form.role === "institution"
+                ? "Deploy your school's official branded CBT portal, fees & staff management"
+                : "Create your personal educator profile to launch standalone CBT tests"}
             </Text>
+          </Box>
+
+          {/* Account Type Selector */}
+          <Box mb={6} p={1.5} bg="#F1F5F9" borderRadius="2xl">
+            <Flex gap={2}>
+              <Button
+                flex={1}
+                h="42px"
+                borderRadius="xl"
+                variant={form.role === "institution" ? "solid" : "ghost"}
+                bg={form.role === "institution" ? "white" : "transparent"}
+                color={form.role === "institution" ? "#6A1B9A" : "#64748B"}
+                boxShadow={form.role === "institution" ? "0 2px 8px rgba(0,0,0,0.08)" : "none"}
+                fontWeight="800"
+                fontSize="13px"
+                onClick={() => setForm({ ...form, role: "institution" })}
+              >
+                <Icon as={FaSchool} mr={2} />
+                School / Institution
+              </Button>
+
+              <Button
+                flex={1}
+                h="42px"
+                borderRadius="xl"
+                variant={form.role === "teacher" ? "solid" : "ghost"}
+                bg={form.role === "teacher" ? "white" : "transparent"}
+                color={form.role === "teacher" ? "#6A1B9A" : "#64748B"}
+                boxShadow={form.role === "teacher" ? "0 2px 8px rgba(0,0,0,0.08)" : "none"}
+                fontWeight="800"
+                fontSize="13px"
+                onClick={() => setForm({ ...form, role: "teacher" })}
+              >
+                <Icon as={FaUsers} mr={2} />
+                Independent Educator
+              </Button>
+            </Flex>
           </Box>
 
           {/* Form */}

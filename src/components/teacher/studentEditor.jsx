@@ -24,10 +24,15 @@ import {
   FaBan,
   FaTrashAlt,
   FaUsers,
+  FaCamera,
+  FaEdit,
 } from "react-icons/fa";
+import EditStudentModal from "../sms/EditStudentModal";
 
 const StudentEditor = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
@@ -164,11 +169,17 @@ const StudentEditor = () => {
               <Table.Root size="md" stickyHeader>
                 <Table.Header>
                   <Table.Row bg="#0F172A">
+                    <Table.ColumnHeader color="white" py={3.5} px={4} fontSize="12px" fontWeight="700">
+                      Face
+                    </Table.ColumnHeader>
                     <Table.ColumnHeader color="white" py={3.5} px={5} fontSize="12px" fontWeight="700">
                       Student ID
                     </Table.ColumnHeader>
                     <Table.ColumnHeader color="white" py={3.5} px={5} fontSize="12px" fontWeight="700">
                       Full Name
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader color="white" py={3.5} px={4} fontSize="12px" fontWeight="700">
+                      Class Arm
                     </Table.ColumnHeader>
                     <Table.ColumnHeader color="white" py={3.5} px={5} fontSize="12px" fontWeight="700" textAlign="center">
                       Current Status
@@ -187,12 +198,63 @@ const StudentEditor = () => {
                         _hover={{ bg: "#FAF5FF" }}
                         transition="background 0.15s ease"
                       >
+                        {/* Face Biometric Thumbnail */}
+                        <Table.Cell py={2.5} px={4}>
+                          {l.faceImageUrl ? (
+                            <Box
+                              w="38px"
+                              h="38px"
+                              borderRadius="xl"
+                              overflow="hidden"
+                              border="2px solid #10B981"
+                              boxShadow="0 2px 6px rgba(0,0,0,0.08)"
+                              cursor="pointer"
+                              onClick={() => {
+                                setEditingStudent(l);
+                                setIsEditModalOpen(true);
+                              }}
+                              title="Click to view/replace face photo"
+                            >
+                              <img
+                                src={l.faceImageUrl}
+                                alt="Face"
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            </Box>
+                          ) : (
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              borderColor="#F59E0B"
+                              color="#D97706"
+                              bg="#FFFBEB"
+                              borderRadius="lg"
+                              fontSize="10px"
+                              px={2}
+                              py={1}
+                              h="30px"
+                              onClick={() => {
+                                setEditingStudent(l);
+                                setIsEditModalOpen(true);
+                              }}
+                              title="Upload face photo for CBT proctoring"
+                            >
+                              <Icon as={FaCamera} mr={1} boxSize={2.5} />
+                              Add Face
+                            </Button>
+                          )}
+                        </Table.Cell>
+
                         <Table.Cell py={3.5} px={5} fontWeight="700" color="#6A1B9A" fontSize="13px">
                           {l.studentId || `STU-${l.id}`}
                         </Table.Cell>
 
                         <Table.Cell py={3.5} px={5} fontWeight="600" color="#1E293B">
                           {l.firstName} {l.lastName}
+                        </Table.Cell>
+
+                        <Table.Cell py={3.5} px={4} fontSize="12px" color="#475569" fontWeight="600">
+                          {l.ClassArm?.name || "General / CBT"}
                         </Table.Cell>
 
                         <Table.Cell py={3.5} px={5} textAlign="center">
@@ -213,6 +275,26 @@ const StudentEditor = () => {
 
                         <Table.Cell py={3.5} px={5} textAlign="right">
                           <Flex justify="flex-end" align="center" gap={2}>
+                            {/* Edit / Face Photo Action */}
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              borderColor="#CBD5E1"
+                              color="#6A1B9A"
+                              bg="white"
+                              borderRadius="lg"
+                              px={2.5}
+                              _hover={{ bg: "#FAF5FF", borderColor: "#6A1B9A" }}
+                              onClick={() => {
+                                setEditingStudent(l);
+                                setIsEditModalOpen(true);
+                              }}
+                              title="Edit candidate profile and upload headshot photo"
+                            >
+                              <Icon as={FaEdit} mr={1} boxSize={2.5} />
+                              Edit / Face
+                            </Button>
+
                             {!isActive ? (
                               <Button
                                 size="xs"
@@ -275,6 +357,14 @@ const StudentEditor = () => {
           )}
         </Box>
       </Box>
+
+      {/* Edit Student & Face Photo Upload Modal */}
+      <EditStudentModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        student={editingStudent}
+        onUpdated={() => queryClient.invalidateQueries(["students"])}
+      />
     </Box>
   );
 };

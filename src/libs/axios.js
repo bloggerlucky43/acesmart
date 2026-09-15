@@ -5,6 +5,25 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Attach Authorization Bearer token from localStorage for seamless cross-subdomain API calls
+api.interceptors.request.use(
+  (config) => {
+    try {
+      const stored = localStorage.getItem("USER_KEY");
+      if (stored) {
+        const user = JSON.parse(stored);
+        if (user?.token) {
+          config.headers.Authorization = `Bearer ${user.token}`;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to attach auth token from storage", e);
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // //Global Response Interceptor
 // api.interceptors.response.use(
 //   (response) => response,

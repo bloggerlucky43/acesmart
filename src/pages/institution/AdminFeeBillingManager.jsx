@@ -5,8 +5,6 @@ import {
   Heading,
   Button,
   Input,
-  Select,
-  Table,
   Badge,
   Icon,
   SimpleGrid,
@@ -24,6 +22,9 @@ import {
   FaExclamationTriangle,
   FaUsers,
   FaArrowRight,
+  FaLayerGroup,
+  FaGraduationCap,
+  FaEdit,
 } from "react-icons/fa";
 import {
   getFeeStructuresApi,
@@ -31,9 +32,12 @@ import {
   deleteFeeStructureApi,
   batchGenerateInvoicesApi,
   getClassArmsApi,
+  createClassArmApi,
 } from "../../api-endpoint/sms/smsEndpoints";
 import { toaster } from "../../components/ui/toaster";
 import { useAuth } from "../../libs/AuthProvider";
+import DashboardLayout from "../../constants/dashboardlayout";
+import AllocatePaymentModal from "../../components/sms/AllocatePaymentModal";
 
 const AdminFeeBillingManager = () => {
   const { user } = useAuth();
@@ -41,15 +45,23 @@ const AdminFeeBillingManager = () => {
 
   const [loading, setLoading] = useState(true);
   const [structures, setStructures] = useState([]);
+  const [showAllocateModal, setShowAllocateModal] = useState(false);
   const [classArms, setClassArms] = useState([]);
-  const [activeTab, setActiveTab] = useState("schedules"); // "schedules" | "billing"
+  const [activeTab, setActiveTab] = useState("classes"); // "classes" | "billing" | "all_schedules"
 
-  // Modal / Form state for fee schedule
-  const [showModal, setShowModal] = useState(false);
+  // Class Arm Creation Modal
+  const [showAddClassModal, setShowAddClassModal] = useState(false);
+  const [newClassName, setNewClassName] = useState("");
+  const [newClassLevel, setNewClassLevel] = useState("Junior Secondary");
+  const [seedingClasses, setSeedingClasses] = useState(false);
+
+  // Fee Schedule Modal
+  const [showFeeModal, setShowFeeModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [targetClassName, setTargetClassName] = useState("");
   const [formData, setFormData] = useState({
     classArmId: "",
-    title: "Standard Termly School Fee",
+    title: "Termly Class Fee Package",
     term: "First Term",
     session: "2025/2026",
     tuitionFee: 35000,
@@ -59,7 +71,7 @@ const AdminFeeBillingManager = () => {
     uniformAndBooks: 2000,
   });
 
-  // Batch Billing Form State
+  // Batch Billing State
   const [billingClassArmId, setBillingClassArmId] = useState("");
   const [billingTerm, setBillingTerm] = useState("First Term");
   const [billingSession, setBillingSession] = useState("2025/2026");
@@ -98,23 +110,105 @@ const AdminFeeBillingManager = () => {
     Number(formData.examLevy || 0) +
     Number(formData.uniformAndBooks || 0);
 
+  const handleCreateClassArm = async (e) => {
+    e.preventDefault();
+    if (!newClassName.trim()) return;
+
+    try {
+      const res = await createClassArmApi({
+        name: newClassName.trim(),
+        level: newClassLevel,
+      });
+
+      if (res.success) {
+        toaster.create({ title: `Class arm "${newClassName}" created!`, type: "success" });
+        setNewClassName("");
+        setShowAddClassModal(false);
+        loadData();
+      }
+    } catch (err) {
+      toaster.create({
+        title: "Failed to create class arm",
+        description: err.response?.data?.message || err.message,
+        type: "error",
+      });
+    }
+  };
+
+  const handleQuickSeedClasses = async () => {
+    setSeedingClasses(true);
+    const standard = [
+      { name: "JSS 1", level: "Junior Secondary" },
+      { name: "JSS 2", level: "Junior Secondary" },
+      { name: "JSS 3", level: "Junior Secondary" },
+      { name: "SS 1", level: "Senior Secondary" },
+      { name: "SS 2", level: "Senior Secondary" },
+      { name: "SS 3", level: "Senior Secondary" },
+    ];
+
+    try {
+      for (const c of standard) {
+        await createClassArmApi(c).catch(() => null);
+      }
+      toaster.create({ title: "Standard classes (JSS 1 to SS 3) added successfully!", type: "success" });
+      loadData();
+    } catch (err) {
+      toaster.create({ title: "Failed to seed classes", type: "error" });
+    } finally {
+      setSeedingClasses(false);
+    }
+  };
+
+  const handleOpenFeeModalForClass = (classItem) => {
+    // Check if fee structure already exists for this class
+    const existing = structures.find((s) => s.classArmId === classItem.id);
+    if (existing) {
+      setEditingId(existing.id);
+      setFormData({
+        classArmId: classItem.id,
+        title: existing.title || `${classItem.name} Fee Package`,
+        term: existing.term || "First Term",
+        session: existing.session || "2025/2026",
+        tuitionFee: existing.tuitionFee || 0,
+        ictLevy: existing.ictLevy || 0,
+        developmentLevy: existing.developmentLevy || 0,
+        examLevy: existing.examLevy || 0,
+        uniformAndBooks: existing.uniformAndBooks || 0,
+      });
+    } else {
+      setEditingId(null);
+      setFormData({
+        classArmId: classItem.id,
+        title: `${classItem.name} Standard Termly Fee`,
+        term: "First Term",
+        session: "2025/2026",
+        tuitionFee: 35000,
+        ictLevy: 5000,
+        developmentLevy: 5000,
+        examLevy: 3000,
+        uniformAndBooks: 2000,
+      });
+    }
+    setTargetClassName(classItem.name);
+    setShowFeeModal(true);
+  };
+
   const handleSaveStructure = async (e) => {
     e.preventDefault();
     try {
       const res = await saveFeeStructureApi({
         id: editingId,
         ...formData,
-        classArmId: formData.classArmId || null,
         totalAmount: totalCalculated,
       });
 
       if (res.success) {
         toaster.create({
-          title: "Fee Package Saved",
-          description: `Total configured: ₦${totalCalculated.toLocaleString()}`,
+          title: "Fee Package Configured",
+          description: `Total for ${targetClassName || "Class"}: ₦${totalCalculated.toLocaleString()}`,
           type: "success",
         });
-        setShowModal(false);
+        setShowFeeModal(false);
         setEditingId(null);
         loadData();
       }
@@ -127,18 +221,23 @@ const AdminFeeBillingManager = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this fee structure?")) return;
+  const handleDeleteStructure = async (id) => {
+    if (!window.confirm("Are you sure you want to remove this fee package?")) return;
     try {
       await deleteFeeStructureApi(id);
-      toaster.create({ title: "Fee package deleted", type: "info" });
+      toaster.create({ title: "Fee package removed", type: "info" });
       loadData();
     } catch (err) {
       toaster.create({ title: "Delete failed", description: err.message, type: "error" });
     }
   };
 
-  const handleBatchBilling = async () => {
+  const handleDirectClassBilling = (classItem) => {
+    setBillingClassArmId(classItem.id);
+    setActiveTab("billing");
+  };
+
+  const handleBatchBillingSubmit = async () => {
     setBillingLoading(true);
     setBillingResult(null);
     try {
@@ -158,7 +257,7 @@ const AdminFeeBillingManager = () => {
       }
     } catch (err) {
       toaster.create({
-        title: "Billing Generation Failed",
+        title: "Billing Failed",
         description: err.response?.data?.message || err.message,
         type: "error",
       });
@@ -168,85 +267,105 @@ const AdminFeeBillingManager = () => {
   };
 
   return (
-    <Box p={{ base: 4, md: 8 }} maxW="1350px" mx="auto" fontFamily="'Outfit', sans-serif">
-      {/* Header */}
-      <Flex
-        direction={{ base: "column", md: "row" }}
-        justify="space-between"
-        align={{ base: "flex-start", md: "center" }}
-        gap={4}
-        mb={8}
+    <DashboardLayout>
+      <Box
+        p={{ base: 4, md: 8 }}
+        pt={{ base: "84px", md: "88px" }}
+        pl={{ base: 4, lg: "260px" }}
+        maxW="1350px"
+        mx="auto"
+        fontFamily="'Outfit', sans-serif"
       >
-        <Box>
-          <Flex align="center" gap={3} mb={1}>
-            <Heading fontSize={{ base: "22px", md: "28px" }} fontWeight="800" color="#0F172A">
-              School Fees & Billing Setup
-            </Heading>
-            <Badge bg="#F3E8FF" color="#6A1B9A" px={3} py={1} borderRadius="full" fontWeight="700">
-              Bursary Suite
-            </Badge>
-          </Flex>
-          <Text fontSize="14px" color="#64748B">
-            Configure termly tuition and fees by class arm, and run 1-click batch billing invoices for students.
-          </Text>
-        </Box>
+        {/* Header */}
+        <Flex
+          direction={{ base: "column", md: "row" }}
+          justify="space-between"
+          align={{ base: "flex-start", md: "center" }}
+          gap={4}
+          mb={8}
+        >
+          <Box>
+            <Flex align="center" gap={3} mb={1}>
+              <Heading fontSize={{ base: "22px", md: "28px" }} fontWeight="800" color="#0F172A">
+                Class School Fees & Billing
+              </Heading>
+              <Badge bg="#F3E8FF" color="#6A1B9A" px={3} py={1} borderRadius="full" fontWeight="700">
+                Class-Arm Architecture
+              </Badge>
+            </Flex>
+            <Text fontSize="14px" color="#64748B">
+              Create class arms (e.g. JSS 1, SS 2), set specific school fees per class, and bill enrolled students with 1-click invoices.
+            </Text>
+          </Box>
 
-        <Flex gap={3} wrap="wrap">
-          <Button
-            size="md"
-            variant="outline"
-            borderColor="#CBD5E1"
-            color="#334155"
-            borderRadius="xl"
-            onClick={() => navigate("/institution/debtors")}
+          <Flex gap={3} wrap="wrap">
+            <Button
+              size="md"
+              bg="#10B981"
+              color="white"
+              borderRadius="xl"
+              fontWeight="700"
+              _hover={{ bg: "#059669", transform: "translateY(-1px)" }}
+              onClick={() => setShowAllocateModal(true)}
+            >
+              <Icon as={FaMoneyBillWave} mr={2} />
+              Allocate Manual Payment
+            </Button>
+
+            <Button
+              size="md"
+              variant="outline"
+              borderColor="#CBD5E1"
+              color="#334155"
+              borderRadius="xl"
+              onClick={() => navigate("/institution/debtors")}
+            >
+              <Icon as={FaFileInvoiceDollar} mr={2} color="#EF4444" />
+              Debtors & Defaulters
+            </Button>
+
+            <Button
+              size="md"
+              variant="outline"
+              borderColor="#6A1B9A"
+              color="#6A1B9A"
+              borderRadius="xl"
+              _hover={{ bg: "#F3E8FF" }}
+              onClick={() => setShowAddClassModal(true)}
           >
-            <Icon as={FaFileInvoiceDollar} mr={2} color="#EF4444" />
-            Debtors & Defaulters
+            <Icon as={FaLayerGroup} mr={2} />
+            + Add Class Arm
           </Button>
 
-          <Button
-            size="md"
-            bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
-            color="white"
-            borderRadius="xl"
-            boxShadow="0 4px 14px rgba(106, 27, 154, 0.3)"
-            _hover={{ opacity: 0.95 }}
-            onClick={() => {
-              setEditingId(null);
-              setFormData({
-                classArmId: "",
-                title: "Standard Termly School Fee",
-                term: "First Term",
-                session: "2025/2026",
-                tuitionFee: 35000,
-                ictLevy: 5000,
-                developmentLevy: 5000,
-                examLevy: 3000,
-                uniformAndBooks: 2000,
-              });
-              setShowModal(true);
-            }}
-          >
-            <Icon as={FaPlus} mr={2} />
-            New Fee Package
-          </Button>
+          {classArms.length === 0 && (
+            <Button
+              size="md"
+              bg="#10B981"
+              color="white"
+              borderRadius="xl"
+              loading={seedingClasses}
+              onClick={handleQuickSeedClasses}
+            >
+              ⚡ Auto-Seed (JSS 1 - SS 3)
+            </Button>
+          )}
         </Flex>
       </Flex>
 
-      {/* Tabs */}
-      <Flex gap={2} mb={6} borderBottom="2px solid #E2E8F0" pb={1}>
+      {/* Navigation Tabs */}
+      <Flex gap={2} mb={6} borderBottom="2px solid #E2E8F0" pb={1} overflowX="auto">
         <Button
           variant="ghost"
           fontSize="14px"
           fontWeight="700"
-          color={activeTab === "schedules" ? "#6A1B9A" : "#64748B"}
-          borderBottom={activeTab === "schedules" ? "3px solid #6A1B9A" : "none"}
+          color={activeTab === "classes" ? "#6A1B9A" : "#64748B"}
+          borderBottom={activeTab === "classes" ? "3px solid #6A1B9A" : "none"}
           borderRadius="none"
           pb={3}
-          onClick={() => setActiveTab("schedules")}
+          onClick={() => setActiveTab("classes")}
         >
-          <Icon as={FaCalculator} mr={2} />
-          Fee Schedules by Class ({structures.length})
+          <Icon as={FaGraduationCap} mr={2} />
+          Class Arms & Fee Schedules ({classArms.length} Classes)
         </Button>
 
         <Button
@@ -260,18 +379,18 @@ const AdminFeeBillingManager = () => {
           onClick={() => setActiveTab("billing")}
         >
           <Icon as={FaMoneyBillWave} mr={2} />
-          Batch Class Invoicing Engine
+          1-Click Batch Invoicing Engine
         </Button>
       </Flex>
 
-      {/* TAB 1: Fee Schedules */}
-      {activeTab === "schedules" && (
+      {/* TAB 1: Classes & Assigned Fee Schedules */}
+      {activeTab === "classes" && (
         <Box>
           {loading ? (
             <Flex justify="center" p={12}>
               <Spinner size="xl" color="#6A1B9A" />
             </Flex>
-          ) : structures.length === 0 ? (
+          ) : classArms.length === 0 ? (
             <Box
               p={10}
               bg="#F8FAFC"
@@ -279,121 +398,176 @@ const AdminFeeBillingManager = () => {
               border="2px dashed #CBD5E1"
               textAlign="center"
             >
-              <Icon as={FaCalculator} boxSize={10} color="#94A3B8" mb={3} />
-              <Heading fontSize="18px" color="#334155" mb={2}>
-                No Fee Structures Configured Yet
+              <Icon as={FaLayerGroup} boxSize={12} color="#94A3B8" mb={3} />
+              <Heading fontSize="19px" color="#334155" mb={2}>
+                No Class Arms Created Yet
               </Heading>
-              <Text fontSize="14px" color="#64748B" mb={4}>
-                Click below to set up tuition, ICT levies, and development fees for your classes.
+              <Text fontSize="14px" color="#64748B" maxW="480px" mx="auto" mb={5}>
+                Add your school classes (e.g. JSS 1, JSS 2, SS 1 Science) so you can assign customized termly school fees to each category.
               </Text>
-              <Button
-                bg="#6A1B9A"
-                color="white"
-                borderRadius="xl"
-                onClick={() => setShowModal(true)}
-              >
-                <Icon as={FaPlus} mr={2} />
-                Create First Fee Package
-              </Button>
+              <Flex justify="center" gap={3} wrap="wrap">
+                <Button
+                  bg="#6A1B9A"
+                  color="white"
+                  borderRadius="xl"
+                  onClick={() => setShowAddClassModal(true)}
+                >
+                  <Icon as={FaPlus} mr={2} />
+                  Add Custom Class
+                </Button>
+                <Button
+                  variant="outline"
+                  borderColor="#10B981"
+                  color="#10B981"
+                  borderRadius="xl"
+                  loading={seedingClasses}
+                  onClick={handleQuickSeedClasses}
+                >
+                  ⚡ Auto-Add JSS 1 to SS 3
+                </Button>
+              </Flex>
             </Box>
           ) : (
             <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={5}>
-              {structures.map((s) => (
-                <Box
-                  key={s.id}
-                  bg="white"
-                  p={5}
-                  borderRadius="2xl"
-                  border="1px solid #E2E8F0"
-                  boxShadow="0 4px 16px rgba(0,0,0,0.03)"
-                  position="relative"
-                  transition="all 0.2s ease"
-                  _hover={{ borderColor: "#6A1B9A", transform: "translateY(-2px)" }}
-                >
-                  <Flex justify="space-between" align="flex-start" mb={3}>
-                    <Box>
-                      <Badge
-                        bg="#EFF6FF"
-                        color="#2563EB"
-                        px={2.5}
-                        py={0.5}
-                        borderRadius="md"
-                        fontSize="11px"
+              {classArms.map((cls) => {
+                const assignedFee = structures.find((s) => s.classArmId === cls.id);
+                return (
+                  <Box
+                    key={cls.id}
+                    bg="white"
+                    p={5}
+                    borderRadius="2xl"
+                    border="1px solid"
+                    borderColor={assignedFee ? "#E2E8F0" : "#FDE68A"}
+                    boxShadow="0 4px 16px rgba(0,0,0,0.03)"
+                    position="relative"
+                    transition="all 0.2s ease"
+                    _hover={{ borderColor: "#6A1B9A", transform: "translateY(-2px)" }}
+                  >
+                    {/* Card Top */}
+                    <Flex justify="space-between" align="flex-start" mb={3}>
+                      <Box>
+                        <Badge
+                          bg="#F3E8FF"
+                          color="#6A1B9A"
+                          px={2.5}
+                          py={0.5}
+                          borderRadius="md"
+                          fontSize="11px"
+                          fontWeight="800"
+                          mb={1}
+                        >
+                          {cls.level || "Class Arm"}
+                        </Badge>
+                        <Heading fontSize="19px" color="#0F172A" fontWeight="900">
+                          {cls.name}
+                        </Heading>
+                      </Box>
+
+                      {assignedFee ? (
+                        <Badge bg="#DCFCE7" color="#166534" px={2.5} py={1} borderRadius="full" fontSize="11px" fontWeight="700">
+                          Fee Assigned
+                        </Badge>
+                      ) : (
+                        <Badge bg="#FEF3C7" color="#92400E" px={2.5} py={1} borderRadius="full" fontSize="11px" fontWeight="700">
+                          No Fee Set
+                        </Badge>
+                      )}
+                    </Flex>
+
+                    {/* Breakdown or Empty state */}
+                    {assignedFee ? (
+                      <Box bg="#F8FAFC" p={3.5} borderRadius="xl" mb={4} fontSize="13px">
+                        <Flex justify="space-between" py={0.8} borderBottom="1px solid #E2E8F0">
+                          <Text color="#64748B">Tuition:</Text>
+                          <Text fontWeight="600" color="#1E293B">₦{Number(assignedFee.tuitionFee).toLocaleString()}</Text>
+                        </Flex>
+                        <Flex justify="space-between" py={0.8} borderBottom="1px solid #E2E8F0">
+                          <Text color="#64748B">ICT Levy:</Text>
+                          <Text fontWeight="600" color="#1E293B">₦{Number(assignedFee.ictLevy).toLocaleString()}</Text>
+                        </Flex>
+                        <Flex justify="space-between" py={0.8} borderBottom="1px solid #E2E8F0">
+                          <Text color="#64748B">Development:</Text>
+                          <Text fontWeight="600" color="#1E293B">₦{Number(assignedFee.developmentLevy).toLocaleString()}</Text>
+                        </Flex>
+                        <Flex justify="space-between" py={0.8} borderBottom="1px solid #E2E8F0">
+                          <Text color="#64748B">Exam / Assessment:</Text>
+                          <Text fontWeight="600" color="#1E293B">₦{Number(assignedFee.examLevy).toLocaleString()}</Text>
+                        </Flex>
+                        <Flex justify="space-between" py={0.8}>
+                          <Text color="#64748B">Books / Uniform:</Text>
+                          <Text fontWeight="600" color="#1E293B">₦{Number(assignedFee.uniformAndBooks).toLocaleString()}</Text>
+                        </Flex>
+
+                        <Flex justify="space-between" align="center" pt={2} mt={1} borderTop="1.5px solid #CBD5E1">
+                          <Text fontWeight="800" color="#0F172A">Total Fee:</Text>
+                          <Text fontWeight="900" fontSize="17px" color="#6A1B9A">
+                            ₦{Number(assignedFee.totalAmount).toLocaleString()}
+                          </Text>
+                        </Flex>
+                      </Box>
+                    ) : (
+                      <Box bg="#FFFBEB" p={4} borderRadius="xl" mb={4} textAlign="center" border="1px solid #FDE68A">
+                        <Text fontSize="13px" color="#B45309" fontWeight="600">
+                          No fees configured for {cls.name} yet.
+                        </Text>
+                        <Text fontSize="11px" color="#92400E" mt={1}>
+                          Students enrolled in this class will not receive invoices until fees are assigned.
+                        </Text>
+                      </Box>
+                    )}
+
+                    {/* Action Buttons */}
+                    <Flex gap={2}>
+                      <Button
+                        flex={1}
+                        size="sm"
+                        variant="outline"
+                        borderColor="#CBD5E1"
+                        borderRadius="xl"
+                        fontSize="12px"
                         fontWeight="700"
-                        mb={1}
+                        onClick={() => handleOpenFeeModalForClass(cls)}
                       >
-                        {s.ClassArm ? s.ClassArm.name : "All Classes (Global)"}
-                      </Badge>
-                      <Heading fontSize="17px" color="#0F172A" fontWeight="800">
-                        {s.title}
-                      </Heading>
-                      <Text fontSize="12px" color="#64748B">
-                        {s.term} • {s.session}
-                      </Text>
-                    </Box>
+                        <Icon as={FaEdit} mr={1.5} />
+                        {assignedFee ? "Edit Fees" : "Assign Fees"}
+                      </Button>
 
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      color="#EF4444"
-                      _hover={{ bg: "#FEE2E2" }}
-                      onClick={() => handleDelete(s.id)}
-                    >
-                      <Icon as={FaTrash} boxSize={3} />
-                    </Button>
-                  </Flex>
-
-                  {/* Breakdown Table */}
-                  <Box bg="#F8FAFC" p={3.5} borderRadius="xl" mb={4} fontSize="13px">
-                    <Flex justify="space-between" py={1} borderBottom="1px solid #E2E8F0">
-                      <Text color="#64748B">Tuition:</Text>
-                      <Text fontWeight="600" color="#1E293B">₦{Number(s.tuitionFee).toLocaleString()}</Text>
-                    </Flex>
-                    <Flex justify="space-between" py={1} borderBottom="1px solid #E2E8F0">
-                      <Text color="#64748B">ICT / Computer Levy:</Text>
-                      <Text fontWeight="600" color="#1E293B">₦{Number(s.ictLevy).toLocaleString()}</Text>
-                    </Flex>
-                    <Flex justify="space-between" py={1} borderBottom="1px solid #E2E8F0">
-                      <Text color="#64748B">Development Levy:</Text>
-                      <Text fontWeight="600" color="#1E293B">₦{Number(s.developmentLevy).toLocaleString()}</Text>
-                    </Flex>
-                    <Flex justify="space-between" py={1} borderBottom="1px solid #E2E8F0">
-                      <Text color="#64748B">Exam / Assessment:</Text>
-                      <Text fontWeight="600" color="#1E293B">₦{Number(s.examLevy).toLocaleString()}</Text>
-                    </Flex>
-                    <Flex justify="space-between" py={1}>
-                      <Text color="#64748B">Uniform & Books:</Text>
-                      <Text fontWeight="600" color="#1E293B">₦{Number(s.uniformAndBooks).toLocaleString()}</Text>
+                      {assignedFee && (
+                        <Button
+                          flex={1}
+                          size="sm"
+                          bg="linear-gradient(135deg, #10B981 0%, #059669 100%)"
+                          color="white"
+                          borderRadius="xl"
+                          fontSize="12px"
+                          fontWeight="700"
+                          _hover={{ opacity: 0.95 }}
+                          onClick={() => handleDirectClassBilling(cls)}
+                        >
+                          ⚡ Bill Class
+                        </Button>
+                      )}
                     </Flex>
                   </Box>
-
-                  {/* Total Tag */}
-                  <Flex justify="space-between" align="center" pt={1}>
-                    <Text fontSize="13px" fontWeight="700" color="#475569">
-                      Total Fee Amount:
-                    </Text>
-                    <Text fontSize="19px" fontWeight="900" color="#6A1B9A">
-                      ₦{Number(s.totalAmount).toLocaleString()}
-                    </Text>
-                  </Flex>
-                </Box>
-              ))}
+                );
+              })}
             </SimpleGrid>
           )}
         </Box>
       )}
 
-      {/* TAB 2: Batch Billing Generator */}
+      {/* TAB 2: 1-Click Batch Invoicing Engine */}
       {activeTab === "billing" && (
         <Box maxW="800px" bg="white" p={{ base: 5, md: 8 }} borderRadius="2xl" border="1px solid #E2E8F0" boxShadow="sm">
           <Flex align="center" gap={3} mb={3}>
             <Icon as={FaFileInvoiceDollar} boxSize={6} color="#6A1B9A" />
             <Heading fontSize="20px" fontWeight="800" color="#0F172A">
-              Batch Class Invoice Generator
+              Class Batch Invoicing Engine
             </Heading>
           </Flex>
           <Text fontSize="14px" color="#64748B" mb={6}>
-            Instantly create or sync termly billing invoices for all students in a class arm based on your configured fee package.
+            Select a target class arm to invoice students based on their specific class fee schedule.
           </Text>
 
           <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} mb={5}>
@@ -412,12 +586,13 @@ const AdminFeeBillingManager = () => {
                   padding: "0 12px",
                   fontSize: "14px",
                   background: "white",
+                  color: "#0F172A",
                 }}
               >
                 <option value="">All Classes (School-wide)</option>
                 {classArms.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {c.name} ({c.level || "Arm"})
                   </option>
                 ))}
               </select>
@@ -438,6 +613,7 @@ const AdminFeeBillingManager = () => {
                   padding: "0 12px",
                   fontSize: "14px",
                   background: "white",
+                  color: "#0F172A",
                 }}
               >
                 <option value="First Term">First Term</option>
@@ -464,16 +640,16 @@ const AdminFeeBillingManager = () => {
               <Icon as={FaExclamationTriangle} color="#2563EB" boxSize={4} mt={1} />
               <Box fontSize="13px" color="#1E3A8A">
                 <Text fontWeight="700" mb={1}>
-                  How Batch Invoicing Works:
+                  Smart Class Invoicing Logic:
                 </Text>
                 <Text>
-                  1. Any student enrolled in the target class will receive a formal invoice for <strong>{billingTerm} ({billingSession})</strong>.
+                  • Each student in this class is billed the exact fee package configured for their class arm.
                 </Text>
                 <Text>
-                  2. If a student was already billed and made partial payments, their payment record is preserved and only the outstanding balance is adjusted.
+                  • If students have made partial payments, their existing balance is preserved and adjusted.
                 </Text>
                 <Text>
-                  3. Students and parents will instantly see their active invoice on their <strong>Student Portal</strong>.
+                  • Students and parents immediately see their active invoice on their <strong>Student Portal</strong>.
                 </Text>
               </Box>
             </Flex>
@@ -490,10 +666,10 @@ const AdminFeeBillingManager = () => {
             boxShadow="0 4px 14px rgba(106, 27, 154, 0.3)"
             _hover={{ opacity: 0.95 }}
             loading={billingLoading}
-            onClick={handleBatchBilling}
+            onClick={handleBatchBillingSubmit}
           >
             <Icon as={FaCheckCircle} mr={2} />
-            Generate & Bill Invoices Now
+            Generate Invoices for Selected Class
           </Button>
 
           {billingResult && (
@@ -501,7 +677,7 @@ const AdminFeeBillingManager = () => {
               <Flex align="center" gap={3} mb={2}>
                 <Icon as={FaCheckCircle} color="#16A34A" boxSize={5} />
                 <Heading fontSize="16px" color="#166534" fontWeight="800">
-                  Billing Completed Successfully!
+                  Billing Invoices Successfully Generated!
                 </Heading>
               </Flex>
               <Text fontSize="13px" color="#15803D" mb={3}>
@@ -515,15 +691,96 @@ const AdminFeeBillingManager = () => {
                 borderRadius="lg"
                 onClick={() => navigate("/institution/debtors")}
               >
-                View Debtors & Defaulters Tracker <Icon as={FaArrowRight} ml={1.5} boxSize={3} />
+                Open Debtors Defaulter Tracker <Icon as={FaArrowRight} ml={1.5} boxSize={3} />
               </Button>
             </Box>
           )}
         </Box>
       )}
 
-      {/* CREATE / EDIT FEE PACKAGE MODAL */}
-      {showModal && (
+      {/* MODAL 1: ADD NEW CLASS ARM */}
+      {showAddClassModal && (
+        <Flex
+          position="fixed"
+          top={0}
+          left={0}
+          w="100vw"
+          h="100vh"
+          bg="rgba(15, 23, 42, 0.7)"
+          backdropFilter="blur(6px)"
+          zIndex={9999}
+          align="center"
+          justify="center"
+          p={4}
+        >
+          <Box bg="white" w="100%" maxW="480px" borderRadius="2xl" boxShadow="2xl" p={6}>
+            <Flex justify="space-between" align="center" mb={4}>
+              <Heading fontSize="18px" fontWeight="800" color="#0F172A">
+                Add New Class Arm
+              </Heading>
+              <Button size="xs" variant="ghost" onClick={() => setShowAddClassModal(false)}>✕</Button>
+            </Flex>
+
+            <form onSubmit={handleCreateClassArm}>
+              <Box mb={4}>
+                <Text fontSize="13px" fontWeight="700" color="#334155" mb={1}>
+                  Class Name * (e.g. JSS 1, SS 2 Science)
+                </Text>
+                <Input
+                  placeholder="e.g. JSS 1 Gold or SS 3"
+                  value={newClassName}
+                  onChange={(e) => setNewClassName(e.target.value)}
+                  borderRadius="xl"
+                  h="44px"
+                  required
+                />
+              </Box>
+
+              <Box mb={6}>
+                <Text fontSize="13px" fontWeight="700" color="#334155" mb={1}>
+                  Category / Level
+                </Text>
+                <select
+                  value={newClassLevel}
+                  onChange={(e) => setNewClassLevel(e.target.value)}
+                  style={{
+                    width: "100%",
+                    height: "44px",
+                    borderRadius: "12px",
+                    border: "1px solid #CBD5E1",
+                    padding: "0 12px",
+                    fontSize: "14px",
+                    background: "white",
+                  }}
+                >
+                  <option value="Junior Secondary">Junior Secondary (JSS)</option>
+                  <option value="Senior Secondary">Senior Secondary (SSS)</option>
+                  <option value="Primary / Basic">Primary / Basic</option>
+                  <option value="Nursery / Early Years">Nursery / Early Years</option>
+                </select>
+              </Box>
+
+              <Flex justify="flex-end" gap={3}>
+                <Button variant="ghost" onClick={() => setShowAddClassModal(false)} borderRadius="xl">
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  bg="#6A1B9A"
+                  color="white"
+                  borderRadius="xl"
+                  px={6}
+                >
+                  Save Class Arm
+                </Button>
+              </Flex>
+            </form>
+          </Box>
+        </Flex>
+      )}
+
+      {/* MODAL 2: CONFIGURE FEE SCHEDULE FOR CLASS */}
+      {showFeeModal && (
         <Flex
           position="fixed"
           top={0}
@@ -548,42 +805,19 @@ const AdminFeeBillingManager = () => {
             overflowY="auto"
           >
             <Flex justify="space-between" align="center" mb={4}>
-              <Heading fontSize="20px" fontWeight="800" color="#0F172A">
-                {editingId ? "Edit Fee Package" : "Create Class Fee Package"}
-              </Heading>
-              <Button size="xs" variant="ghost" onClick={() => setShowModal(false)}>
-                ✕
-              </Button>
+              <Box>
+                <Badge bg="#F3E8FF" color="#6A1B9A" px={2.5} py={0.5} borderRadius="md" fontSize="11px" fontWeight="800">
+                  {targetClassName || "Class Arm"}
+                </Badge>
+                <Heading fontSize="20px" fontWeight="800" color="#0F172A" mt={1}>
+                  Configure School Fees for {targetClassName}
+                </Heading>
+              </Box>
+              <Button size="xs" variant="ghost" onClick={() => setShowFeeModal(false)}>✕</Button>
             </Flex>
 
             <form onSubmit={handleSaveStructure}>
               <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} mb={4}>
-                <Box>
-                  <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
-                    Applicable Class Arm:
-                  </Text>
-                  <select
-                    value={formData.classArmId}
-                    onChange={(e) => setFormData({ ...formData, classArmId: e.target.value })}
-                    style={{
-                      width: "100%",
-                      height: "40px",
-                      borderRadius: "10px",
-                      border: "1px solid #CBD5E1",
-                      padding: "0 10px",
-                      fontSize: "13px",
-                      background: "white",
-                    }}
-                  >
-                    <option value="">All Classes (Global Default)</option>
-                    {classArms.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </Box>
-
                 <Box>
                   <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
                     Package Title:
@@ -591,7 +825,7 @@ const AdminFeeBillingManager = () => {
                   <Input
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="e.g. Senior Secondary Termly Fee"
+                    placeholder="e.g. Standard Termly Fee"
                     borderRadius="lg"
                     h="40px"
                     fontSize="13px"
@@ -638,7 +872,7 @@ const AdminFeeBillingManager = () => {
               {/* Fee Breakdown Inputs */}
               <Box bg="#F8FAFC" p={4} borderRadius="xl" border="1px solid #E2E8F0" mb={4}>
                 <Heading fontSize="14px" fontWeight="800" color="#334155" mb={3}>
-                  Fee Components (₦):
+                  Fee Breakdown Items (₦):
                 </Heading>
 
                 <SimpleGrid columns={{ base: 1, sm: 2 }} gap={3}>
@@ -656,7 +890,7 @@ const AdminFeeBillingManager = () => {
                   </Box>
 
                   <Box>
-                    <Text fontSize="12px" color="#64748B" mb={1}>ICT Levy (₦)</Text>
+                    <Text fontSize="12px" color="#64748B" mb={1}>ICT / Computer Levy (₦)</Text>
                     <Input
                       type="number"
                       value={formData.ictLevy}
@@ -708,10 +942,10 @@ const AdminFeeBillingManager = () => {
                   </Box>
                 </SimpleGrid>
 
-                {/* Total Preview */}
+                {/* Computed Total */}
                 <Flex justify="space-between" align="center" mt={4} pt={3} borderTop="1.5px solid #CBD5E1">
                   <Text fontSize="14px" fontWeight="800" color="#1E293B">
-                    Computed Total Amount:
+                    Total for {targetClassName}:
                   </Text>
                   <Text fontSize="20px" fontWeight="900" color="#6A1B9A">
                     ₦{totalCalculated.toLocaleString()}
@@ -719,25 +953,49 @@ const AdminFeeBillingManager = () => {
                 </Flex>
               </Box>
 
-              <Flex justify="flex-end" gap={3}>
-                <Button variant="ghost" onClick={() => setShowModal(false)} borderRadius="xl">
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
-                  color="white"
-                  borderRadius="xl"
-                  px={6}
-                >
-                  Save Fee Package
-                </Button>
+              <Flex justify="space-between" align="center">
+                {editingId ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    color="#EF4444"
+                    onClick={() => {
+                      handleDeleteStructure(editingId);
+                      setShowFeeModal(false);
+                    }}
+                  >
+                    <Icon as={FaTrash} mr={1} /> Delete Package
+                  </Button>
+                ) : <Box />}
+
+                <Flex gap={3}>
+                  <Button variant="ghost" onClick={() => setShowFeeModal(false)} borderRadius="xl">
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
+                    color="white"
+                    borderRadius="xl"
+                    px={6}
+                  >
+                    Save {targetClassName} Fees
+                  </Button>
+                </Flex>
               </Flex>
             </form>
           </Box>
         </Flex>
       )}
-    </Box>
+      </Box>
+
+      {/* Allocate Manual Payment Modal */}
+      <AllocatePaymentModal
+        isOpen={showAllocateModal}
+        onClose={() => setShowAllocateModal(false)}
+        onPaymentSuccess={() => loadData()}
+      />
+    </DashboardLayout>
   );
 };
 

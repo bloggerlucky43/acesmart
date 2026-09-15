@@ -7,9 +7,11 @@ import {
   Flex,
   Icon,
   VStack,
+  Badge,
 } from "@chakra-ui/react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { addStudent } from "../../../../api-endpoint/student/students";
+import { getClassArmsApi } from "../../../../api-endpoint/sms/smsEndpoints";
 import { toaster } from "../../../../components/ui/toaster";
 import imageCompression from "browser-image-compression";
 import CropModal from "../../../../components/CropModal";
@@ -26,12 +28,23 @@ const MNewStudent = () => {
     firstName: "",
     lastName: "",
     studentemail: "",
+    classArmId: "",
+    parentPhone: "",
   });
+  const [classArms, setClassArms] = useState([]);
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [rawImage, setRawImage] = useState(null);
   const [showCrop, setShowCrop] = useState(false);
+
+  useEffect(() => {
+    getClassArmsApi()
+      .then((res) => {
+        if (res.success) setClassArms(res.data || []);
+      })
+      .catch(() => setClassArms([]));
+  }, []);
 
   const fileInputRef = useRef(null);
 
@@ -91,6 +104,13 @@ const MNewStudent = () => {
       formData.append("lastName", form.lastName);
       formData.append("studentEmail", form.studentemail);
 
+      if (form.classArmId) {
+        formData.append("classArmId", form.classArmId);
+      }
+      if (form.parentPhone) {
+        formData.append("parentPhone", form.parentPhone);
+      }
+
       if (image) {
         formData.append("face", image);
       }
@@ -101,10 +121,17 @@ const MNewStudent = () => {
       if (res?.success && res?.message === "Student Added Successfully") {
         toaster.create({
           title: "Student enrolled successfully",
+          description: res.studentId ? `Assigned ID: ${res.studentId}` : undefined,
           type: "success",
         });
 
-        setForm({ firstName: "", lastName: "", studentemail: "" });
+        setForm({
+          firstName: "",
+          lastName: "",
+          studentemail: "",
+          classArmId: "",
+          parentPhone: "",
+        });
         setImage(null);
         setPreview(null);
       }
@@ -313,6 +340,67 @@ const MNewStudent = () => {
                 />
                 <Text fontSize="11px" color="#94A3B8" mt={1}>
                   Exam invitation codes and test schedules will be dispatched here.
+                </Text>
+              </Box>
+
+              {/* Optional Class Arm Selection */}
+              <Box>
+                <Flex justify="space-between" align="center" mb={1}>
+                  <Text fontSize="12px" fontWeight="700" color="#334155">
+                    Class Arm / Level
+                  </Text>
+                  <Badge bg="#F1F5F9" color="#64748B" fontSize="9px" px={2} py={0.5} borderRadius="full">
+                    Optional
+                  </Badge>
+                </Flex>
+                <select
+                  value={form.classArmId}
+                  onChange={(e) => setForm({ ...form, classArmId: e.target.value })}
+                  style={{
+                    width: "100%",
+                    height: "46px",
+                    borderRadius: "12px",
+                    border: "1px solid #CBD5E1",
+                    padding: "0 12px",
+                    fontSize: "14px",
+                    background: "white",
+                    color: "#1E293B",
+                  }}
+                >
+                  <option value="">None (General / CBT Candidate)</option>
+                  {classArms.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.level ? `(${c.level})` : ""}
+                    </option>
+                  ))}
+                </select>
+                <Text fontSize="10px" color="#94A3B8" mt={1}>
+                  Optional: Assign to class arm for school fee billing & attendance.
+                </Text>
+              </Box>
+
+              {/* Optional Parent Phone */}
+              <Box mb={2}>
+                <Flex justify="space-between" align="center" mb={1}>
+                  <Text fontSize="12px" fontWeight="700" color="#334155">
+                    Parent / Guardian Phone
+                  </Text>
+                  <Badge bg="#F1F5F9" color="#64748B" fontSize="9px" px={2} py={0.5} borderRadius="full">
+                    Optional
+                  </Badge>
+                </Flex>
+                <Input
+                  placeholder="e.g. 08012345678"
+                  value={form.parentPhone}
+                  onChange={(e) => setForm({ ...form, parentPhone: e.target.value })}
+                  borderRadius="xl"
+                  h="46px"
+                  fontSize="14px"
+                  borderColor="#CBD5E1"
+                  _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
+                />
+                <Text fontSize="10px" color="#94A3B8" mt={1}>
+                  For WhatsApp / SMS fee reminders & term report alerts.
                 </Text>
               </Box>
 
