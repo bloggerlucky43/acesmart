@@ -43,16 +43,24 @@ import AdminDebtorManager from "./institution/AdminDebtorManager";
 import AdminFeeBillingManager from "./institution/AdminFeeBillingManager";
 import InstitutionSettings from "./institution/InstitutionSettings";
 import StaffManager from "./institution/StaffManager";
+import PortalContentManager from "./institution/PortalContentManager";
 
 // Student & Parent Portal
 import { StudentPortalProvider } from "../libs/StudentPortalProvider";
 import StudentPortalLayout from "../components/student/StudentPortalLayout";
-import StudentComingSoon from "../components/student/StudentComingSoon";
 import StudentOverview from "./student/StudentOverview";
 import StudentFees from "./student/StudentFees";
 import StudentResults from "./student/StudentResults";
 import StudentExams from "./student/StudentExams";
 import StudentProfile from "./student/StudentProfile";
+import StudentReceipts from "./student/StudentReceipts";
+import StudentPerformance from "./student/StudentPerformance";
+import StudentTimetable from "./student/StudentTimetable";
+import StudentAttendance from "./student/StudentAttendance";
+import StudentAnnouncements from "./student/StudentAnnouncements";
+import StudentResources from "./student/StudentResources";
+import StudentSettings from "./student/StudentSettings";
+import StudentSupport from "./student/StudentSupport";
 
 // Role-Guard: Restrict Institution Admin/ERP features from regular teachers
 const InstitutionAdminRoute = ({ children }) => {
@@ -120,21 +128,21 @@ const Home = () => {
             >
               <Route index element={<StudentOverview />} />
               <Route path="fees" element={<StudentFees />} />
-              <Route path="receipts" element={<StudentComingSoon />} />
+              <Route path="receipts" element={<StudentReceipts />} />
               <Route path="results" element={<StudentResults />} />
               <Route
                 path="results/token"
                 element={<Navigate to="/student/results" replace />}
               />
-              <Route path="performance" element={<StudentComingSoon />} />
+              <Route path="performance" element={<StudentPerformance />} />
               <Route path="exams" element={<StudentExams />} />
-              <Route path="timetable" element={<StudentComingSoon />} />
-              <Route path="attendance" element={<StudentComingSoon />} />
-              <Route path="announcements" element={<StudentComingSoon />} />
-              <Route path="resources" element={<StudentComingSoon />} />
+              <Route path="timetable" element={<StudentTimetable />} />
+              <Route path="attendance" element={<StudentAttendance />} />
+              <Route path="announcements" element={<StudentAnnouncements />} />
+              <Route path="resources" element={<StudentResources />} />
               <Route path="profile" element={<StudentProfile />} />
-              <Route path="settings" element={<StudentComingSoon />} />
-              <Route path="support" element={<StudentComingSoon />} />
+              <Route path="settings" element={<StudentSettings />} />
+              <Route path="support" element={<StudentSupport />} />
               <Route path="portal" element={<Navigate to="/student" replace />} />
             </Route>
 
@@ -192,6 +200,14 @@ const Home = () => {
               element={
                 <InstitutionAdminRoute>
                   <InstitutionSettings />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
+              path="/institution/portal-content"
+              element={
+                <InstitutionAdminRoute>
+                  <PortalContentManager />
                 </InstitutionAdminRoute>
               }
             />

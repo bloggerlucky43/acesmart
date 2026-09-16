@@ -26,6 +26,7 @@ import {
   FaCog,
   FaCalculator,
   FaHistory,
+  FaBullhorn,
 } from "react-icons/fa";
 import { NavLink, useNavigate } from "react-router-dom";
 import { logoutUser } from "../../api-endpoint/auth/auths";
@@ -77,6 +78,7 @@ const Sidebar = () => {
               { name: "Attendance History", path: "/institution/attendance-history", icon: FaHistory },
               { name: "Fees & Invoicing", path: "/institution/fees", icon: FaCalculator },
               { name: "Debtor Defaulters", path: "/institution/debtors", icon: FaMoneyBillWave },
+              { name: "Portal Content", path: "/institution/portal-content", icon: FaBullhorn },
               { name: "School Settings", path: "/institution/settings", icon: FaCog },
             ],
           },
