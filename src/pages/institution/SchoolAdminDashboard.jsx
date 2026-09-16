@@ -216,6 +216,16 @@ export default function SchoolAdminDashboard() {
             <Text fontSize="12px" color="#059669" mt={1}>
               {feeOverview?.collectionRate || 0}% collection efficiency
             </Text>
+            <Text
+              fontSize="12px"
+              color="#4338CA"
+              fontWeight="700"
+              mt={1}
+              cursor="pointer"
+              onClick={() => navigate("/institution/payments")}
+            >
+              View payment history &rarr;
+            </Text>
           </Box>
 
           {/* Card 3: Outstanding Debt */}

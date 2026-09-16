@@ -40,6 +40,7 @@ import SchoolAdminDashboard from "./institution/SchoolAdminDashboard";
 import StaffQrGenerator from "./institution/StaffQrGenerator";
 import StaffAttendanceHistory from "./institution/StaffAttendanceHistory";
 import AdminDebtorManager from "./institution/AdminDebtorManager";
+import AdminPaymentHistory from "./institution/AdminPaymentHistory";
 import AdminFeeBillingManager from "./institution/AdminFeeBillingManager";
 import InstitutionSettings from "./institution/InstitutionSettings";
 import StaffManager from "./institution/StaffManager";
@@ -192,6 +193,14 @@ const Home = () => {
               element={
                 <InstitutionAdminRoute>
                   <AdminDebtorManager />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
+              path="/institution/payments"
+              element={
+                <InstitutionAdminRoute>
+                  <AdminPaymentHistory />
                 </InstitutionAdminRoute>
               }
             />

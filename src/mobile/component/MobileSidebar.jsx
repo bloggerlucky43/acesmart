@@ -20,6 +20,7 @@ import {
   FaCog,
   FaCalculator,
   FaHistory,
+  FaReceipt,
 } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
@@ -49,6 +50,7 @@ const MobileSideBar = ({ onClose }) => {
               { name: "Attendance History", path: "/institution/attendance-history", icon: FaHistory },
               { name: "Fees & Invoicing", path: "/institution/fees", icon: FaCalculator },
               { name: "Debtor Defaulters", path: "/institution/debtors", icon: FaMoneyBillWave },
+              { name: "Payment History", path: "/institution/payments", icon: FaReceipt },
               { name: "School Settings", path: "/institution/settings", icon: FaCog },
             ],
           },

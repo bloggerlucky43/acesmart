@@ -43,6 +43,7 @@ export default function StaffManager() {
     password: "",
     phoneNumber: "",
     designation: "Subject Teacher",
+    role: "teacher",
   });
 
   const institutionName = user?.institution?.name || "Institution";
@@ -77,7 +78,10 @@ export default function StaffManager() {
       const res = await enrollStaffApi(form);
       if (res.success) {
         toaster.create({
-          title: "Teacher Enrolled Successfully!",
+          title:
+            res.data.role === "institution_admin"
+              ? "Administrator Enrolled Successfully!"
+              : "Teacher Enrolled Successfully!",
           description: `${form.name} assigned Staff ID: ${res.data.staffIdNumber}`,
           type: "success",
         });
@@ -87,6 +91,7 @@ export default function StaffManager() {
           password: "",
           phoneNumber: "",
           designation: "Subject Teacher",
+          role: "teacher",
         });
         setIsModalOpen(false);
         fetchStaff();
@@ -146,7 +151,7 @@ export default function StaffManager() {
                   Faculty & Teacher Directory
                 </Text>
                 <Text fontSize="13px" color="#64748B">
-                  {institutionName} • Enroll teachers, issue Staff IDs, and manage portal access
+                  {institutionName} • Enroll teachers & admins, issue Staff IDs, and manage portal access
                 </Text>
               </Box>
             </Flex>
@@ -164,7 +169,7 @@ export default function StaffManager() {
             onClick={() => setIsModalOpen(true)}
           >
             <Icon as={FaUserPlus} mr={2} boxSize={3.5} />
-            Enroll New Teacher
+            Enroll Staff / Admin
           </Button>
         </Flex>
 
@@ -212,7 +217,7 @@ export default function StaffManager() {
               <thead>
                 <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
                   <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>S/N</th>
-                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>TEACHER NAME</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>STAFF NAME</th>
                   <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>STAFF ID</th>
                   <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>DESIGNATION / ROLE</th>
                   <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>EMAIL ADDRESS</th>
@@ -247,16 +252,22 @@ export default function StaffManager() {
                         {staff.phoneNumber || "N/A"}
                       </td>
                       <td style={{ padding: "14px 16px", textAlign: "center" }}>
-                        <Badge bg="#ECFDF5" color="#065F46" fontWeight="700" px={2.5} py={0.5} borderRadius="full">
-                          Active Faculty
-                        </Badge>
+                        {staff.role === "institution_admin" ? (
+                          <Badge bg="#EEF2FF" color="#4338CA" fontWeight="700" px={2.5} py={0.5} borderRadius="full">
+                            Institution Admin
+                          </Badge>
+                        ) : (
+                          <Badge bg="#ECFDF5" color="#065F46" fontWeight="700" px={2.5} py={0.5} borderRadius="full">
+                            Active Faculty
+                          </Badge>
+                        )}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td colSpan={7} style={{ padding: "40px", textAlign: "center", color: "#94A3B8" }}>
-                      No teachers enrolled yet. Click <strong>"Enroll New Teacher"</strong> to add your faculty members.
+                      No staff enrolled yet. Click <strong>"Enroll Staff / Admin"</strong> to add faculty members or a co-administrator.
                     </td>
                   </tr>
                 )}
@@ -303,7 +314,7 @@ export default function StaffManager() {
                   </Flex>
                   <Box>
                     <Text fontSize="16px" fontWeight="800">
-                      Enroll New Teacher
+                      Enroll New Staff
                     </Text>
                     <Text fontSize="11px" color="#C7D2FE">
                       Auto-generates official Staff ID for clock-in & portal
@@ -358,6 +369,46 @@ export default function StaffManager() {
                         fontSize="14px"
                         required
                       />
+                    </Box>
+
+                    <Box>
+                      <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
+                        ACCOUNT ROLE *
+                      </Text>
+                      <select
+                        value={form.role}
+                        onChange={(e) => {
+                          const role = e.target.value;
+                          setForm({
+                            ...form,
+                            role,
+                            designation:
+                              role === "institution_admin"
+                                ? "Co-Administrator"
+                                : form.designation === "Co-Administrator"
+                                  ? "Subject Teacher"
+                                  : form.designation,
+                          });
+                        }}
+                        style={{
+                          width: "100%",
+                          height: "44px",
+                          padding: "0 12px",
+                          borderRadius: "12px",
+                          border: "1px solid #CBD5E1",
+                          fontSize: "14px",
+                          fontWeight: "600",
+                          background: "#F8FAFC",
+                        }}
+                      >
+                        <option value="teacher">Teacher</option>
+                        <option value="institution_admin">
+                          Institution Admin (full admin privileges)
+                        </option>
+                      </select>
+                      <Text fontSize="11px" color="#64748B" mt={1}>
+                        Institution admins share your full portal privileges for this school.
+                      </Text>
                     </Box>
 
                     <Box>
@@ -428,7 +479,7 @@ export default function StaffManager() {
                         loading={enrolling}
                         loadingText="Enrolling..."
                       >
-                        Enroll Teacher
+                        Enroll Account
                       </Button>
                     </Flex>
                   </Flex>

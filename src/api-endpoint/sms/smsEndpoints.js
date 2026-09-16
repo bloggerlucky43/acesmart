@@ -100,6 +100,14 @@ export const getDebtorListApi = async (params = {}) => {
   return data;
 };
 
+export const getInstitutionPaymentHistoryApi = async (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "")
+  ).toString();
+  const { data } = await api.get(`/fees/institution/payments${query ? `?${query}` : ""}`, { withCredentials: true });
+  return data;
+};
+
 export const getStudentFeeByCodeApi = async (studentCode) => {
   const { data } = await api.get(`/fees/student/${studentCode}`);
   return data;

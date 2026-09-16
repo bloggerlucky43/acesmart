@@ -53,6 +53,7 @@ export default function InstitutionSettings() {
     password: "",
     phoneNumber: "",
     designation: "Subject Teacher",
+    role: "teacher",
   });
 
   const [staffList, setStaffList] = useState([]);
@@ -174,6 +175,7 @@ export default function InstitutionSettings() {
           password: "",
           phoneNumber: "",
           designation: "Subject Teacher",
+          role: "teacher",
         });
         const staffRes = await getStaffListApi();
         if (staffRes.success) setStaffList(staffRes.data);
@@ -567,7 +569,7 @@ export default function InstitutionSettings() {
                 <Icon as={FaUserPlus} boxSize={5} />
               </Flex>
               <Text fontSize="16px" fontWeight="800" color="#0F172A">
-                Enroll Teacher / Staff Member
+                Enroll Staff / Administrator
               </Text>
             </Flex>
 
@@ -602,6 +604,46 @@ export default function InstitutionSettings() {
                     fontSize="13px"
                     required
                   />
+                </Box>
+
+                <Box>
+                  <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
+                    ACCOUNT ROLE
+                  </Text>
+                  <select
+                    value={staffForm.role}
+                    onChange={(e) => {
+                      const role = e.target.value;
+                      setStaffForm({
+                        ...staffForm,
+                        role,
+                        designation:
+                          role === "institution_admin"
+                            ? "Co-Administrator"
+                            : staffForm.designation === "Co-Administrator"
+                              ? "Subject Teacher"
+                              : staffForm.designation,
+                      });
+                    }}
+                    style={{
+                      width: "100%",
+                      height: "42px",
+                      padding: "0 12px",
+                      borderRadius: "12px",
+                      border: "1px solid #CBD5E1",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      background: "#F8FAFC",
+                    }}
+                  >
+                    <option value="teacher">Teacher</option>
+                    <option value="institution_admin">
+                      Institution Admin (full admin privileges)
+                    </option>
+                  </select>
+                  <Text fontSize="11px" color="#64748B" mt={1}>
+                    Institution admins share your full portal privileges for this school.
+                  </Text>
                 </Box>
 
                 <Box>
