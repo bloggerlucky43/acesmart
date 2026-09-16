@@ -25,18 +25,19 @@ import { useAuth } from "../../libs/AuthProvider";
 import { toaster } from "../../components/ui/toaster";
 import DashboardLayout from "../../constants/dashboardlayout";
 
-const toDateInputValue = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
+// Attendance rows use the school's West Africa Time (fixed UTC+1) date, so the
+// default range is derived from the UTC epoch to match the server exactly
+// instead of depending on the browser's timezone database.
+const WAT_OFFSET_MS = 60 * 60 * 1000;
+
+const lagosDateString = (date = new Date()) =>
+  new Date(date.getTime() + WAT_OFFSET_MS).toISOString().slice(0, 10);
 
 const getDefaultRange = () => {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 29);
-  return { startDate: toDateInputValue(start), endDate: toDateInputValue(end) };
+  const endDate = lagosDateString(new Date());
+  const start = new Date(`${endDate}T00:00:00Z`);
+  start.setUTCDate(start.getUTCDate() - 29);
+  return { startDate: start.toISOString().slice(0, 10), endDate };
 };
 
 const formatTimeLabel = (value) => {
@@ -353,6 +354,12 @@ export default function StaffAttendanceHistory() {
                 {startDate || "—"} to {endDate || "—"}
                 {history?.totalRecords ? ` • ${history.totalRecords} record(s)` : ""}
               </Text>
+              {history?.truncated && (
+                <Text fontSize="11px" color="#B45309" fontWeight="700" mt={0.5}>
+                  Showing the most recent {history.pageSize} of {history.totalRecords} records — narrow the date
+                  range to see the full log.
+                </Text>
+              )}
             </Box>
             <Button
               variant="outline"
@@ -392,6 +399,7 @@ export default function StaffAttendanceHistory() {
                             {item.name}
                             <div style={{ fontSize: "11px", color: "#64748B", fontWeight: "normal" }}>
                               {item.staffIdNumber}
+                              {item.designation ? ` • ${item.designation}` : ""}
                             </div>
                           </td>
                           <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: "600", color: "#047857" }}>
@@ -450,6 +458,7 @@ export default function StaffAttendanceHistory() {
                           {staff.name}
                           <div style={{ fontSize: "11px", color: "#64748B", fontWeight: "normal" }}>
                             {staff.staffIdNumber}
+                            {staff.designation ? ` • ${staff.designation}` : ""}
                           </div>
                         </td>
                         <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: "700", color: "#0F172A" }}>

@@ -1,5 +1,4 @@
 import api from "../../libs/axios";
-import { toaster } from "../../components/ui/toaster";
 
 // Institution & School Profile
 export const registerInstitutionApi = async (formData) => {

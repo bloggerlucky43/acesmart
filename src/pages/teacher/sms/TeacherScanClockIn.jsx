@@ -33,6 +33,7 @@ export default function TeacherScanClockIn() {
   const [dailyPin, setDailyPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [clockInResult, setClockInResult] = useState(null);
+  const [serverWindow, setServerWindow] = useState(null);
 
   // Live Camera Scanner States
   const [scannerStarted, setScannerStarted] = useState(false);
@@ -46,7 +47,22 @@ export default function TeacherScanClockIn() {
 
   const schoolStartTime = user?.institution?.schoolStartTime || null;
   const schoolClosingTime = user?.institution?.schoolClosingTime || null;
-  const punctualityEnabled = Boolean(schoolStartTime);
+
+  // Prefer the window the server enforced on the last request over the cached login snapshot
+  const attendanceWindow = serverWindow || {
+    punctualityEnabled: Boolean(schoolStartTime),
+    schoolStartTime,
+    schoolClosingTime,
+  };
+
+  const applyWindowMeta = (data) => {
+    if (data?.punctualityEnabled === undefined) return;
+    setServerWindow({
+      punctualityEnabled: data.punctualityEnabled,
+      schoolStartTime: data.schoolStartTime || null,
+      schoolClosingTime: data.schoolClosingTime || null,
+    });
+  };
 
   const formatTimeLabel = (value) => {
     if (!value) return null;
@@ -60,8 +76,9 @@ export default function TeacherScanClockIn() {
     return `${hours12}:${minutes} ${meridiem}`;
   };
 
-  const startTimeLabel = formatTimeLabel(schoolStartTime);
-  const closingTimeLabel = formatTimeLabel(schoolClosingTime);
+  const punctualityEnabled = attendanceWindow.punctualityEnabled;
+  const startTimeLabel = formatTimeLabel(attendanceWindow.schoolStartTime);
+  const closingTimeLabel = formatTimeLabel(attendanceWindow.schoolClosingTime);
 
   const isClockOut = Boolean(clockInResult?.clockOutTime);
 
@@ -117,6 +134,7 @@ export default function TeacherScanClockIn() {
       const res = await staffClockInApi({ qrPayload: decodedText });
       if (res.success) {
         setClockInResult(res.data);
+        applyWindowMeta(res.data);
         toaster.create({
           title: "Attendance Logged via QR Code!",
           description: res.message,
@@ -128,6 +146,7 @@ export default function TeacherScanClockIn() {
       if (payload?.data?.clockOutTime) {
         setClockInResult(payload.data);
       }
+      applyWindowMeta(payload?.data);
       toaster.create({
         title: payload?.message || "Invalid or expired school attendance code",
         type: "error",
@@ -215,6 +234,7 @@ export default function TeacherScanClockIn() {
       const res = await staffClockInApi({ dailyPin: dailyPin.trim() });
       if (res.success) {
         setClockInResult(res.data);
+        applyWindowMeta(res.data);
         toaster.create({
           title: "Attendance Logged!",
           description: res.message,
@@ -226,6 +246,7 @@ export default function TeacherScanClockIn() {
       if (payload?.data?.clockOutTime) {
         setClockInResult(payload.data);
       }
+      applyWindowMeta(payload?.data);
       toaster.create({
         title: payload?.message || "Invalid or expired Clock-In PIN",
         type: "error",

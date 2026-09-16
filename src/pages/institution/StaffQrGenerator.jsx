@@ -36,6 +36,19 @@ export default function StaffQrGenerator() {
   const institutionName = user?.institution?.name || "Institution";
   const institutionLogo = user?.institution?.logoUrl;
 
+  const punctualityEnabled = Boolean(dailyBoard?.punctualityEnabled);
+
+  const statusPill = (status) => {
+    if (status === "late") return { bg: "#FEF3C7", color: "#92400E", label: "Late" };
+    if (status === "excused") return { bg: "#E0E7FF", color: "#3730A3", label: "Excused" };
+    if (status === "absent") return { bg: "#F1F5F9", color: "#64748B", label: "Absent" };
+    return {
+      bg: "#ECFDF5",
+      color: "#065F46",
+      label: punctualityEnabled ? "On Time" : "Signed In",
+    };
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -383,7 +396,9 @@ export default function StaffQrGenerator() {
                   </thead>
                   <tbody>
                     {dailyBoard?.board?.length ? (
-                      dailyBoard.board.map((item, idx) => (
+                      dailyBoard.board.map((item, idx) => {
+                        const pill = statusPill(item.status);
+                        return (
                         <tr key={idx} style={{ borderBottom: "1px solid #F1F5F9" }}>
                           <td style={{ padding: "14px 16px", fontWeight: "700", color: "#0F172A", fontSize: "13px" }}>
                             {item.name}
@@ -408,32 +423,19 @@ export default function StaffQrGenerator() {
                                 borderRadius: "999px",
                                 fontSize: "11px",
                                 fontWeight: "700",
-                                background:
-                                  item.status === "on_time"
-                                    ? "#ECFDF5"
-                                    : item.status === "late"
-                                    ? "#FEF3C7"
-                                    : "#F1F5F9",
-                                color:
-                                  item.status === "on_time"
-                                    ? "#065F46"
-                                    : item.status === "late"
-                                    ? "#92400E"
-                                    : "#64748B",
+                                background: pill.bg,
+                                color: pill.color,
                               }}
                             >
-                              {item.status === "on_time"
-                                ? "On Time"
-                                : item.status === "late"
-                                ? "Late"
-                                : "Absent"}
+                              {pill.label}
                             </span>
                           </td>
                           <td style={{ padding: "14px 16px", fontSize: "12px", color: "#64748B" }}>
                             {item.method === "qr_scan" ? "QR Scan" : item.method === "manual_pin" ? "PIN Code" : "-"}
                           </td>
                         </tr>
-                      ))
+                        );
+                      })
                     ) : (
                       <tr>
                         <td colSpan={6} style={{ padding: "32px", textAlign: "center", color: "#94A3B8" }}>

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Landing from "./Landing";
 import { AuthProvider, useAuth } from "../libs/AuthProvider";
@@ -43,7 +43,16 @@ import AdminDebtorManager from "./institution/AdminDebtorManager";
 import AdminFeeBillingManager from "./institution/AdminFeeBillingManager";
 import InstitutionSettings from "./institution/InstitutionSettings";
 import StaffManager from "./institution/StaffManager";
-import StudentPortalDashboard from "./student/StudentPortalDashboard";
+
+// Student & Parent Portal
+import { StudentPortalProvider } from "../libs/StudentPortalProvider";
+import StudentPortalLayout from "../components/student/StudentPortalLayout";
+import StudentComingSoon from "../components/student/StudentComingSoon";
+import StudentOverview from "./student/StudentOverview";
+import StudentFees from "./student/StudentFees";
+import StudentResults from "./student/StudentResults";
+import StudentExams from "./student/StudentExams";
+import StudentProfile from "./student/StudentProfile";
 
 // Role-Guard: Restrict Institution Admin/ERP features from regular teachers
 const InstitutionAdminRoute = ({ children }) => {
@@ -94,14 +103,40 @@ const Home = () => {
           <Routes>
             <Route
               path="/"
-              element={tenantSchool ? <StudentPortalDashboard /> : <Landing />}
+              element={tenantSchool ? <Navigate to="/student" replace /> : <Landing />}
             />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/pricing" element={<PricingPage />} />
 
             {/* Student & Parent Portal */}
-            <Route path="/student/portal" element={<StudentPortalDashboard />} />
+            <Route
+              path="/student"
+              element={
+                <StudentPortalProvider>
+                  <StudentPortalLayout />
+                </StudentPortalProvider>
+              }
+            >
+              <Route index element={<StudentOverview />} />
+              <Route path="fees" element={<StudentFees />} />
+              <Route path="receipts" element={<StudentComingSoon />} />
+              <Route path="results" element={<StudentResults />} />
+              <Route
+                path="results/token"
+                element={<Navigate to="/student/results" replace />}
+              />
+              <Route path="performance" element={<StudentComingSoon />} />
+              <Route path="exams" element={<StudentExams />} />
+              <Route path="timetable" element={<StudentComingSoon />} />
+              <Route path="attendance" element={<StudentComingSoon />} />
+              <Route path="announcements" element={<StudentComingSoon />} />
+              <Route path="resources" element={<StudentComingSoon />} />
+              <Route path="profile" element={<StudentProfile />} />
+              <Route path="settings" element={<StudentComingSoon />} />
+              <Route path="support" element={<StudentComingSoon />} />
+              <Route path="portal" element={<Navigate to="/student" replace />} />
+            </Route>
 
             {/* Institutional Admin ERP Routes (Restricted to Institution Admins only) */}
             <Route

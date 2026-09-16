@@ -411,7 +411,7 @@ export default function LoginPage() {
                 bg="#1D4ED8"
                 color="white"
                 borderRadius="lg"
-                onClick={() => navigate("/student/portal")}
+                onClick={() => navigate("/student")}
               >
                 Enter Portal
               </Button>
