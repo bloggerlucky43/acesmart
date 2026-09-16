@@ -19,6 +19,7 @@ import {
   FaStopCircle,
   FaPlay,
   FaExclamationCircle,
+  FaSignOutAlt,
 } from "react-icons/fa";
 import { Html5Qrcode } from "html5-qrcode";
 import { staffClockInApi } from "../../../api-endpoint/sms/smsEndpoints";
@@ -42,6 +43,27 @@ export default function TeacherScanClockIn() {
   const institutionName = user?.institution?.name || "Institution";
   const institutionLogo = user?.institution?.logoUrl;
   const staffIdNumber = user?.staffIdNumber || "STAFF";
+
+  const schoolStartTime = user?.institution?.schoolStartTime || null;
+  const schoolClosingTime = user?.institution?.schoolClosingTime || null;
+  const punctualityEnabled = Boolean(schoolStartTime);
+
+  const formatTimeLabel = (value) => {
+    if (!value) return null;
+    const match = String(value).trim().match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return String(value);
+
+    const hours24 = parseInt(match[1], 10);
+    const minutes = match[2];
+    const meridiem = hours24 >= 12 ? "PM" : "AM";
+    const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+    return `${hours12}:${minutes} ${meridiem}`;
+  };
+
+  const startTimeLabel = formatTimeLabel(schoolStartTime);
+  const closingTimeLabel = formatTimeLabel(schoolClosingTime);
+
+  const isClockOut = Boolean(clockInResult?.clockOutTime);
 
   // Stop camera when unmounting or switching to PIN mode
   const stopScanner = async () => {
@@ -72,6 +94,22 @@ export default function TeacherScanClockIn() {
     }
   }, [clockInMode]);
 
+  // Defensive: some browsers leave the injected <video> without a usable size
+  // (which shows up as a fully black viewport). Force it visible and playing.
+  useEffect(() => {
+    if (!scannerStarted) return;
+    const video = document.querySelector("#staff-qr-reader video");
+    if (!video) return;
+    video.setAttribute("playsinline", "true");
+    video.style.width = "100%";
+    video.style.height = "auto";
+    video.style.maxHeight = "360px";
+    video.style.objectFit = "cover";
+    video.style.background = "#000";
+    const playPromise = video.play();
+    if (playPromise?.catch) playPromise.catch(() => {});
+  }, [scannerStarted]);
+
   const handleProcessQrCode = async (decodedText) => {
     await stopScanner();
     setLoading(true);
@@ -86,8 +124,12 @@ export default function TeacherScanClockIn() {
         });
       }
     } catch (error) {
+      const payload = error.response?.data;
+      if (payload?.data?.clockOutTime) {
+        setClockInResult(payload.data);
+      }
       toaster.create({
-        title: error.response?.data?.message || "Invalid or expired school attendance code",
+        title: payload?.message || "Invalid or expired school attendance code",
         type: "error",
       });
     } finally {
@@ -110,7 +152,12 @@ export default function TeacherScanClockIn() {
         {
           fps: 10,
           qrbox: { width: 240, height: 240 },
-          aspectRatio: 1.0,
+          disableFlip: false,
+          videoConstraints: {
+            facingMode: "environment",
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+          },
         },
         (decodedText) => {
           handleProcessQrCode(decodedText);
@@ -132,7 +179,12 @@ export default function TeacherScanClockIn() {
           {
             fps: 10,
             qrbox: { width: 240, height: 240 },
-            aspectRatio: 1.0,
+            disableFlip: true,
+            videoConstraints: {
+              facingMode: "user",
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+            },
           },
           (decodedText) => {
             handleProcessQrCode(decodedText);
@@ -170,8 +222,12 @@ export default function TeacherScanClockIn() {
         });
       }
     } catch (error) {
+      const payload = error.response?.data;
+      if (payload?.data?.clockOutTime) {
+        setClockInResult(payload.data);
+      }
       toaster.create({
-        title: error.response?.data?.message || "Invalid or expired Clock-In PIN",
+        title: payload?.message || "Invalid or expired Clock-In PIN",
         type: "error",
       });
     } finally {
@@ -254,10 +310,11 @@ export default function TeacherScanClockIn() {
             {/* Status indicator if already clocked in */}
             {clockInResult ? (
               <Box
-                bg="#ECFDF5"
+                bg={isClockOut ? "#EEF2FF" : "#ECFDF5"}
                 p={6}
                 borderRadius="2xl"
-                border="1px solid #A7F3D0"
+                border="1px solid"
+                borderColor={isClockOut ? "#C7D2FE" : "#A7F3D0"}
                 mb={6}
               >
                 <Flex
@@ -266,35 +323,55 @@ export default function TeacherScanClockIn() {
                   mx="auto"
                   mb={3}
                   borderRadius="full"
-                  bg="#10B981"
+                  bg={isClockOut ? "#4338CA" : "#10B981"}
                   color="white"
                   align="center"
                   justify="center"
                 >
-                  <Icon as={FaCheckCircle} boxSize={7} />
+                  <Icon as={isClockOut ? FaSignOutAlt : FaCheckCircle} boxSize={7} />
                 </Flex>
-                <Text fontSize="20px" fontWeight="900" color="#065F46">
-                  Clock-In Confirmed!
+                <Text fontSize="20px" fontWeight="900" color={isClockOut ? "#312E81" : "#065F46"}>
+                  {isClockOut ? "Clock-Out Confirmed!" : "Clock-In Confirmed!"}
                 </Text>
-                <Text fontSize="14px" color="#047857" mt={1}>
-                  Arrival Time: <strong>{clockInResult.clockInTime}</strong>
+                <Text fontSize="14px" color={isClockOut ? "#3730A3" : "#047857"} mt={1}>
+                  {isClockOut ? "Sign-Out Time: " : "Arrival Time: "}
+                  <strong>{isClockOut ? clockInResult.clockOutTime : clockInResult.clockInTime}</strong>
                 </Text>
-                <Badge
-                  mt={3}
-                  px={3}
-                  py={1}
-                  borderRadius="full"
-                  bg={clockInResult.status === "on_time" ? "#10B981" : "#F59E0B"}
-                  color="white"
-                  fontWeight="700"
-                  fontSize="12px"
-                >
-                  Status: {clockInResult.status === "on_time" ? "On Time" : "Marked Late"}
-                </Badge>
-                {clockInResult.clockOutTime && (
-                  <Text fontSize="13px" color="#065F46" mt={2}>
-                    Clock-Out Time: {clockInResult.clockOutTime}
+
+                {isClockOut ? (
+                  <Text fontSize="13px" color="#4338CA" mt={2}>
+                    Signed in at <strong>{clockInResult.clockInTime}</strong>. Your attendance for today is complete
+                    and the terminal is closed for you until tomorrow.
                   </Text>
+                ) : (
+                  <>
+                    <Badge
+                      mt={3}
+                      px={3}
+                      py={1}
+                      borderRadius="full"
+                      bg={
+                        !punctualityEnabled
+                          ? "#4338CA"
+                          : clockInResult.status === "on_time"
+                          ? "#10B981"
+                          : "#F59E0B"
+                      }
+                      color="white"
+                      fontWeight="700"
+                      fontSize="12px"
+                    >
+                      Status:{" "}
+                      {!punctualityEnabled
+                        ? "Signed In"
+                        : clockInResult.status === "on_time"
+                        ? "On Time"
+                        : "Marked Late"}
+                    </Badge>
+                    <Text fontSize="12px" color="#047857" mt={3}>
+                      Scan again when leaving to record your clock-out time for today.
+                    </Text>
+                  </>
                 )}
               </Box>
             ) : null}
@@ -354,21 +431,27 @@ export default function TeacherScanClockIn() {
                   color="white"
                   p={2}
                 >
-                  {/* The actual video element rendered by html5-qrcode */}
+                  {/* The actual video element rendered by html5-qrcode.
+                      NOTE: this container must stay visible (never display:none) while
+                      qrScanner.start() runs, otherwise html5-qrcode measures a 0px width
+                      and renders a black/dead video. */}
                   <div
                     id="staff-qr-reader"
                     style={{
                       width: "100%",
                       maxWidth: "340px",
-                      display: scannerStarted ? "block" : "none",
+                      minHeight: scannerStarted ? undefined : "260px",
                       borderRadius: "14px",
                       overflow: "hidden",
                     }}
                   />
 
-                  {/* Fallback/Idle overlay when camera is not scanning */}
+                  {/* Idle overlay when camera is not scanning (layered on top, does not hide the container) */}
                   {!scannerStarted && (
                     <Flex
+                      position="absolute"
+                      inset={0}
+                      bg="#0F172A"
                       direction="column"
                       align="center"
                       justify="center"
@@ -528,20 +611,34 @@ export default function TeacherScanClockIn() {
               </form>
             )}
 
-            {/* Klacify Punctuality Rule Note */}
+            {/* Institution Attendance Window Note */}
             <Flex
               mt={6}
               p={3.5}
               borderRadius="xl"
               bg="#F8FAFC"
-              align="center"
+              align="flex-start"
               gap={2.5}
               textAlign="left"
             >
-              <Icon as={FaClock} color="#64748B" boxSize={4} flexShrink={0} />
-              <Text fontSize="12px" color="#64748B">
-                Clock-in before <strong>8:00 AM</strong> is recorded as <strong>On Time</strong>. Clock-ins after 8:00 AM are automatically flagged as <strong>Late</strong>.
-              </Text>
+              <Icon as={FaClock} color="#64748B" boxSize={4} flexShrink={0} mt={0.5} />
+              <Box>
+                {punctualityEnabled ? (
+                  <Text fontSize="12px" color="#64748B">
+                    Clock-ins after <strong>{startTimeLabel}</strong> are flagged <strong>Late</strong>. You can clock
+                    in and clock out once per day.
+                  </Text>
+                ) : (
+                  <Text fontSize="12px" color="#64748B">
+                    You can clock in and clock out once per day. Arrival times are recorded without a Late flag.
+                  </Text>
+                )}
+                {closingTimeLabel && (
+                  <Text fontSize="12px" color="#64748B" mt={1}>
+                    Expected closing time: <strong>{closingTimeLabel}</strong>.
+                  </Text>
+                )}
+              </Box>
             </Flex>
           </Box>
         </Flex>

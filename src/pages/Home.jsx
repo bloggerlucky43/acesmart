@@ -38,6 +38,7 @@ import StudentAttendanceManager from "./teacher/sms/StudentAttendanceManager";
 import ResultAndReportCardManager from "./teacher/sms/ResultAndReportCardManager";
 import SchoolAdminDashboard from "./institution/SchoolAdminDashboard";
 import StaffQrGenerator from "./institution/StaffQrGenerator";
+import StaffAttendanceHistory from "./institution/StaffAttendanceHistory";
 import AdminDebtorManager from "./institution/AdminDebtorManager";
 import AdminFeeBillingManager from "./institution/AdminFeeBillingManager";
 import InstitutionSettings from "./institution/InstitutionSettings";
@@ -124,6 +125,14 @@ const Home = () => {
               element={
                 <InstitutionAdminRoute>
                   <StaffQrGenerator />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
+              path="/institution/attendance-history"
+              element={
+                <InstitutionAdminRoute>
+                  <StaffAttendanceHistory />
                 </InstitutionAdminRoute>
               }
             />

@@ -21,7 +21,7 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import {
-  getStudentFeeByCodeApi,
+  studentCodeLoginApi,
   checkResultTokenStatusApi,
   getStudentReportCardApi,
 } from "../../api-endpoint/sms/smsEndpoints";
@@ -32,6 +32,7 @@ import { toaster } from "../../components/ui/toaster";
 export default function StudentPortalDashboard() {
   const navigate = useNavigate();
   const [studentCodeInput, setStudentCodeInput] = useState("");
+  const [studentLastNameInput, setStudentLastNameInput] = useState("");
   const [activeData, setActiveData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -40,25 +41,29 @@ export default function StudentPortalDashboard() {
   const [reportCardData, setReportCardData] = useState(null);
   const [viewingReportCard, setViewingReportCard] = useState(false);
 
-  // Check if student code is saved in session
+  // Restore the student code and surname saved during the portal session.
   useEffect(() => {
-    const saved = localStorage.getItem("STUDENT_PORTAL_CODE");
-    if (saved) {
-      setStudentCodeInput(saved);
-      loadStudentPortal(saved);
+    const savedCode = localStorage.getItem("STUDENT_PORTAL_CODE");
+    const savedLastName = localStorage.getItem("STUDENT_PORTAL_LAST_NAME");
+    if (savedCode && savedLastName) {
+      setStudentCodeInput(savedCode);
+      setStudentLastNameInput(savedLastName);
+      loadStudentPortal(savedCode, savedLastName);
     }
   }, []);
 
-  const loadStudentPortal = async (codeToLoad) => {
+  const loadStudentPortal = async (codeToLoad, lastNameToLoad) => {
     const code = (codeToLoad || studentCodeInput).trim();
-    if (!code) return;
+    const lastName = (lastNameToLoad || studentLastNameInput).trim();
+    if (!code || !lastName) return;
 
     setLoading(true);
     try {
-      const res = await getStudentFeeByCodeApi(code);
+      const res = await studentCodeLoginApi(code, lastName);
       if (res.success) {
         setActiveData(res.data);
         localStorage.setItem("STUDENT_PORTAL_CODE", code);
+        localStorage.setItem("STUDENT_PORTAL_LAST_NAME", lastName);
 
         // Check if report card is unlocked
         const tokenRes = await checkResultTokenStatusApi(res.data.student.id);
@@ -68,7 +73,7 @@ export default function StudentPortalDashboard() {
       }
     } catch (error) {
       toaster.create({
-        title: error.response?.data?.message || "Invalid Institutional Student Code",
+        title: error.response?.data?.message || "Unable to access the student portal",
         type: "error",
       });
     } finally {
@@ -99,6 +104,7 @@ export default function StudentPortalDashboard() {
 
   const handleLogoutStudent = () => {
     localStorage.removeItem("STUDENT_PORTAL_CODE");
+    localStorage.removeItem("STUDENT_PORTAL_LAST_NAME");
     setActiveData(null);
     setViewingReportCard(false);
   };
@@ -163,6 +169,24 @@ export default function StudentPortalDashboard() {
                 textAlign="center"
                 letterSpacing="1px"
                 required
+              />
+            </Box>
+
+            <Box mb={4}>
+              <Text fontSize="12px" fontWeight="700" color="#334155" textAlign="left" mb={1}>
+                SURNAME / LAST NAME
+              </Text>
+              <Input
+                type="password"
+                placeholder="Enter the student's surname"
+                value={studentLastNameInput}
+                onChange={(e) => setStudentLastNameInput(e.target.value)}
+                h="48px"
+                borderRadius="xl"
+                fontSize="15px"
+                fontWeight="600"
+                required
+                autoComplete="current-password"
               />
             </Box>
 

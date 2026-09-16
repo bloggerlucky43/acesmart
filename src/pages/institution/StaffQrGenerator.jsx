@@ -17,7 +17,9 @@ import {
   FaSyncAlt,
   FaGraduationCap,
   FaUsers,
+  FaHistory,
 } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import { getAttendanceQrApi, getDailyStaffAttendanceApi } from "../../api-endpoint/sms/smsEndpoints";
 import { useAuth } from "../../libs/AuthProvider";
 import { toaster } from "../../components/ui/toaster";
@@ -25,6 +27,7 @@ import DashboardLayout from "../../constants/dashboardlayout";
 
 export default function StaffQrGenerator() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [qrData, setQrData] = useState(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [dailyBoard, setDailyBoard] = useState(null);
@@ -127,6 +130,15 @@ export default function StaffQrGenerator() {
           </Box>
 
           <Flex gap={3}>
+            <Button
+              variant="outline"
+              size="sm"
+              borderRadius="xl"
+              onClick={() => navigate("/institution/attendance-history")}
+            >
+              <Icon as={FaHistory} mr={2} boxSize={3} />
+              History Log
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -364,6 +376,7 @@ export default function StaffQrGenerator() {
                       <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>STAFF NAME</th>
                       <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>STAFF ID</th>
                       <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>CLOCK-IN TIME</th>
+                      <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>CLOCK-OUT TIME</th>
                       <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>STATUS</th>
                       <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>METHOD</th>
                     </tr>
@@ -383,6 +396,9 @@ export default function StaffQrGenerator() {
                           </td>
                           <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: "600" }}>
                             {item.clockInTime}
+                          </td>
+                          <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: "600", color: "#4338CA" }}>
+                            {item.clockOutTime && item.clockOutTime !== "-" ? item.clockOutTime : "—"}
                           </td>
                           <td style={{ padding: "14px 16px" }}>
                             <span
@@ -420,7 +436,7 @@ export default function StaffQrGenerator() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} style={{ padding: "32px", textAlign: "center", color: "#94A3B8" }}>
+                        <td colSpan={6} style={{ padding: "32px", textAlign: "center", color: "#94A3B8" }}>
                           No staff members enrolled yet. Enroll teachers from the admin panel to monitor attendance.
                         </td>
                       </tr>

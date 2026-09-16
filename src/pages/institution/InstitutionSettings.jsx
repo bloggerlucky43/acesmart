@@ -17,6 +17,7 @@ import {
   FaCloudUploadAlt,
   FaCamera,
   FaCheckCircle,
+  FaClock,
 } from "react-icons/fa";
 import {
   getInstitutionProfileApi,
@@ -42,6 +43,8 @@ export default function InstitutionSettings() {
     currentTerm: "First Term",
     academicSession: "2025/2026",
     resultCheckerFee: 500,
+    schoolStartTime: "08:00",
+    schoolClosingTime: "16:00",
   });
 
   const [staffForm, setStaffForm] = useState({
@@ -117,6 +120,8 @@ export default function InstitutionSettings() {
             currentTerm: d.currentTerm || "First Term",
             academicSession: d.academicSession || "2025/2026",
             resultCheckerFee: d.resultCheckerFee || 500,
+            schoolStartTime: d.schoolStartTime || "",
+            schoolClosingTime: d.schoolClosingTime || "",
           });
         }
 
@@ -440,6 +445,85 @@ export default function InstitutionSettings() {
                     </select>
                   </Box>
                 </Flex>
+
+                {/* Staff Attendance Window */}
+                <Box p={4} borderRadius="xl" bg="#F8FAFC" border="1px solid #E2E8F0">
+                  <Flex align="center" gap={2} mb={1}>
+                    <Icon as={FaClock} color="#4338CA" boxSize={3.5} />
+                    <Text fontSize="12px" fontWeight="800" color="#334155" letterSpacing="0.5px">
+                      STAFF ATTENDANCE WINDOW
+                    </Text>
+                  </Flex>
+                  <Text fontSize="11px" color="#64748B" mb={3}>
+                    Staff clock in and clock out once per day. Arrivals after the start time are flagged Late; clock-outs are logged for every staff member.
+                  </Text>
+
+                  <Flex gap={4} direction={{ base: "column", sm: "row" }}>
+                    <Box flex={1}>
+                      <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
+                        SCHOOL START TIME
+                      </Text>
+                      <input
+                        type="time"
+                        value={form.schoolStartTime || ""}
+                        onChange={(e) => setForm({ ...form, schoolStartTime: e.target.value })}
+                        style={{
+                          width: "100%",
+                          height: "42px",
+                          padding: "0 12px",
+                          borderRadius: "12px",
+                          border: "1px solid #CBD5E1",
+                          fontSize: "13px",
+                          fontWeight: "600",
+                          background: "white",
+                        }}
+                      />
+                    </Box>
+                    <Box flex={1}>
+                      <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
+                        SCHOOL CLOSING TIME
+                      </Text>
+                      <input
+                        type="time"
+                        value={form.schoolClosingTime || ""}
+                        onChange={(e) => setForm({ ...form, schoolClosingTime: e.target.value })}
+                        style={{
+                          width: "100%",
+                          height: "42px",
+                          padding: "0 12px",
+                          borderRadius: "12px",
+                          border: "1px solid #CBD5E1",
+                          fontSize: "13px",
+                          fontWeight: "600",
+                          background: "white",
+                        }}
+                      />
+                    </Box>
+                  </Flex>
+
+                  <Flex justify="space-between" align="center" mt={2} gap={2}>
+                    <Text fontSize="11px" color="#64748B">
+                      Leave the start time blank to record arrivals without a Late flag.
+                    </Text>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      borderRadius="lg"
+                      borderColor="#CBD5E1"
+                      fontSize="11px"
+                      color="#64748B"
+                      flexShrink={0}
+                      onClick={() =>
+                        setForm({
+                          ...form,
+                          schoolStartTime: form.schoolStartTime ? "" : "08:00",
+                        })
+                      }
+                    >
+                      {form.schoolStartTime ? "Disable Late Flag" : "Enable Late Flag"}
+                    </Button>
+                  </Flex>
+                </Box>
 
                 <Box>
                   <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>

@@ -71,6 +71,14 @@ export const getDailyStaffAttendanceApi = async (date) => {
   return data;
 };
 
+export const getStaffAttendanceHistoryApi = async (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "")
+  ).toString();
+  const { data } = await api.get(`/attendance/staff/history${query ? `?${query}` : ""}`, { withCredentials: true });
+  return data;
+};
+
 export const markStudentAttendanceBatchApi = async (payload) => {
   const { data } = await api.post("/attendance/student/batch", payload, { withCredentials: true });
   return data;
@@ -153,7 +161,10 @@ export const getStudentReportCardApi = async (studentId, params = {}) => {
 };
 
 // Student Code Portal Login
-export const studentCodeLoginApi = async (studentCode) => {
-  const { data } = await api.post("/auth/student-login", { studentCode });
+export const studentCodeLoginApi = async (studentCode, lastName) => {
+  const { data } = await api.post("/auth/student-login", {
+    studentCode,
+    lastName,
+  });
   return data;
 };

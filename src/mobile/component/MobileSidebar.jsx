@@ -19,6 +19,7 @@ import {
   FaUniversity,
   FaCog,
   FaCalculator,
+  FaHistory,
 } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
@@ -45,6 +46,7 @@ const MobileSideBar = ({ onClose }) => {
               { name: "School Overview", path: "/institution/dashboard", icon: FaUniversity },
               { name: "Faculty Directory", path: "/institution/staff", icon: FaUsers },
               { name: "Staff Attendance QR", path: "/institution/staff-qr", icon: FaQrcode },
+              { name: "Attendance History", path: "/institution/attendance-history", icon: FaHistory },
               { name: "Fees & Invoicing", path: "/institution/fees", icon: FaCalculator },
               { name: "Debtor Defaulters", path: "/institution/debtors", icon: FaMoneyBillWave },
               { name: "School Settings", path: "/institution/settings", icon: FaCog },
