@@ -18,11 +18,12 @@ import {
   FaKey,
   FaTimes,
   FaCheckCircle,
+  FaUserSlash,
 } from "react-icons/fa";
 import {
   getStaffListApi,
   enrollStaffApi,
-  getInstitutionProfileApi,
+  unenrollStaffApi,
 } from "../../api-endpoint/sms/smsEndpoints";
 import { useAuth } from "../../libs/AuthProvider";
 import { toaster } from "../../components/ui/toaster";
@@ -31,10 +32,11 @@ import DashboardLayout from "../../constants/dashboardlayout";
 export default function StaffManager() {
   const { user } = useAuth();
   const [staffList, setStaffList] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
+  const [confirmUnenroll, setConfirmUnenroll] = useState(null);
+  const [unenrolling, setUnenrolling] = useState(false);
 
   // Form State
   const [form, setForm] = useState({
@@ -49,7 +51,6 @@ export default function StaffManager() {
   const institutionName = user?.institution?.name || "Institution";
 
   const fetchStaff = async () => {
-    setLoading(true);
     try {
       const res = await getStaffListApi();
       if (res.success) {
@@ -57,8 +58,6 @@ export default function StaffManager() {
       }
     } catch (error) {
       console.error("Fetch staff error:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -103,6 +102,33 @@ export default function StaffManager() {
       });
     } finally {
       setEnrolling(false);
+    }
+  };
+
+  const currentUserId = user?._id;
+
+  const handleUnenroll = async () => {
+    if (!confirmUnenroll) return;
+
+    setUnenrolling(true);
+    try {
+      const res = await unenrollStaffApi(confirmUnenroll.id);
+      if (res.success) {
+        toaster.create({
+          title: "Staff Unenrolled",
+          description: `${confirmUnenroll.name} (${confirmUnenroll.staffIdNumber}) can no longer sign in or clock in. Their record has been kept.`,
+          type: "success",
+        });
+        setConfirmUnenroll(null);
+        fetchStaff();
+      }
+    } catch (error) {
+      toaster.create({
+        title: error.response?.data?.message || "Failed to unenroll staff",
+        type: "error",
+      });
+    } finally {
+      setUnenrolling(false);
     }
   };
 
@@ -223,6 +249,7 @@ export default function StaffManager() {
                   <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>EMAIL ADDRESS</th>
                   <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B" }}>PHONE NUMBER</th>
                   <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B", textAlign: "center" }}>STATUS</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#64748B", textAlign: "center" }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
@@ -262,11 +289,33 @@ export default function StaffManager() {
                           </Badge>
                         )}
                       </td>
+                      <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                        {staff.id === currentUserId ? (
+                          <Text fontSize="12px" color="#94A3B8" fontWeight="700">
+                            You
+                          </Text>
+                        ) : (
+                          <Button
+                            h="32px"
+                            px={3}
+                            borderRadius="lg"
+                            bg="#FEF2F2"
+                            color="#B91C1C"
+                            fontWeight="700"
+                            fontSize="12px"
+                            _hover={{ bg: "#FEE2E2" }}
+                            onClick={() => setConfirmUnenroll(staff)}
+                          >
+                            <Icon as={FaUserSlash} mr={1.5} boxSize={3} />
+                            Unenroll
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} style={{ padding: "40px", textAlign: "center", color: "#94A3B8" }}>
+                    <td colSpan={8} style={{ padding: "40px", textAlign: "center", color: "#94A3B8" }}>
                       No staff enrolled yet. Click <strong>"Enroll Staff / Admin"</strong> to add faculty members or a co-administrator.
                     </td>
                   </tr>
@@ -485,6 +534,97 @@ export default function StaffManager() {
                   </Flex>
                 </Box>
               </form>
+            </Box>
+          </Flex>
+        )}
+
+        {/* Unenroll Confirmation Modal */}
+        {confirmUnenroll && (
+          <Flex
+            position="fixed"
+            top={0}
+            left={0}
+            w="100vw"
+            h="100vh"
+            bg="rgba(15, 23, 42, 0.7)"
+            backdropFilter="blur(6px)"
+            zIndex={1000}
+            align="center"
+            justify="center"
+            p={4}
+          >
+            <Box
+              bg="white"
+              borderRadius="2xl"
+              maxW="440px"
+              w="100%"
+              p={6}
+              boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+              border="1px solid #E2E8F0"
+            >
+              <Flex align="center" gap={3} mb={4}>
+                <Flex
+                  w="42px"
+                  h="42px"
+                  borderRadius="full"
+                  bg="#FEF2F2"
+                  color="#B91C1C"
+                  align="center"
+                  justify="center"
+                  flexShrink={0}
+                >
+                  <Icon as={FaUserSlash} boxSize={4} />
+                </Flex>
+                <Box>
+                  <Text fontSize="16px" fontWeight="800" color="#0F172A">
+                    Unenroll Staff Member?
+                  </Text>
+                  <Text fontSize="12px" color="#64748B">
+                    Their portal access and clock-in will be revoked.
+                  </Text>
+                </Box>
+              </Flex>
+
+              <Box bg="#F8FAFC" border="1px solid #E2E8F0" borderRadius="xl" p={3.5} mb={4}>
+                <Text fontSize="14px" fontWeight="800" color="#0F172A">
+                  {confirmUnenroll.name}
+                </Text>
+                <Text fontSize="12px" color="#64748B" mt={0.5}>
+                  {confirmUnenroll.staffIdNumber} • {confirmUnenroll.email}
+                </Text>
+              </Box>
+
+              <Text fontSize="12px" color="#64748B" mb={5}>
+                The staff record and attendance history are kept — nothing is deleted. You can
+                re-enroll this email address later if needed.
+              </Text>
+
+              <Flex gap={3}>
+                <Button
+                  flex={1}
+                  variant="ghost"
+                  h="44px"
+                  borderRadius="xl"
+                  disabled={unenrolling}
+                  onClick={() => setConfirmUnenroll(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  flex={1}
+                  h="44px"
+                  bg="#DC2626"
+                  color="white"
+                  borderRadius="xl"
+                  fontWeight="700"
+                  _hover={{ bg: "#B91C1C" }}
+                  loading={unenrolling}
+                  loadingText="Unenrolling..."
+                  onClick={handleUnenroll}
+                >
+                  Yes, Unenroll
+                </Button>
+              </Flex>
             </Box>
           </Flex>
         )}

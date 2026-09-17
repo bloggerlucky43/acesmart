@@ -227,7 +227,7 @@ const StudentReportCardSheet = ({ reportCard, onPrint }) => {
           CLASS TEACHER'S REMARK
         </Text>
         <Text fontSize="13px" color="#334155" mb={3}>
-          {summary.overallRemark || "No remark recorded yet."}
+          {summary.teacherComment || summary.overallRemark || "No remark recorded yet."}
         </Text>
         <Text fontSize="11px" fontWeight="800" color="#475569" mb={1}>
           PRINCIPAL'S REMARK
@@ -238,10 +238,60 @@ const StudentReportCardSheet = ({ reportCard, onPrint }) => {
       </Box>
 
       {summary.nextTermResumption && (
-        <Text fontSize="12px" color="#64748B" mb={5}>
+        <Text fontSize="12px" color="#64748B" mb={4}>
           Next term resumption: <strong>{summary.nextTermResumption}</strong>
         </Text>
       )}
+
+      {(() => {
+        const signature = reportCard.signature || {};
+        if (!signature.signatureUrl && !signature.stampUrl) return null;
+        return (
+          <Flex
+            justify="flex-end"
+            align="flex-end"
+            gap={4}
+            pt={4}
+            mb={5}
+            borderTop="1px dashed #CBD5E1"
+          >
+            {signature.stampUrl && (
+              <Box
+                w="92px"
+                h="92px"
+                borderRadius="full"
+                overflow="hidden"
+                opacity={0.92}
+                flexShrink={0}
+              >
+                <img
+                  src={signature.stampUrl}
+                  alt="School stamp"
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                />
+              </Box>
+            )}
+            <Box textAlign="center" minW="180px">
+              {signature.signatureUrl && (
+                <Box h="52px" mb={1}>
+                  <img
+                    src={signature.signatureUrl}
+                    alt="Principal signature"
+                    style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }}
+                  />
+                </Box>
+              )}
+              <Box w="100%" h="1px" bg="#0F172A" mb={1} />
+              <Text fontSize="12px" fontWeight="800" color="#0F172A">
+                {signature.principalName || institutionInfo.principalName || "Principal"}
+              </Text>
+              <Text fontSize="10px" color="#64748B" fontWeight="600">
+                {signature.principalTitle || institutionInfo.principalTitle || "Principal"}
+              </Text>
+            </Box>
+          </Flex>
+        );
+      })()}
 
       <Flex justify="center">
         <Button

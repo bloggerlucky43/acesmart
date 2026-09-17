@@ -34,6 +34,7 @@ const StudentResults = () => {
     institution,
     isUnlocked,
     reportCardData,
+    approvalPending,
     loadReportCard,
     checkUnlockStatus,
   } = useStudentPortal();
@@ -256,6 +257,35 @@ const StudentResults = () => {
             </Flex>
           ) : reportCardData ? (
             <StudentReportCardSheet reportCard={reportCardData} />
+          ) : approvalPending ? (
+            <Box
+              bg="white"
+              borderRadius="2xl"
+              border="1px solid #FDE68A"
+              p={{ base: 6, md: 8 }}
+              textAlign="center"
+            >
+              <Icon as={FaShieldAlt} boxSize={8} color="#B45309" mb={3} />
+              <Text fontSize="15px" fontWeight="800" color="#0F172A">
+                Awaiting the principal's approval
+              </Text>
+              <Text fontSize="13px" color="#64748B" mt={1} mb={5}>
+                Your {institution?.currentTerm || "term"} result has been submitted by your
+                teachers and is with the school for approval. It will appear here as soon as it is
+                approved and published.
+              </Text>
+              <Button
+                bg="#4338CA"
+                color="white"
+                borderRadius="xl"
+                fontWeight="700"
+                loading={fetching}
+                onClick={handleView}
+              >
+                <Icon as={FaSyncAlt} mr={2} boxSize={3} />
+                Refresh status
+              </Button>
+            </Box>
           ) : (
             <Box
               bg="white"

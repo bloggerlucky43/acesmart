@@ -7,13 +7,23 @@ export const getStudentPortalOverviewApi = async (studentId) => {
   return data;
 };
 
+export const getStudentAcademicTermsApi = async (studentId) => {
+  const { data } = await api.get(`/portal/student/${studentId}/academic-terms`);
+  return data;
+};
+
 export const getStudentReceiptsApi = async (studentId) => {
   const { data } = await api.get(`/portal/student/${studentId}/receipts`);
   return data;
 };
 
-export const getStudentPerformanceApi = async (studentId) => {
-  const { data } = await api.get(`/portal/student/${studentId}/performance`);
+export const getStudentPerformanceApi = async (studentId, params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "")
+  ).toString();
+  const { data } = await api.get(
+    `/portal/student/${studentId}/performance${query ? `?${query}` : ""}`
+  );
   return data;
 };
 

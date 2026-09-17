@@ -49,7 +49,7 @@ const StudentFees = () => {
               onClick={() => setFeeModalOpen(true)}
             >
               <Icon as={FaMoneyBillWave} mr={2} boxSize={3.5} />
-              Pay ₦{balanceDue.toLocaleString()}
+              Pay Fees Online
             </Button>
           ) : (
             <Badge
@@ -183,7 +183,7 @@ const StudentFees = () => {
             >
               {isCleared
                 ? "This term's school fees have been fully settled. A school-stamped receipt is available after every payment."
-                : "Part payment is allowed. You can pay the full balance at once or set a custom installment amount at checkout."}
+                : "Pay the outstanding balance online through Paystack. The exact total (including any service fee) is calculated securely on the server at checkout."}
             </Box>
           </Box>
 

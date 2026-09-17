@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Flex,
@@ -76,6 +77,7 @@ const formatDay = (value) => {
 
 export default function AdminPaymentHistory() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [classes, setClasses] = useState([]);
   const [payments, setPayments] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -240,6 +242,15 @@ export default function AdminPaymentHistory() {
           </Box>
 
           <Flex gap={2}>
+            <Button
+              variant="outline"
+              size="sm"
+              borderRadius="xl"
+              onClick={() => navigate("/institution/transactions")}
+            >
+              <Icon as={FaUniversity} mr={2} boxSize={3.5} />
+              Online Transactions
+            </Button>
             <Button
               bg="#0F172A"
               color="white"

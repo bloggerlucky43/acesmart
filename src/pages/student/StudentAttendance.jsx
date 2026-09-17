@@ -21,8 +21,8 @@ import {
   PortalCard,
   PortalLoader,
   PortalEmpty,
-  statusTone,
 } from "../../components/student/StudentPortalPrimitives";
+import { statusTone } from "../../components/student/studentStatusTone";
 import { useStudentPortal } from "../../libs/StudentPortalProvider";
 import { getStudentAttendanceApi } from "../../api-endpoint/sms/portalEndpoints";
 

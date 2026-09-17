@@ -41,14 +41,17 @@ import StaffQrGenerator from "./institution/StaffQrGenerator";
 import StaffAttendanceHistory from "./institution/StaffAttendanceHistory";
 import AdminDebtorManager from "./institution/AdminDebtorManager";
 import AdminPaymentHistory from "./institution/AdminPaymentHistory";
+import AdminTransactions from "./institution/AdminTransactions";
 import AdminFeeBillingManager from "./institution/AdminFeeBillingManager";
 import InstitutionSettings from "./institution/InstitutionSettings";
 import StaffManager from "./institution/StaffManager";
 import PortalContentManager from "./institution/PortalContentManager";
+import PrincipalApprovals from "./institution/PrincipalApprovals";
 
 // Student & Parent Portal
 import { StudentPortalProvider } from "../libs/StudentPortalProvider";
 import StudentPortalLayout from "../components/student/StudentPortalLayout";
+import PaymentCallback from "./PaymentCallback";
 import StudentOverview from "./student/StudentOverview";
 import StudentFees from "./student/StudentFees";
 import StudentResults from "./student/StudentResults";
@@ -117,6 +120,9 @@ const Home = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/pricing" element={<PricingPage />} />
+
+            {/* Paystack return/callback (cosmetic; server verify is authoritative) */}
+            <Route path="/payment/callback" element={<PaymentCallback />} />
 
             {/* Student & Parent Portal */}
             <Route
@@ -205,6 +211,14 @@ const Home = () => {
               }
             />
             <Route
+              path="/institution/transactions"
+              element={
+                <InstitutionAdminRoute>
+                  <AdminTransactions />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
               path="/institution/settings"
               element={
                 <InstitutionAdminRoute>
@@ -217,6 +231,14 @@ const Home = () => {
               element={
                 <InstitutionAdminRoute>
                   <PortalContentManager />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
+              path="/institution/approvals"
+              element={
+                <InstitutionAdminRoute>
+                  <PrincipalApprovals />
                 </InstitutionAdminRoute>
               }
             />

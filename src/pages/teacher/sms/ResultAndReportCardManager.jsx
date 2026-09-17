@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Flex,
@@ -21,6 +21,7 @@ import {
 import {
   getClassArmsApi,
   getClassAttendanceByDateApi,
+  getSubjectScoresApi,
   uploadSubjectScoresApi,
   syncCbtScoresApi,
   getStudentReportCardApi,
@@ -43,6 +44,8 @@ export default function ResultAndReportCardManager() {
   // Score spreadsheet state
   const [roster, setRoster] = useState([]);
   const [scores, setScores] = useState({}); // { [studentId]: { ca1, ca2, assignment, exam } }
+  const [existingScores, setExistingScores] = useState({}); // { [studentId]: saved record }
+  const [loadingExisting, setLoadingExisting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
@@ -54,6 +57,8 @@ export default function ResultAndReportCardManager() {
   const institution = user?.institution;
   const institutionName = institution?.name || "Institution";
   const institutionLogo = institution?.logoUrl;
+  const currentTerm = institution?.currentTerm || "First Term";
+  const currentSession = institution?.academicSession || "2025/2026";
 
   useEffect(() => {
     const initData = async () => {
@@ -99,6 +104,43 @@ export default function ResultAndReportCardManager() {
     loadClassStudents();
   }, [selectedClassId]);
 
+  const loadExistingScores = useCallback(async () => {
+    if (!selectedClassId || !subject) return;
+    setLoadingExisting(true);
+    try {
+      const res = await getSubjectScoresApi({
+        subject,
+        classArmId: selectedClassId,
+        term: currentTerm,
+        session: currentSession,
+      });
+
+      if (res.success) {
+        const recordMap = {};
+        const prefilledScores = {};
+        res.data.forEach((r) => {
+          recordMap[r.studentId] = r;
+          prefilledScores[r.studentId] = {
+            ca1: r.caScore1,
+            ca2: r.caScore2,
+            assignment: r.assignmentScore,
+            exam: r.examScore,
+          };
+        });
+        setExistingScores(recordMap);
+        setScores(prefilledScores);
+      }
+    } catch (e) {
+      console.error("Load existing scores error:", e);
+    } finally {
+      setLoadingExisting(false);
+    }
+  }, [selectedClassId, subject, currentTerm, currentSession]);
+
+  useEffect(() => {
+    loadExistingScores();
+  }, [loadExistingScores]);
+
   const handleScoreChange = (studentId, field, value) => {
     const numVal = Math.max(0, Number(value) || 0);
     setScores((prev) => ({
@@ -125,6 +167,8 @@ export default function ResultAndReportCardManager() {
     return { grade: "F9", remark: "Fail" };
   };
 
+  const enteredCount = roster.filter((s) => existingScores[s.studentId]).length;
+
   const handleSaveScores = async () => {
     setSaving(true);
     try {
@@ -142,8 +186,8 @@ export default function ResultAndReportCardManager() {
       const res = await uploadSubjectScoresApi({
         subject,
         classArmId: selectedClassId,
-        term: institution?.currentTerm || "First Term",
-        session: institution?.academicSession || "2025/2026",
+        term: currentTerm,
+        session: currentSession,
         scores: formattedScores,
       });
 
@@ -153,6 +197,7 @@ export default function ResultAndReportCardManager() {
           description: `Updated scores for ${roster.length} students in ${subject}`,
           type: "success",
         });
+        await loadExistingScores();
       }
     } catch (error) {
       toaster.create({
@@ -176,8 +221,8 @@ export default function ResultAndReportCardManager() {
         examId: selectedExamId,
         subject,
         targetColumn,
-        term: institution?.currentTerm || "First Term",
-        session: institution?.academicSession || "2025/2026",
+        term: currentTerm,
+        session: currentSession,
       });
 
       if (res.success) {
@@ -186,6 +231,7 @@ export default function ResultAndReportCardManager() {
           description: res.message,
           type: "success",
         });
+        await loadExistingScores();
         setActiveTab("scores");
       }
     } catch (error) {
@@ -369,17 +415,49 @@ export default function ResultAndReportCardManager() {
                 </Box>
               </Flex>
 
-              <Button
-                bg="linear-gradient(135deg, #10B981 0%, #059669 100%)"
-                color="white"
-                borderRadius="xl"
-                fontWeight="700"
-                onClick={handleSaveScores}
-                loading={saving}
-              >
-                <Icon as={FaSave} mr={2} boxSize={3.5} />
-                Save {subject} Scores
-              </Button>
+              <Flex direction="column" align="flex-end" gap={2}>
+                <Flex align="center" gap={2}>
+                  <Badge
+                    bg={enteredCount >= roster.length && roster.length > 0 ? "#ECFDF5" : "#FEF3C7"}
+                    color={enteredCount >= roster.length && roster.length > 0 ? "#065F46" : "#92400E"}
+                    px={3}
+                    py={1}
+                    borderRadius="lg"
+                    fontSize="11px"
+                    fontWeight="800"
+                  >
+                    {loadingExisting
+                      ? "Checking saved scores..."
+                      : roster.length > 0
+                      ? `${enteredCount} of ${roster.length} already entered`
+                      : "No students in this class"}
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    borderColor="#CBD5E1"
+                    color="#334155"
+                    borderRadius="lg"
+                    fontWeight="700"
+                    onClick={loadExistingScores}
+                    loading={loadingExisting}
+                  >
+                    <Icon as={FaSyncAlt} mr={1.5} boxSize={3} />
+                    Refresh
+                  </Button>
+                </Flex>
+                <Button
+                  bg="linear-gradient(135deg, #10B981 0%, #059669 100%)"
+                  color="white"
+                  borderRadius="xl"
+                  fontWeight="700"
+                  onClick={handleSaveScores}
+                  loading={saving}
+                >
+                  <Icon as={FaSave} mr={2} boxSize={3.5} />
+                  Save {subject} Scores
+                </Button>
+              </Flex>
             </Flex>
 
             {/* Score Entry Spreadsheet */}
@@ -410,12 +488,28 @@ export default function ResultAndReportCardManager() {
                       const total = calculateRowTotal(student.studentId);
                       const { grade } = getRowGrade(total);
                       const s = scores[student.studentId] || {};
+                      const saved = existingScores[student.studentId];
 
                       return (
-                        <tr key={student.studentId} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                        <tr key={student.studentId} style={{ borderBottom: "1px solid #F1F5F9", background: saved ? "#F0FDF4" : "transparent" }}>
                           <td style={{ padding: "12px 16px", fontSize: "13px", color: "#64748B" }}>{idx + 1}</td>
                           <td style={{ padding: "12px 16px", fontWeight: "700", color: "#0F172A", fontSize: "14px" }}>
-                            {student.name}
+                            <Flex align="center" gap={2}>
+                              {student.name}
+                              {saved && (
+                                <Badge
+                                  bg={saved.cbtExamId ? "#EDE9FE" : "#DCFCE7"}
+                                  color={saved.cbtExamId ? "#5B21B6" : "#166534"}
+                                  fontSize="9px"
+                                  fontWeight="800"
+                                  px={1.5}
+                                  py={0.5}
+                                  borderRadius="md"
+                                >
+                                  {saved.cbtExamId ? "CBT SYNCED" : "ENTERED"}
+                                </Badge>
+                              )}
+                            </Flex>
                           </td>
                           <td style={{ padding: "12px 16px", fontSize: "13px", color: "#4338CA", fontWeight: "600" }}>
                             {student.studentCode}
@@ -736,20 +830,46 @@ export default function ResultAndReportCardManager() {
               <Flex justify="space-between" align="flex-end" pt={4} borderTop="1px solid #E2E8F0">
                 <Box maxW="500px">
                   <Text fontSize="12px" color="#64748B">
-                    <strong>Form Teacher's Remark:</strong> Attentive, diligent, and shows consistent leadership in class activities.
+                    <strong>Form Teacher's Remark:</strong>{" "}
+                    {reportCardData?.summary?.teacherComment ||
+                      reportCardData?.summary?.overallRemark ||
+                      "No remark recorded yet."}
                   </Text>
                   <Text fontSize="12px" color="#64748B" mt={1}>
-                    <strong>Principal's Commendation:</strong> Promoted with distinction. Excellent standard maintained.
+                    <strong>Principal's Remark:</strong>{" "}
+                    {reportCardData?.summary?.principalRemark || "No principal remark recorded yet."}
                   </Text>
                   <Text fontSize="11px" color="#94A3B8" mt={2}>
-                    Next Term Resumes: <strong>January 12, 2027</strong>
+                    Next Term Resumes:{" "}
+                    <strong>{reportCardData?.summary?.nextTermResumption || "—"}</strong>
                   </Text>
                 </Box>
 
                 <Box textAlign="center">
+                  {reportCardData?.signature?.stampUrl && (
+                    <Box w="80px" h="80px" borderRadius="full" overflow="hidden" mx="auto" mb={1}>
+                      <img
+                        src={reportCardData.signature.stampUrl}
+                        alt="School stamp"
+                        style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                      />
+                    </Box>
+                  )}
+                  {reportCardData?.signature?.signatureUrl && (
+                    <Box h="44px" mb={1}>
+                      <img
+                        src={reportCardData.signature.signatureUrl}
+                        alt="Principal signature"
+                        style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }}
+                      />
+                    </Box>
+                  )}
                   <Box w="100px" h="1px" bg="#0F172A" mb={1} />
                   <Text fontSize="11px" fontWeight="700" color="#0F172A">
-                    Principal's Signature & Stamp
+                    {reportCardData?.signature?.principalName || "Principal"}
+                  </Text>
+                  <Text fontSize="10px" color="#64748B">
+                    {reportCardData?.signature?.principalTitle || "Principal"}
                   </Text>
                 </Box>
               </Flex>

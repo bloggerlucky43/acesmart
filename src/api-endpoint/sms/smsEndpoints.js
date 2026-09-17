@@ -44,6 +44,11 @@ export const getStaffListApi = async () => {
   return data;
 };
 
+export const unenrollStaffApi = async (staffId) => {
+  const { data } = await api.delete(`/institution/staff/${staffId}`, { withCredentials: true });
+  return data;
+};
+
 export const getClassArmsApi = async () => {
   const { data } = await api.get("/institution/classes", { withCredentials: true });
   return data;
@@ -113,8 +118,65 @@ export const getStudentFeeByCodeApi = async (studentCode) => {
   return data;
 };
 
+// Admin: manual payment recording only. Parent self-service payments go through
+// the Paystack pipeline below (/payments/initialize).
 export const recordFeePaymentApi = async (paymentData) => {
-  const { data } = await api.post("/fees/pay", paymentData);
+  const { data } = await api.post("/fees/record-payment", paymentData, { withCredentials: true });
+  return data;
+};
+
+// Online Payments (Paystack, server-authoritative amounts)
+export const quotePaymentApi = async (payload) => {
+  const { data } = await api.post("/payments/quote", payload);
+  return data;
+};
+
+export const initializePaymentApi = async (payload) => {
+  const { data } = await api.post("/payments/initialize", payload);
+  return data;
+};
+
+export const verifyPaymentApi = async (reference) => {
+  const { data } = await api.get(`/payments/verify/${encodeURIComponent(reference)}`);
+  return data;
+};
+
+export const getInstitutionTransactionsApi = async (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "")
+  ).toString();
+  const { data } = await api.get(
+    `/payments/institution/transactions${query ? `?${query}` : ""}`,
+    { withCredentials: true }
+  );
+  return data;
+};
+
+// Institution settlement account (online payment enablement)
+export const getInstitutionPaymentAccountApi = async () => {
+  const { data } = await api.get("/payments/institution/payment-account", {
+    withCredentials: true,
+  });
+  return data;
+};
+
+export const saveInstitutionPaymentAccountApi = async (payload) => {
+  const { data } = await api.put("/payments/institution/payment-account", payload, {
+    withCredentials: true,
+  });
+  return data;
+};
+
+export const disableInstitutionPaymentAccountApi = async () => {
+  const { data } = await api.delete("/payments/institution/payment-account", {
+    withCredentials: true,
+  });
+  return data;
+};
+
+// Paystack payout bank list for the settlement dropdown
+export const getPaymentBanksApi = async () => {
+  const { data } = await api.get("/payments/banks", { withCredentials: true });
   return data;
 };
 
@@ -151,6 +213,14 @@ export const checkResultTokenStatusApi = async (studentId, params = {}) => {
 };
 
 // Report Cards & Broadsheets
+export const getSubjectScoresApi = async (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "")
+  ).toString();
+  const { data } = await api.get(`/sms-results/subject-scores${query ? `?${query}` : ""}`, { withCredentials: true });
+  return data;
+};
+
 export const uploadSubjectScoresApi = async (scoreData) => {
   const { data } = await api.post("/sms-results/upload-scores", scoreData, { withCredentials: true });
   return data;
@@ -164,6 +234,62 @@ export const syncCbtScoresApi = async (syncData) => {
 export const getStudentReportCardApi = async (studentId, params = {}) => {
   const query = new URLSearchParams(params).toString();
   const { data } = await api.get(`/sms-results/report-card/${studentId}${query ? `?${query}` : ""}`, { withCredentials: true });
+  return data;
+};
+
+// Principal approval workflow
+export const getApprovalQueueApi = async (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "")
+  ).toString();
+  const { data } = await api.get(`/sms-results/approvals${query ? `?${query}` : ""}`, { withCredentials: true });
+  return data;
+};
+
+export const approveReportCardApi = async (studentId, payload = {}) => {
+  const { data } = await api.post(`/sms-results/report-card/${studentId}/approve`, payload, { withCredentials: true });
+  return data;
+};
+
+export const rejectReportCardApi = async (studentId, payload = {}) => {
+  const { data } = await api.post(`/sms-results/report-card/${studentId}/reject`, payload, { withCredentials: true });
+  return data;
+};
+
+export const bulkApproveReportCardsApi = async (payload = {}) => {
+  const { data } = await api.post("/sms-results/approvals/bulk", payload, { withCredentials: true });
+  return data;
+};
+
+export const getRemarkTemplatesApi = async (audience = "principal") => {
+  const { data } = await api.get(`/sms-results/remarks/templates?audience=${audience}`, { withCredentials: true });
+  return data;
+};
+
+export const createRemarkTemplateApi = async (payload) => {
+  const { data } = await api.post("/sms-results/remarks/templates", payload, { withCredentials: true });
+  return data;
+};
+
+export const deleteRemarkTemplateApi = async (id) => {
+  const { data } = await api.delete(`/sms-results/remarks/templates/${id}`, { withCredentials: true });
+  return data;
+};
+
+// Principal signature & stamp
+export const uploadPrincipalSignatureApi = async (formData) => {
+  const { data } = await api.post("/institution/principal-signature", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    withCredentials: true,
+  });
+  return data;
+};
+
+export const uploadPrincipalStampApi = async (formData) => {
+  const { data } = await api.post("/institution/principal-stamp", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    withCredentials: true,
+  });
   return data;
 };
 

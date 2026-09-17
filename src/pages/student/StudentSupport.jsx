@@ -22,8 +22,8 @@ import StudentPageHeading from "../../components/student/StudentPageHeading";
 import {
   PortalCard,
   PortalLoader,
-  statusTone,
 } from "../../components/student/StudentPortalPrimitives";
+import { statusTone } from "../../components/student/studentStatusTone";
 import { useStudentPortal } from "../../libs/StudentPortalProvider";
 import {
   getStudentSupportTicketsApi,

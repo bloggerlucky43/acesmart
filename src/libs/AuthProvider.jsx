@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("USER_KEY", JSON.stringify(res.data));
       }
     } catch (error) {
-      if (error.response?.status === 401) {
+      if (error.response?.status === 401 || error.response?.status === 403) {
         setUser(null);
         localStorage.removeItem("USER_KEY");
       }

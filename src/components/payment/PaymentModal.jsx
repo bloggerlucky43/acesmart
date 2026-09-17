@@ -7,26 +7,39 @@ import {
   HStack,
   Badge,
   Icon,
-  Input,
-  Tabs,
-  SimpleGrid,
-  Field,
+  Spinner,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import {
-  FaCreditCard,
-  FaUniversity,
-  FaMobileAlt,
-  FaShieldAlt,
   FaCheckCircle,
   FaTimes,
-  FaLock,
-  FaCopy,
   FaArrowRight,
-  FaCheck,
+  FaLock,
+  FaShieldAlt,
 } from "react-icons/fa";
 import { toaster } from "../ui/toaster";
+import { quotePaymentApi, initializePaymentApi } from "../../api-endpoint/sms/smsEndpoints";
+import {
+  beginPaystackCheckout,
+  pollPaymentStatus,
+  getPendingReference,
+  clearPendingPayment,
+} from "../../libs/payment";
 
+const currency = (value) =>
+  new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+
+/**
+ * Subscription checkout.
+ *
+ * The server resolves the plan price (/payments/quote) and creates the Paystack
+ * transaction (/payments/initialize). This component never computes an amount
+ * and never marks a payment successful — success comes from /payments/verify.
+ */
 export default function PaymentModal({
   isOpen,
   onClose,
@@ -34,70 +47,97 @@ export default function PaymentModal({
   billingCycle = "monthly",
   onPaymentSuccess,
 }) {
-  const [activeTab, setActiveTab] = useState("card");
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [quote, setQuote] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [paymentDone, setPaymentDone] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [receipt, setReceipt] = useState(null);
 
-  // Form states
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
-  const [cardPin, setCardPin] = useState("");
+  useEffect(() => {
+    if (!isOpen || !plan) return undefined;
+    let cancelled = false;
+
+    const pending = getPendingReference();
+    if (pending) {
+      setLoading(true);
+      setError(null);
+      pollPaymentStatus(pending, { attempts: 12, intervalMs: 2500 }).then((data) => {
+        if (cancelled) return;
+        clearPendingPayment();
+        if (data?.status === "success") {
+          setPaymentDone(true);
+          setReceipt({ amount: data.totalCharge, reference: data.reference });
+          if (onPaymentSuccess) {
+            onPaymentSuccess({
+              plan,
+              billingCycle,
+              amount: currency(data.totalCharge),
+              reference: data.reference,
+              date: new Date().toISOString().split("T")[0],
+            });
+          }
+        } else {
+          setError("We could not confirm your last payment. Please try again or contact support.");
+        }
+        setLoading(false);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setLoading(true);
+    setError(null);
+    setQuote(null);
+    setPaymentDone(false);
+    quotePaymentApi({ purpose: "subscription", planId: plan.id, billingCycle })
+      .then((res) => {
+        if (cancelled) return;
+        if (res?.success) setQuote(res.data);
+        else setError(res?.message || "Unable to load the checkout total");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err.response?.data?.message || err.message || "Unable to load the checkout total");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, plan?.id, billingCycle]);
 
   if (!isOpen || !plan) return null;
 
-  const price =
-    billingCycle === "termly"
-      ? plan.termlyPrice ?? plan.price
-      : plan.monthlyPrice ?? plan.price;
+  const formattedAmount = currency(quote?.totalCharge);
 
-  const formattedAmount = new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(price || 0);
-
-  const virtualAccount = {
-    bank: "Wema Bank / Titan Trust",
-    accountNumber: "8924019284",
-    beneficiary: "AceSmart EdTech Ltd",
-    reference: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
-  };
-
-  const handleCopyAccount = () => {
-    navigator.clipboard.writeText(virtualAccount.accountNumber);
-    setCopied(true);
-    toaster.create({
-      title: "Account number copied to clipboard",
-      type: "success",
-    });
-    setTimeout(() => setCopied(false), 2500);
-  };
-
-  const handlePay = () => {
-    setIsProcessing(true);
-
-    // Simulate real Paystack payment verification
-    setTimeout(() => {
-      setIsProcessing(false);
-      setPaymentDone(true);
-      toaster.create({
-        title: "Payment Confirmed Successfully!",
-        description: `Your subscription to ${plan.name} is now active.`,
-        type: "success",
+  const handlePay = async () => {
+    setProcessing(true);
+    try {
+      const res = await initializePaymentApi({
+        purpose: "subscription",
+        planId: plan.id,
+        billingCycle,
       });
-
-      if (onPaymentSuccess) {
-        onPaymentSuccess({
-          plan,
-          billingCycle,
-          amount: formattedAmount,
-          reference: virtualAccount.reference,
-          date: new Date().toISOString().split("T")[0],
-        });
+      if (!res?.success || !res?.data?.authorization_url) {
+        throw new Error(res?.message || "Failed to start checkout");
       }
-    }, 2000);
+      beginPaystackCheckout({
+        authorizationUrl: res.data.authorization_url,
+        reference: res.data.reference,
+        returnPath: window.location.pathname,
+      });
+    } catch (err) {
+      toaster.create({
+        title: "Could not start payment",
+        description: err.response?.data?.message || err.message,
+        type: "error",
+      });
+      setProcessing(false);
+    }
   };
 
   const handleDone = () => {
@@ -126,11 +166,9 @@ export default function PaymentModal({
         w="100%"
         color="white"
         boxShadow="0 25px 50px rgba(0, 0, 0, 0.5)"
-        animation="fadeIn 0.2s ease-out"
         position="relative"
       >
-        {/* Close button */}
-        {!isProcessing && (
+        {!processing && (
           <Button
             size="xs"
             variant="ghost"
@@ -146,7 +184,6 @@ export default function PaymentModal({
         )}
 
         {paymentDone ? (
-          /* SUCCESS STATE */
           <VStack spacing={4} py={4} align="center" textAlign="center">
             <Flex
               w="64px"
@@ -162,21 +199,14 @@ export default function PaymentModal({
 
             <Box>
               <Text fontSize="22px" fontWeight="800" color="white" fontFamily="'Outfit', sans-serif">
-                Payment Successful!
+                Payment Confirmed
               </Text>
               <Text fontSize="13px" color="#94A3B8" mt={1}>
                 Your institution has been upgraded to <b>{plan.name}</b>.
               </Text>
             </Box>
 
-            <Box
-              w="100%"
-              bg="#0F172A"
-              borderRadius="16px"
-              border="1px solid #334155"
-              p={4}
-              textAlign="left"
-            >
+            <Box w="100%" bg="#0F172A" borderRadius="16px" border="1px solid #334155" p={4} textAlign="left">
               <Flex justify="space-between" mb={2} fontSize="13px">
                 <Text color="#94A3B8">Plan Activated:</Text>
                 <Text fontWeight="bold" color="white">{plan.name}</Text>
@@ -189,11 +219,11 @@ export default function PaymentModal({
               </Flex>
               <Flex justify="space-between" mb={2} fontSize="13px">
                 <Text color="#94A3B8">Amount Paid:</Text>
-                <Text fontWeight="bold" color="#34D399">{formattedAmount}</Text>
+                <Text fontWeight="bold" color="#34D399">{currency(receipt?.amount)}</Text>
               </Flex>
               <Flex justify="space-between" fontSize="13px">
                 <Text color="#94A3B8">Payment Ref:</Text>
-                <Text fontWeight="mono" color="#CBD5E1">{virtualAccount.reference}</Text>
+                <Text fontWeight="mono" color="#CBD5E1">{receipt?.reference}</Text>
               </Flex>
             </Box>
 
@@ -213,13 +243,17 @@ export default function PaymentModal({
             </Button>
           </VStack>
         ) : (
-          /* CHECKOUT FORM */
           <>
-            {/* Header / Summary */}
             <Flex justify="space-between" align="flex-start" mb={5} pr={6}>
               <Box>
                 <HStack spacing={2} mb={1}>
-                  <Badge bg="rgba(37, 99, 235, 0.15)" color="#60A5FA" border="1px solid rgba(37, 99, 235, 0.3)" borderRadius="full" px={2}>
+                  <Badge
+                    bg="rgba(37, 99, 235, 0.15)"
+                    color="#60A5FA"
+                    border="1px solid rgba(37, 99, 235, 0.3)"
+                    borderRadius="full"
+                    px={2}
+                  >
                     SECURE CHECKOUT
                   </Badge>
                   {plan.badge && (
@@ -240,200 +274,53 @@ export default function PaymentModal({
                 <Text fontSize="11px" color="#94A3B8" textTransform="uppercase">
                   Total Due
                 </Text>
-                <Text fontSize="22px" fontWeight="900" color="#34D399" lineHeight="1.2">
-                  {formattedAmount}
-                </Text>
+                {loading ? (
+                  <Spinner size="sm" color="#34D399" mt={2} />
+                ) : (
+                  <Text fontSize="22px" fontWeight="900" color="#34D399" lineHeight="1.2">
+                    {formattedAmount}
+                  </Text>
+                )}
               </Box>
             </Flex>
 
-            {/* Payment Method Channels */}
-            <Tabs.Root value={activeTab} onValueChange={(e) => setActiveTab(e.value)} w="100%" mb={5}>
-              <Tabs.List bg="#0F172A" p={1} borderRadius="12px" border="1px solid #334155" gap={1}>
-                <Tabs.Trigger
-                  value="card"
-                  flex={1}
-                  py={2}
-                  borderRadius="8px"
-                  color="#94A3B8"
-                  fontSize="12px"
-                  fontWeight="bold"
-                  _selected={{ bg: "#1E293B", color: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}
-                >
-                  <HStack spacing={1.5} justify="center">
-                    <Icon as={FaCreditCard} />
-                    <Text>Card</Text>
-                  </HStack>
-                </Tabs.Trigger>
+            {error && (
+              <Box
+                bg="rgba(239, 68, 68, 0.12)"
+                border="1px solid rgba(239, 68, 68, 0.4)"
+                color="#FCA5A5"
+                borderRadius="12px"
+                p={3}
+                mb={5}
+                fontSize="12px"
+              >
+                {error}
+              </Box>
+            )}
 
-                <Tabs.Trigger
-                  value="transfer"
-                  flex={1}
-                  py={2}
-                  borderRadius="8px"
-                  color="#94A3B8"
-                  fontSize="12px"
-                  fontWeight="bold"
-                  _selected={{ bg: "#1E293B", color: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}
-                >
-                  <HStack spacing={1.5} justify="center">
-                    <Icon as={FaUniversity} />
-                    <Text>Bank Transfer</Text>
-                  </HStack>
-                </Tabs.Trigger>
-
-                <Tabs.Trigger
-                  value="ussd"
-                  flex={1}
-                  py={2}
-                  borderRadius="8px"
-                  color="#94A3B8"
-                  fontSize="12px"
-                  fontWeight="bold"
-                  _selected={{ bg: "#1E293B", color: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}
-                >
-                  <HStack spacing={1.5} justify="center">
-                    <Icon as={FaMobileAlt} />
-                    <Text>USSD</Text>
-                  </HStack>
-                </Tabs.Trigger>
-              </Tabs.List>
-
-              {/* 1. CARD PAYMENT TAB */}
-              <Tabs.Content value="card" pt={4}>
-                <VStack spacing={3} align="stretch">
-                  <Field.Root>
-                    <Field.Label fontSize="11px" fontWeight="bold" color="#CBD5E1">
-                      CARD NUMBER
-                    </Field.Label>
-                    <Input
-                      placeholder="0000 0000 0000 0000"
-                      bg="#0F172A"
-                      borderRadius="10px"
-                      h="44px"
-                      border="1px solid #334155"
-                      color="white"
-                      fontSize="14px"
-                      _focus={{ borderColor: "#2563EB" }}
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                    />
-                  </Field.Root>
-
-                  <SimpleGrid columns={3} gap={2}>
-                    <Field.Root>
-                      <Field.Label fontSize="11px" fontWeight="bold" color="#CBD5E1">
-                        EXPIRY
-                      </Field.Label>
-                      <Input
-                        placeholder="MM/YY"
-                        bg="#0F172A"
-                        borderRadius="10px"
-                        h="44px"
-                        border="1px solid #334155"
-                        color="white"
-                        fontSize="13px"
-                        value={cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value)}
-                      />
-                    </Field.Root>
-
-                    <Field.Root>
-                      <Field.Label fontSize="11px" fontWeight="bold" color="#CBD5E1">
-                        CVV
-                      </Field.Label>
-                      <Input
-                        placeholder="123"
-                        type="password"
-                        maxLength={4}
-                        bg="#0F172A"
-                        borderRadius="10px"
-                        h="44px"
-                        border="1px solid #334155"
-                        color="white"
-                        fontSize="13px"
-                        value={cardCvv}
-                        onChange={(e) => setCardCvv(e.target.value)}
-                      />
-                    </Field.Root>
-
-                    <Field.Root>
-                      <Field.Label fontSize="11px" fontWeight="bold" color="#CBD5E1">
-                        PIN
-                      </Field.Label>
-                      <Input
-                        placeholder="••••"
-                        type="password"
-                        maxLength={4}
-                        bg="#0F172A"
-                        borderRadius="10px"
-                        h="44px"
-                        border="1px solid #334155"
-                        color="white"
-                        fontSize="13px"
-                        value={cardPin}
-                        onChange={(e) => setCardPin(e.target.value)}
-                      />
-                    </Field.Root>
-                  </SimpleGrid>
-                </VStack>
-              </Tabs.Content>
-
-              {/* 2. BANK TRANSFER TAB */}
-              <Tabs.Content value="transfer" pt={4}>
-                <Box bg="#0F172A" borderRadius="14px" border="1px solid #334155" p={4}>
-                  <Text fontSize="12px" color="#94A3B8" mb={3} textAlign="center">
-                    Transfer exactly <b>{formattedAmount}</b> to this dedicated dynamic account:
+            {quote && (
+              <Box bg="#0F172A" borderRadius="14px" border="1px solid #334155" p={4} mb={5} fontSize="12px">
+                <Flex justify="space-between" align="center">
+                  <Box>
+                    <Text color="#CBD5E1" fontWeight="800">
+                      Total to pay
+                    </Text>
+                    <Text color="#94A3B8" fontSize="11px">
+                      Includes any applicable processing fee
+                    </Text>
+                  </Box>
+                  <Text color="#34D399" fontWeight="900" fontSize="16px">
+                    {currency(quote.totalCharge)}
                   </Text>
+                </Flex>
+              </Box>
+            )}
 
-                  <VStack spacing={2.5} align="stretch">
-                    <Flex justify="space-between" align="center" py={1.5} borderBottom="1px solid #1E293B">
-                      <Text fontSize="12px" color="#94A3B8">Bank Name:</Text>
-                      <Text fontSize="13px" fontWeight="bold" color="white">{virtualAccount.bank}</Text>
-                    </Flex>
-
-                    <Flex justify="space-between" align="center" py={1.5} borderBottom="1px solid #1E293B">
-                      <Text fontSize="12px" color="#94A3B8">Account Number:</Text>
-                      <HStack spacing={2}>
-                        <Text fontSize="16px" fontWeight="900" color="#38BDF8" fontFamily="monospace">
-                          {virtualAccount.accountNumber}
-                        </Text>
-                        <Button size="2xs" variant="outline" borderColor="#334155" color="white" onClick={handleCopyAccount}>
-                          <Icon as={copied ? FaCheck : FaCopy} />
-                        </Button>
-                      </HStack>
-                    </Flex>
-
-                    <Flex justify="space-between" align="center" py={1.5}>
-                      <Text fontSize="12px" color="#94A3B8">Beneficiary:</Text>
-                      <Text fontSize="12px" fontWeight="bold" color="white">{virtualAccount.beneficiary}</Text>
-                    </Flex>
-                  </VStack>
-                </Box>
-              </Tabs.Content>
-
-              {/* 3. USSD TAB */}
-              <Tabs.Content value="ussd" pt={4}>
-                <Box bg="#0F172A" borderRadius="14px" border="1px solid #334155" p={4} textAlign="center">
-                  <Text fontSize="12px" color="#94A3B8" mb={3}>
-                    Dial this code directly from your bank-registered mobile number:
-                  </Text>
-                  <Text fontSize="18px" fontWeight="900" color="#38BDF8" fontFamily="monospace" p={2} bg="#1E293B" borderRadius="10px" border="1px solid #334155" mb={3}>
-                    *737*2*{price}*001#
-                  </Text>
-                  <Text fontSize="11px" color="#64748B">
-                    GTBank, Zenith, Access, UBA, FirstBank supported
-                  </Text>
-                </Box>
-              </Tabs.Content>
-            </Tabs.Root>
-
-            {/* Security note */}
             <Flex align="center" justify="center" gap={2} mb={5} color="#94A3B8" fontSize="11px">
               <Icon as={FaLock} color="#34D399" />
-              <Text>256-Bit SSL Encryption • Powered by Paystack / Flutterwave</Text>
+              <Text>Card, bank transfer &amp; USSD handled securely by Paystack</Text>
             </Flex>
 
-            {/* Action Buttons */}
             <Button
               w="100%"
               h="48px"
@@ -443,11 +330,13 @@ export default function PaymentModal({
               fontWeight="bold"
               fontSize="14px"
               _hover={{ bg: "#047857" }}
-              loading={isProcessing}
-              loadingText="Processing Transaction..."
+              loading={processing}
+              loadingText="Redirecting to Paystack…"
+              disabled={!quote || loading}
               onClick={handlePay}
             >
-              Pay {formattedAmount} Now
+              <Icon as={FaShieldAlt} mr={2} boxSize={4} />
+              {quote ? `Pay ${formattedAmount} Now` : "Pay Now"}
             </Button>
           </>
         )}

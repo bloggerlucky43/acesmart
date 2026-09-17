@@ -33,7 +33,6 @@ export default function SchoolAdminDashboard() {
   const [profile, setProfile] = useState(null);
   const [feeOverview, setFeeOverview] = useState(null);
   const [attendanceOverview, setAttendanceOverview] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -49,8 +48,6 @@ export default function SchoolAdminDashboard() {
         if (attRes?.success) setAttendanceOverview(attRes.data);
       } catch (err) {
         console.error("Load dashboard data error:", err);
-      } finally {
-        setLoading(false);
       }
     };
     loadDashboardData();

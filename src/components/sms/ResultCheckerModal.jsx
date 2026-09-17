@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Flex,
@@ -6,17 +6,16 @@ import {
   Button,
   Icon,
   Badge,
-  Input,
 } from "@chakra-ui/react";
 import {
   FaLock,
-  FaCheckCircle,
   FaShieldAlt,
   FaCreditCard,
   FaTimes,
   FaGraduationCap,
 } from "react-icons/fa";
-import { payResultCheckerTokenApi } from "../../api-endpoint/sms/smsEndpoints";
+import { quotePaymentApi, initializePaymentApi } from "../../api-endpoint/sms/smsEndpoints";
+import { beginPaystackCheckout } from "../../libs/payment";
 import { toaster } from "../ui/toaster";
 
 export default function ResultCheckerModal({
@@ -24,43 +23,75 @@ export default function ResultCheckerModal({
   onClose,
   student,
   institution,
-  onSuccess,
+  term,
+  session,
 }) {
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("card");
-  const [pinCode, setPinCode] = useState("");
+  const [quote, setQuote] = useState(null);
+  const [quoteError, setQuoteError] = useState(null);
+  const [loadingQuote, setLoadingQuote] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !student?.id) return undefined;
+    let cancelled = false;
+    setLoadingQuote(true);
+    setQuoteError(null);
+    quotePaymentApi({
+      studentId: student.id,
+      purpose: "result_checker",
+      term,
+      session,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        if (res?.success) setQuote(res.data);
+        else setQuoteError(res?.message || "Unable to load the unlock total");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setQuoteError(err.response?.data?.message || err.message || "Unable to load the unlock total");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingQuote(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, student?.id, term, session]);
 
   if (!isOpen) return null;
 
-  const feeAmount = institution?.resultCheckerFee || 500;
+  const baseFee = institution?.resultCheckerFee || 500;
+  const totalCharge = quote ? Number(quote.totalCharge || 0) : baseFee;
   const schoolName = institution?.name || "Institution";
   const schoolLogo = institution?.logoUrl;
 
   const handlePay = async () => {
     setLoading(true);
     try {
-      const res = await payResultCheckerTokenApi({
+      const res = await initializePaymentApi({
         studentId: student?.id,
-        term: institution?.currentTerm || "First Term",
-        session: institution?.academicSession || "2025/2026",
-        reference: `RC-PAY-${Date.now()}`,
+        purpose: "result_checker",
+        term,
+        session,
+        email: student?.parentEmail || student?.studentEmail,
       });
 
-      if (res.success) {
-        toaster.create({
-          title: "Result Card Unlocked!",
-          description: `Access granted for ${student?.name || student?.firstName}.`,
-          type: "success",
-        });
-        if (onSuccess) onSuccess(res.data);
-        onClose();
+      if (!res?.success || !res?.data?.authorization_url) {
+        throw new Error(res?.message || "Failed to start checkout");
       }
+
+      // Unlock happens server-side after Paystack confirms (webhook/verify).
+      beginPaystackCheckout({
+        authorizationUrl: res.data.authorization_url,
+        reference: res.data.reference,
+        returnPath: window.location.pathname,
+      });
     } catch (error) {
       toaster.create({
-        title: error.response?.data?.message || "Payment verification failed",
+        title: error.response?.data?.message || error.message || "Payment could not be started",
         type: "error",
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -185,7 +216,8 @@ export default function ResultCheckerModal({
               </Text>
             </Box>
             <Badge bg="#EEF2FF" color="#4F46E5" px={3} py={1} borderRadius="full" fontWeight="700">
-              {institution?.currentTerm || "First Term"}
+              {term || institution?.currentTerm || "First Term"}
+              {session ? ` • ${session}` : ""}
             </Badge>
           </Flex>
 
@@ -205,7 +237,7 @@ export default function ResultCheckerModal({
               </Text>
             </Flex>
             <Text fontSize="12px" lineHeight="1.5">
-              To view, download, or print the comprehensive terminal report card with official school stamp and teacher remarks, a standard token fee of <strong>₦{feeAmount.toLocaleString()}</strong> is required.
+              To view, download, or print the comprehensive terminal report card with official school stamp and teacher remarks, a standard token fee of <strong>₦{totalCharge.toLocaleString()}</strong> is required.
             </Text>
           </Box>
 
@@ -228,9 +260,23 @@ export default function ResultCheckerModal({
               </Text>
             </Box>
             <Text fontSize="24px" fontWeight="900" color="#0F172A">
-              ₦{feeAmount.toLocaleString()}
+              ₦{totalCharge.toLocaleString()}
             </Text>
           </Flex>
+
+          {quoteError && (
+            <Box
+              bg="#FEF2F2"
+              border="1px solid #FECACA"
+              color="#991B1B"
+              p={3}
+              borderRadius="xl"
+              mb={4}
+              fontSize="12px"
+            >
+              {quoteError}
+            </Box>
+          )}
 
           {/* Action Buttons */}
           <Flex direction="column" gap={3}>
@@ -246,10 +292,11 @@ export default function ResultCheckerModal({
               _hover={{ opacity: 0.95, transform: "translateY(-1px)" }}
               onClick={handlePay}
               loading={loading}
-              loadingText="Authorizing Payment..."
+              disabled={loadingQuote || !quote}
+              loadingText="Redirecting to Paystack..."
             >
               <Icon as={FaCreditCard} mr={2} boxSize={3.5} />
-              Pay ₦{feeAmount.toLocaleString()} to Unlock Report Card
+              Pay ₦{totalCharge.toLocaleString()} to Unlock Report Card
             </Button>
 
             <Button
