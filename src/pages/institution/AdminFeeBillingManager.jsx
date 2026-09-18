@@ -35,12 +35,10 @@ import {
   createClassArmApi,
 } from "../../api-endpoint/sms/smsEndpoints";
 import { toaster } from "../../components/ui/toaster";
-import { useAuth } from "../../libs/AuthProvider";
 import DashboardLayout from "../../constants/dashboardlayout";
 import AllocatePaymentModal from "../../components/sms/AllocatePaymentModal";
 
 const AdminFeeBillingManager = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -54,6 +52,7 @@ const AdminFeeBillingManager = () => {
   const [newClassName, setNewClassName] = useState("");
   const [newClassLevel, setNewClassLevel] = useState("Junior Secondary");
   const [seedingClasses, setSeedingClasses] = useState(false);
+  const [savingClassArm, setSavingClassArm] = useState(false);
 
   // Fee Schedule Modal
   const [showFeeModal, setShowFeeModal] = useState(false);
@@ -112,8 +111,9 @@ const AdminFeeBillingManager = () => {
 
   const handleCreateClassArm = async (e) => {
     e.preventDefault();
-    if (!newClassName.trim()) return;
+    if (savingClassArm || !newClassName.trim()) return;
 
+    setSavingClassArm(true);
     try {
       const res = await createClassArmApi({
         name: newClassName.trim(),
@@ -132,6 +132,8 @@ const AdminFeeBillingManager = () => {
         description: err.response?.data?.message || err.message,
         type: "error",
       });
+    } finally {
+      setSavingClassArm(false);
     }
   };
 
@@ -152,7 +154,7 @@ const AdminFeeBillingManager = () => {
       }
       toaster.create({ title: "Standard classes (JSS 1 to SS 3) added successfully!", type: "success" });
       loadData();
-    } catch (err) {
+    } catch {
       toaster.create({ title: "Failed to seed classes", type: "error" });
     } finally {
       setSeedingClasses(false);
@@ -718,7 +720,7 @@ const AdminFeeBillingManager = () => {
               <Heading fontSize="18px" fontWeight="800" color="#0F172A">
                 Add New Class Arm
               </Heading>
-              <Button size="xs" variant="ghost" onClick={() => setShowAddClassModal(false)}>✕</Button>
+              <Button size="xs" variant="ghost" onClick={() => setShowAddClassModal(false)} disabled={savingClassArm}>✕</Button>
             </Flex>
 
             <form onSubmit={handleCreateClassArm}>
@@ -761,7 +763,7 @@ const AdminFeeBillingManager = () => {
               </Box>
 
               <Flex justify="flex-end" gap={3}>
-                <Button variant="ghost" onClick={() => setShowAddClassModal(false)} borderRadius="xl">
+                <Button variant="ghost" onClick={() => setShowAddClassModal(false)} borderRadius="xl" disabled={savingClassArm}>
                   Cancel
                 </Button>
                 <Button
@@ -770,6 +772,9 @@ const AdminFeeBillingManager = () => {
                   color="white"
                   borderRadius="xl"
                   px={6}
+                  loading={savingClassArm}
+                  loadingText="Saving..."
+                  disabled={savingClassArm}
                 >
                   Save Class Arm
                 </Button>

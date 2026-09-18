@@ -408,11 +408,12 @@ export default function ExamBody() {
                   key={sec.section}
                   value={sec.section}
                   borderRadius="10px"
-                  px={4}
+                  px={{ base: 2.5, md: 4 }}
                   py={2}
                   color="#94A3B8"
                   fontWeight="bold"
-                  fontSize="13px"
+                  fontSize={{ base: "12px", md: "13px" }}
+                  flexShrink={0}
                   _selected={{
                     bg: "#2563EB",
                     color: "white",
@@ -438,7 +439,7 @@ export default function ExamBody() {
         </Tabs.Root>
 
         {/* 2-COLUMN CBT ROOM: QUESTION AREA (LEFT) + PALETTE (RIGHT) */}
-        <SimpleGrid columns={{ base: 1, lg: 12 }} gap={6} alignItems="flex-start">
+        <SimpleGrid columns={{ base: 1, lg: 12 }} gap={{ base: 4, md: 6 }} alignItems="flex-start">
           
           {/* LEFT: ACTIVE QUESTION CARD (8 of 12 cols) */}
           <Box gridColumn={{ base: "1", lg: "span 8" }}>
@@ -446,9 +447,9 @@ export default function ExamBody() {
               bg="#FFFFFF"
               borderRadius="20px"
               border="1px solid #E2E8F0"
-              p={{ base: 5, md: 7 }}
+              p={{ base: 4, sm: 5, md: 7 }}
               boxShadow="0 4px 20px rgba(0, 0, 0, 0.12)"
-              minH="520px"
+              minH={{ base: "auto", md: "520px" }}
               display="flex"
               flexDirection="column"
               justifyContent="space-between"
@@ -456,13 +457,13 @@ export default function ExamBody() {
               {/* Question Header */}
               <Box>
                 <Flex justify="space-between" align="center" pb={3.5} borderBottom="1px solid #F1F5F9" mb={5} wrap="wrap" gap={2}>
-                  <HStack spacing={2.5}>
+                  <HStack spacing={{ base: 1.5, md: 2.5 }} flexWrap="wrap">
                     <Badge
                       bg="#0F172A"
                       color="white"
-                      fontSize="12px"
+                      fontSize={{ base: "10px", md: "12px" }}
                       fontWeight="bold"
-                      px={3}
+                      px={{ base: 2, md: 3 }}
                       py={1}
                       borderRadius="md"
                     >
@@ -473,7 +474,7 @@ export default function ExamBody() {
                       bg="#EFF6FF"
                       color="#2563EB"
                       border="1px solid #DBEAFE"
-                      fontSize="11px"
+                      fontSize={{ base: "10px", md: "11px" }}
                       borderRadius="full"
                       px={2.5}
                       py={0.5}
@@ -483,7 +484,7 @@ export default function ExamBody() {
                     </Badge>
                   </HStack>
 
-                  <HStack spacing={3}>
+                  <HStack spacing={3} flexWrap="wrap">
                     {/* Flag for Review Toggle Button */}
                     <Button
                       size="xs"
@@ -494,6 +495,7 @@ export default function ExamBody() {
                       borderRadius="md"
                       px={2.5}
                       py={1}
+                      fontSize={{ base: "10px", md: "12px" }}
                       onClick={() => toggleFlag?.(currentSection.section, currentQuestion?.id)}
                       leftIcon={<Icon as={FaFlag} color={isFlagged ? "#F59E0B" : "#94A3B8"} />}
                     >
@@ -521,8 +523,8 @@ export default function ExamBody() {
                     mb={4}
                     borderRadius="14px"
                     overflow="hidden"
-                    maxW="380px"
-                    maxH="220px"
+                    maxW={{ base: "100%", sm: "380px" }}
+                    maxH={{ base: "180px", sm: "220px" }}
                     border="1px solid #E2E8F0"
                     bg="#F8FAFC"
                     p={2}
@@ -533,7 +535,7 @@ export default function ExamBody() {
                     <Image
                       src={currentQuestion.imageUrl}
                       alt="Question diagram"
-                      maxH="200px"
+                      maxH={{ base: "160px", sm: "200px" }}
                       maxW="100%"
                       objectFit="contain"
                       borderRadius="8px"
@@ -571,7 +573,7 @@ export default function ExamBody() {
                   }}
                 >
                   <Text
-                    fontSize={{ base: "15px", md: "17px" }}
+                    fontSize={{ base: "14px", sm: "15px", md: "17px" }}
                     fontWeight="600"
                     color="#0F172A"
                     lineHeight="1.6"
@@ -594,7 +596,7 @@ export default function ExamBody() {
                           onClick={() => {
                             saveAnswer(currentSection.section, currentQuestion.id, opt);
                           }}
-                          p={3.5}
+                          p={{ base: 3, md: 3.5 }}
                           borderRadius="14px"
                           border="2px solid"
                           borderColor={isSelected ? "#2563EB" : "#E2E8F0"}
@@ -607,19 +609,20 @@ export default function ExamBody() {
                             bg: isSelected ? "#EFF6FF" : "#F8FAFC",
                           }}
                         >
-                          <Flex align="center" gap={3}>
+                          <Flex align="center" gap={{ base: 2.5, md: 3 }}>
                             {/* Option Letter Bubble */}
                             <Flex
-                              w="32px"
-                              h="32px"
+                              w={{ base: "28px", md: "32px" }}
+                              h={{ base: "28px", md: "32px" }}
                               borderRadius="full"
                               bg={isSelected ? "#2563EB" : "#F1F5F9"}
                               color={isSelected ? "white" : "#475569"}
                               align="center"
                               justify="center"
                               fontWeight="800"
-                              fontSize="13px"
+                              fontSize={{ base: "12px", md: "13px" }}
                               transition="all 0.15s ease"
+                              flexShrink={0}
                             >
                               {letterLabel}
                             </Flex>
@@ -627,6 +630,7 @@ export default function ExamBody() {
                             {/* Option Text with inline image constraint */}
                             <Box
                               flex={1}
+                              minW={0}
                               css={{
                                 "& img": {
                                   maxHeight: "70px",
@@ -639,7 +643,7 @@ export default function ExamBody() {
                               }}
                             >
                               <Text
-                                fontSize="14px"
+                                fontSize={{ base: "13px", md: "14px" }}
                                 fontWeight={isSelected ? "600" : "500"}
                                 color={isSelected ? "#1E3A8A" : "#334155"}
                                 dangerouslySetInnerHTML={{ __html: opt }}
@@ -648,7 +652,7 @@ export default function ExamBody() {
 
                             {/* Checkmark icon if chosen */}
                             {isSelected && (
-                              <Icon as={FaCheckCircle} color="#2563EB" boxSize={4} />
+                              <Icon as={FaCheckCircle} color="#2563EB" boxSize={4} flexShrink={0} />
                             )}
                           </Flex>
                         </Box>
@@ -660,11 +664,13 @@ export default function ExamBody() {
               {/* Bottom Stepper Actions */}
               <Flex justify="space-between" align="center" pt={4} borderTop="1px solid #F1F5F9" wrap="wrap" gap={2}>
                 <Button
-                  size="md"
+                  size={{ base: "sm", md: "md" }}
                   variant="outline"
                   borderColor="#CBD5E1"
                   color="#475569"
                   borderRadius="10px"
+                  fontSize={{ base: "12px", md: "14px" }}
+                  px={{ base: 3, md: 4 }}
                   onClick={() =>
                     setCurrentQuestionIndex((prev) => ({
                       ...prev,
@@ -683,6 +689,7 @@ export default function ExamBody() {
                     size="sm"
                     variant="ghost"
                     color="#64748B"
+                    fontSize={{ base: "12px", md: "14px" }}
                     _hover={{ color: "#EF4444" }}
                     onClick={() => clearAnswer?.(currentSection.section, currentQuestion.id)}
                     leftIcon={<Icon as={FaUndo} />}
@@ -691,16 +698,18 @@ export default function ExamBody() {
                   </Button>
                 )}
 
-                <Text fontSize="12px" color="#94A3B8" fontWeight="medium">
+                <Text fontSize="12px" color="#94A3B8" fontWeight="medium" order={{ base: 1, md: 0 }} w={{ base: "100%", md: "auto" }} textAlign={{ base: "center", md: "left" }}>
                   {qIndex + 1} of {currentSection?.questions?.length || 0}
                 </Text>
 
                 <Button
-                  size="md"
+                  size={{ base: "sm", md: "md" }}
                   bg="#2563EB"
                   color="white"
                   borderRadius="10px"
                   fontWeight="bold"
+                  fontSize={{ base: "12px", md: "14px" }}
+                  px={{ base: 3, md: 4 }}
                   _hover={{ bg: "#1D4ED8" }}
                   onClick={() =>
                     setCurrentQuestionIndex((prev) => ({
@@ -726,11 +735,11 @@ export default function ExamBody() {
               bg="#1E293B"
               borderRadius="20px"
               border="1px solid #334155"
-              p={5}
+              p={{ base: 4, md: 5 }}
               color="white"
               boxShadow="0 4px 20px rgba(0, 0, 0, 0.25)"
             >
-              <Flex justify="space-between" align="center" mb={4}>
+              <Flex justify="space-between" align="center" mb={4} wrap="wrap" gap={2}>
                 <HStack spacing={2}>
                   <Icon as={FaThLarge} color="#60A5FA" boxSize={3.5} />
                   <Text fontSize="14px" fontWeight="bold">
@@ -780,7 +789,7 @@ export default function ExamBody() {
                 bg="#0F172A"
                 border="1px solid #334155"
               >
-                <SimpleGrid columns={5} gap={2}>
+                <SimpleGrid columns={5} gap={{ base: 1.5, md: 2 }}>
                   {currentSection?.questions?.map((q, i) => {
                     const qKey = `${currentSection.section}-${q.id}`;
                     const isAnswered = !!answers[qKey];
@@ -807,13 +816,15 @@ export default function ExamBody() {
                       <Button
                         key={q.id || i}
                         size="xs"
-                        h="36px"
+                        h={{ base: "32px", md: "36px" }}
                         bg={bg}
                         color={color}
                         border={border}
                         borderRadius="md"
                         fontWeight="bold"
-                        fontSize="12px"
+                        fontSize={{ base: "11px", md: "12px" }}
+                        minW={0}
+                        px={0}
                         _hover={{ opacity: 0.9, transform: "scale(1.05)" }}
                         transition="all 0.1s ease"
                         onClick={() =>
