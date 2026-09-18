@@ -32,6 +32,7 @@ import PageLoader from "../components/ui/pageloader";
 import LoginPage from "./auth/LoginPage";
 import RegisterPage from "./auth/RegisterPage";
 import ForgotPasswordPage from "./auth/ForgotPasswordPage";
+import VerifyEmailPage from "./auth/VerifyEmailPage";
 
 // School Management System (SMS) Components
 import TeacherScanClockIn from "./teacher/sms/TeacherScanClockIn";
@@ -121,6 +122,7 @@ const Home = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/pricing" element={<PricingPage />} />
 
             {/* Paystack return/callback (cosmetic; server verify is authoritative) */}

@@ -6,8 +6,7 @@ import { useAuth } from "../../libs/AuthProvider";
 
 export default function MobileNavBar() {
   const [openSideBar, setOpenSideBar] = useState(false);
-  const { user, logout } = useAuth();
-  const displayName = user?.name || user?.username || "Educator";
+  const { logout } = useAuth();
 
   return (
     <Box
@@ -52,11 +51,8 @@ export default function MobileNavBar() {
               <Icon as={FaBrain} boxSize={3.5} color="white" />
             </Flex>
             <Box>
-              <Text fontSize="14px" fontWeight="800" fontFamily="'Outfit', sans-serif" lineHeight="1.1">
+              <Text fontSize="15px" fontWeight="800" fontFamily="'Outfit', sans-serif" lineHeight="1.1">
                 Ace<span style={{ color: "#C084FC" }}>Smart</span>
-              </Text>
-              <Text fontSize="10px" color="#94A3B8" fontWeight="600">
-                {displayName}
               </Text>
             </Box>
           </Flex>

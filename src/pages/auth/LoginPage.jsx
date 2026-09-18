@@ -55,8 +55,29 @@ export default function LoginPage() {
         }
       }
     } catch (error) {
+      const data = error.response?.data;
+
+      if (data?.code === "EMAIL_NOT_VERIFIED") {
+        toaster.create({
+          title: "Verify your email",
+          description:
+            "We sent a fresh verification code to your email address.",
+          type: "info",
+        });
+        navigate("/verify-email", {
+          state: {
+            email: data.email || form.usernameOrEmail,
+            autoSend: true,
+          },
+        });
+        return;
+      }
+
       toaster.create({
-        title: error.response?.data?.error || "Login failed. Please check your credentials.",
+        title:
+          data?.error ||
+          data?.message ||
+          "Login failed. Please check your credentials.",
         type: "error",
       });
     } finally {

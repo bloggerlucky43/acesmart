@@ -82,6 +82,24 @@ export default function RegisterPage() {
       const res = await registerUser(form);
 
       if (res.success) {
+        if (res.requiresEmailVerification) {
+          toaster.create({
+            title: "Account created!",
+            description:
+              res.message ||
+              "Enter the 6-digit verification code we sent to your email.",
+            type: "success",
+          });
+
+          navigate("/verify-email", {
+            state: {
+              email: res.data?.email || form.email,
+              justSent: res.verificationSent !== false,
+            },
+          });
+          return;
+        }
+
         toaster.create({
           title: "Account Created Successfully!",
           description: "Welcome to AceSmart CBT.",
@@ -99,7 +117,10 @@ export default function RegisterPage() {
       }
     } catch (error) {
       toaster.create({
-        title: error.response?.data?.error || "Registration failed. Please try again.",
+        title:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Registration failed. Please try again.",
         type: "error",
       });
     } finally {

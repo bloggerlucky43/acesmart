@@ -28,6 +28,7 @@ const MNewStudent = () => {
     firstName: "",
     lastName: "",
     studentemail: "",
+    gender: "",
     classArmId: "",
     parentPhone: "",
   });
@@ -93,7 +94,7 @@ const MNewStudent = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.firstName || !form.lastName || !form.studentemail) {
+    if (!form.firstName || !form.lastName || !form.studentemail || !form.gender) {
       toaster.warning({ title: "All fields are required" });
       return;
     }
@@ -104,6 +105,9 @@ const MNewStudent = () => {
       formData.append("lastName", form.lastName);
       formData.append("studentEmail", form.studentemail);
 
+      if (form.gender) {
+        formData.append("gender", form.gender);
+      }
       if (form.classArmId) {
         formData.append("classArmId", form.classArmId);
       }
@@ -129,6 +133,7 @@ const MNewStudent = () => {
           firstName: "",
           lastName: "",
           studentemail: "",
+          gender: "",
           classArmId: "",
           parentPhone: "",
         });
@@ -320,6 +325,31 @@ const MNewStudent = () => {
                   _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
                   required
                 />
+              </Box>
+
+              <Box>
+                <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
+                  Gender *
+                </Text>
+                <select
+                  value={form.gender}
+                  onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                  required
+                  style={{
+                    width: "100%",
+                    height: "46px",
+                    borderRadius: "12px",
+                    border: "1px solid #CBD5E1",
+                    padding: "0 12px",
+                    fontSize: "14px",
+                    background: "white",
+                    color: "#1E293B",
+                  }}
+                >
+                  <option value="">Select gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
               </Box>
 
               <Box mb={2}>

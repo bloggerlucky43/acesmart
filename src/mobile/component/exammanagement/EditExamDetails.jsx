@@ -2,17 +2,16 @@ import {
   Box,
   Button,
   Field,
-  Switch,
   Stack,
   Input,
   Flex,
   Textarea,
-  Fieldset,
   Text,
   Badge,
   HStack,
   Icon,
   VStack,
+  SimpleGrid,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -20,10 +19,8 @@ import { toaster } from "../../../components/ui/toaster";
 import { createExam } from "../../../api-endpoint/exam/exams";
 import {
   FaSlidersH,
-  FaCalendarAlt,
   FaCheckCircle,
   FaEye,
-  FaClock,
 } from "react-icons/fa";
 
 export default function MobileEditExamDetails() {
@@ -42,7 +39,8 @@ export default function MobileEditExamDetails() {
     totalMarks: 100,
     passMarks: 50,
     negativeMarking: false,
-    questions: [],
+    enableBiometricCheckin: false,
+    sections: [],
     id: examId || null,
   });
   const navigate = useNavigate();
@@ -61,13 +59,22 @@ export default function MobileEditExamDetails() {
           ...prev,
           title: parsedData.examTitle || prev.title,
           duration: parsedData.duration || prev.duration,
-          questions: parsedData.questions || prev.questions,
+          totalMarks: parsedData.totalMarks ?? prev.totalMarks,
+          negativeMarking: parsedData.negativeMarking ?? prev.negativeMarking,
+          enableBiometricCheckin:
+            parsedData.enableBiometricCheckin ?? prev.enableBiometricCheckin,
+          sections: parsedData.sections || prev.sections,
         }));
       }
     };
 
     loadExam();
   }, [examId, navigate]);
+
+  const totalQuestions = examDetails.sections.reduce(
+    (acc, sec) => acc + (sec.questions?.length || 0),
+    0,
+  );
 
   const handleSaveChanges = async (e) => {
     e.preventDefault();
@@ -83,7 +90,7 @@ export default function MobileEditExamDetails() {
     } else if (!examDetails.description) {
       toaster.error({ title: "Exam description is required" });
       return;
-    } else if (examDetails.questions.length === 0) {
+    } else if (totalQuestions === 0) {
       toaster.error({ title: "Exam question list is empty" });
       return;
     }
@@ -107,7 +114,7 @@ export default function MobileEditExamDetails() {
   };
 
   return (
-    <Box p={4} minH="calc(100vh - 58px)" bg="#F8FAFC">
+    <Box p={4} minH="calc(100vh - 58px)" bg="#F8FAFC" overflowX="hidden">
       {/* Header Banner */}
       <Box
         bg="linear-gradient(135deg, #0F172A 0%, #1E1B4B 100%)"
@@ -126,6 +133,7 @@ export default function MobileEditExamDetails() {
             align="center"
             justify="center"
             border="1px solid rgba(129, 140, 248, 0.4)"
+            flexShrink={0}
           >
             <Icon as={FaSlidersH} color="#818CF8" boxSize={4} />
           </Flex>
@@ -139,7 +147,7 @@ export default function MobileEditExamDetails() {
           </Box>
         </HStack>
 
-        <HStack spacing={2} mt={2}>
+        <HStack spacing={2} mt={2} wrap="wrap">
           <Badge
             bg="rgba(99, 102, 241, 0.2)"
             color="#A5B4FC"
@@ -147,8 +155,28 @@ export default function MobileEditExamDetails() {
             px={2.5}
             fontSize="10px"
           >
-            {examDetails.questions.length} Questions Attached
+            {totalQuestions} Questions Attached
           </Badge>
+          <Badge
+            bg="rgba(99, 102, 241, 0.2)"
+            color="#A5B4FC"
+            borderRadius="full"
+            px={2.5}
+            fontSize="10px"
+          >
+            {examDetails.sections.length} Sections
+          </Badge>
+          {examDetails.negativeMarking && (
+            <Badge
+              bg="rgba(217, 119, 6, 0.2)"
+              color="#FBBF24"
+              borderRadius="full"
+              px={2.5}
+              fontSize="10px"
+            >
+              Negative Marking On
+            </Badge>
+          )}
         </HStack>
       </Box>
 
@@ -200,15 +228,16 @@ export default function MobileEditExamDetails() {
             />
           </Field.Root>
 
-          {/* Timing Section */}
-          <Flex gap={2}>
-            <Field.Root required flex={1}>
+          {/* Timing Section — stacked to avoid datetime-local overflow on narrow screens */}
+          <Stack spacing={3}>
+            <Field.Root required>
               <Field.Label fontSize="xs" fontWeight="semibold" color="#334155">
-                Start Date/Time
+                Start Date/Time <Field.RequiredIndicator />
               </Field.Label>
               <Input
                 type="datetime-local"
                 size="sm"
+                w="100%"
                 borderRadius="lg"
                 borderColor="#CBD5E1"
                 _focus={{ borderColor: "#6366F1" }}
@@ -222,13 +251,14 @@ export default function MobileEditExamDetails() {
               />
             </Field.Root>
 
-            <Field.Root required flex={1}>
+            <Field.Root required>
               <Field.Label fontSize="xs" fontWeight="semibold" color="#334155">
-                End Date/Time
+                End Date/Time <Field.RequiredIndicator />
               </Field.Label>
               <Input
                 type="datetime-local"
                 size="sm"
+                w="100%"
                 borderRadius="lg"
                 borderColor="#CBD5E1"
                 _focus={{ borderColor: "#6366F1" }}
@@ -241,11 +271,11 @@ export default function MobileEditExamDetails() {
                 }
               />
             </Field.Root>
-          </Flex>
+          </Stack>
 
           {/* Scores & Duration */}
-          <Flex gap={2}>
-            <Field.Root required flex={1}>
+          <SimpleGrid columns={2} gap={3}>
+            <Field.Root required>
               <Field.Label fontSize="xs" fontWeight="semibold" color="#334155">
                 Total Marks
               </Field.Label>
@@ -265,7 +295,7 @@ export default function MobileEditExamDetails() {
               />
             </Field.Root>
 
-            <Field.Root required flex={1}>
+            <Field.Root required>
               <Field.Label fontSize="xs" fontWeight="semibold" color="#334155">
                 Pass Marks
               </Field.Label>
@@ -284,59 +314,27 @@ export default function MobileEditExamDetails() {
                 }
               />
             </Field.Root>
+          </SimpleGrid>
 
-            <Field.Root required flex={1}>
-              <Field.Label fontSize="xs" fontWeight="semibold" color="#334155">
-                Duration (min)
-              </Field.Label>
-              <Input
-                type="number"
-                size="sm"
-                borderRadius="lg"
-                borderColor="#CBD5E1"
-                _focus={{ borderColor: "#6366F1" }}
-                value={examDetails.duration}
-                onChange={(e) =>
-                  setExamDetails({
-                    ...examDetails,
-                    duration: Number(e.target.value),
-                  })
-                }
-              />
-            </Field.Root>
-          </Flex>
-
-          {/* Negative Marking Switch */}
-          <Flex
-            p={3}
-            borderRadius="lg"
-            bg="#F8FAFC"
-            border="1px solid #E2E8F0"
-            justify="space-between"
-            align="center"
-          >
-            <Box>
-              <Text fontSize="xs" fontWeight="semibold" color="#0F172A">
-                Negative Marking
-              </Text>
-              <Text fontSize="10px" color="#64748B">
-                Deduct marks for incorrect answers
-              </Text>
-            </Box>
-            <Switch.Root
-              checked={examDetails.negativeMarking}
-              onCheckedChange={(e) =>
+          <Field.Root required>
+            <Field.Label fontSize="xs" fontWeight="semibold" color="#334155">
+              Duration (min)
+            </Field.Label>
+            <Input
+              type="number"
+              size="sm"
+              borderRadius="lg"
+              borderColor="#CBD5E1"
+              _focus={{ borderColor: "#6366F1" }}
+              value={examDetails.duration}
+              onChange={(e) =>
                 setExamDetails({
                   ...examDetails,
-                  negativeMarking: e.checked,
+                  duration: Number(e.target.value),
                 })
               }
-              colorPalette="purple"
-            >
-              <Switch.HiddenInput />
-              <Switch.Control />
-            </Switch.Root>
-          </Flex>
+            />
+          </Field.Root>
         </VStack>
       </Box>
 

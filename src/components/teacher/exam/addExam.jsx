@@ -24,8 +24,6 @@ import {
   FaCheckCircle,
   FaTrash,
   FaEdit,
-  FaClock,
-  FaAward,
   FaArrowRight,
   FaBookOpen,
   FaRedo,
@@ -172,8 +170,6 @@ export default function AddExam() {
 
       if (res.success && res.data && Array.isArray(res.data)) {
         setQuestions(res.data);
-        // NOTE: We do NOT clear selectedQuestionsIds so the teacher can combine
-        // questions from My Bank and Platform Bank, or across multiple queries!
         setFilterQuery("");
         setViewMode("all");
         localStorage.setItem("QUES_TION", JSON.stringify(res.data));
@@ -182,8 +178,8 @@ export default function AddExam() {
           sourceFilter === "teacher"
             ? "My Bank"
             : sourceFilter === "api"
-            ? "Platform Bank"
-            : "All Question Banks";
+              ? "Platform Bank"
+              : "All Question Banks";
         toaster.success({
           title: `Found ${res.data.length} questions from ${sourceLabel} for ${effectiveSubject}!`,
         });
@@ -197,7 +193,8 @@ export default function AddExam() {
     } catch (error) {
       setQuestions([]);
       toaster.create({
-        title: "Something went wrong while fetching questions. Try again later.",
+        title:
+          "Something went wrong while fetching questions. Try again later.",
         type: "error",
       });
     } finally {
@@ -306,7 +303,7 @@ export default function AddExam() {
     const sec = sections[index];
     if (
       SUBJECTS_LIST.filter((s) => s !== "Other / Custom Subject").includes(
-        sec.section
+        sec.section,
       )
     ) {
       setSubject(sec.section);
@@ -380,7 +377,7 @@ export default function AddExam() {
 
   const totalExamQuestions = sections.reduce(
     (acc, sec) => acc + (sec.questions?.length || 0),
-    0
+    0,
   );
 
   const currentQuestionsPool =
@@ -392,13 +389,17 @@ export default function AddExam() {
           (q.questionText || q.question || "")
             .toLowerCase()
             .includes(filterQuery.toLowerCase()) ||
-          (q.topic || "").toLowerCase().includes(filterQuery.toLowerCase())
+          (q.topic || "").toLowerCase().includes(filterQuery.toLowerCase()),
       )
     : currentQuestionsPool;
 
   const hasTitle = Boolean(examForm.examTitle.trim());
-  const hasDuration = Boolean(examForm.duration && Number(examForm.duration) > 0);
-  const hasMarks = Boolean(examForm.totalMarks && Number(examForm.totalMarks) > 0);
+  const hasDuration = Boolean(
+    examForm.duration && Number(examForm.duration) > 0,
+  );
+  const hasMarks = Boolean(
+    examForm.totalMarks && Number(examForm.totalMarks) > 0,
+  );
   const hasSections = sections.length > 0;
   const isReadyToProceed = hasTitle && hasDuration && hasMarks && hasSections;
 
@@ -434,7 +435,13 @@ export default function AddExam() {
             >
               CBT CREATOR STUDIO
             </Badge>
-            <HStack spacing={1.5} bg="rgba(16, 185, 129, 0.12)" px={2} py={0.5} borderRadius="full">
+            <HStack
+              spacing={1.5}
+              bg="rgba(16, 185, 129, 0.12)"
+              px={2}
+              py={0.5}
+              borderRadius="full"
+            >
               <Box w="6px" h="6px" borderRadius="full" bg="#10B981" />
               <Text fontSize="11px" color="#059669" fontWeight="semibold">
                 Draft Auto-Saved
@@ -451,7 +458,8 @@ export default function AddExam() {
             Create Multi-Section Examination
           </Text>
           <Text fontSize="13px" color="#64748B">
-            Assemble modular assessment sections, query the accredited question repository, and configure live testing limits.
+            Assemble modular assessment sections, query the accredited question
+            repository, and configure live testing limits.
           </Text>
         </Box>
 
@@ -502,10 +510,8 @@ export default function AddExam() {
 
       {/* 2-COLUMN CBT STUDIO LAYOUT */}
       <SimpleGrid columns={{ base: 1, xl: 12 }} gap={6} alignItems="flex-start">
-        
         {/* ================= LEFT COLUMN: WORK AREA & BUILDER (7 of 12 cols) ================= */}
         <Box gridColumn={{ base: "1", xl: "span 7" }}>
-          
           {/* Card 1: Exam General Parameters */}
           <Box
             bg="white"
@@ -531,7 +537,8 @@ export default function AddExam() {
                   Step 1: Exam Identification & Timings
                 </Text>
                 <Text fontSize="11px" color="#64748B">
-                  Core assessment credentials visible to all enrolled candidates.
+                  Core assessment credentials visible to all enrolled
+                  candidates.
                 </Text>
               </Box>
             </Flex>
@@ -546,7 +553,10 @@ export default function AddExam() {
                   borderRadius="xl"
                   h="44px"
                   borderColor="#CBD5E1"
-                  _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                  _focus={{
+                    borderColor: "#6366F1",
+                    boxShadow: "0 0 0 1px #6366F1",
+                  }}
                   value={examForm.examTitle}
                   onChange={(e) =>
                     setExamForm({ ...examForm, examTitle: e.target.value })
@@ -566,7 +576,10 @@ export default function AddExam() {
                       borderRadius="xl"
                       h="44px"
                       borderColor="#CBD5E1"
-                      _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                      _focus={{
+                        borderColor: "#6366F1",
+                        boxShadow: "0 0 0 1px #6366F1",
+                      }}
                       value={examForm.duration}
                       onChange={(e) =>
                         setExamForm({
@@ -588,7 +601,10 @@ export default function AddExam() {
                     borderRadius="xl"
                     h="44px"
                     borderColor="#CBD5E1"
-                    _focus={{ borderColor: "#6366F1", boxShadow: "0 0 0 1px #6366F1" }}
+                    _focus={{
+                      borderColor: "#6366F1",
+                      boxShadow: "0 0 0 1px #6366F1",
+                    }}
                     value={examForm.totalMarks}
                     onChange={(e) =>
                       setExamForm({ ...examForm, totalMarks: e.target.value })
@@ -604,8 +620,14 @@ export default function AddExam() {
                       p={3.5}
                       borderRadius="16px"
                       border="1px solid"
-                      borderColor={examForm.negativeMarking ? "#818CF8" : "#E2E8F0"}
-                      bg={examForm.negativeMarking ? "rgba(99, 102, 241, 0.04)" : "#F8FAFC"}
+                      borderColor={
+                        examForm.negativeMarking ? "#818CF8" : "#E2E8F0"
+                      }
+                      bg={
+                        examForm.negativeMarking
+                          ? "rgba(99, 102, 241, 0.04)"
+                          : "#F8FAFC"
+                      }
                       cursor="pointer"
                       onClick={() =>
                         setExamForm((prev) => ({
@@ -618,13 +640,22 @@ export default function AddExam() {
                       <Flex justify="space-between" align="center">
                         <Box pr={2}>
                           <HStack spacing={1.5} mb={0.5}>
-                            <Icon as={FaExclamationTriangle} color="#D97706" boxSize={3} />
-                            <Text fontSize="12px" fontWeight="700" color="#0F172A">
+                            <Icon
+                              as={FaExclamationTriangle}
+                              color="#D97706"
+                              boxSize={3}
+                            />
+                            <Text
+                              fontSize="12px"
+                              fontWeight="700"
+                              color="#0F172A"
+                            >
                               Negative Marking Policy
                             </Text>
                           </HStack>
                           <Text fontSize="10px" color="#64748B">
-                            Deducts -25% penalty for wrong choices (0 for skipped)
+                            Deducts -25% penalty for wrong choices (0 for
+                            skipped)
                           </Text>
                         </Box>
                         <Checkbox.Root
@@ -643,8 +674,14 @@ export default function AddExam() {
                       p={3.5}
                       borderRadius="16px"
                       border="1px solid"
-                      borderColor={examForm.enableBiometricCheckin ? "#818CF8" : "#E2E8F0"}
-                      bg={examForm.enableBiometricCheckin ? "rgba(99, 102, 241, 0.04)" : "#F8FAFC"}
+                      borderColor={
+                        examForm.enableBiometricCheckin ? "#818CF8" : "#E2E8F0"
+                      }
+                      bg={
+                        examForm.enableBiometricCheckin
+                          ? "rgba(99, 102, 241, 0.04)"
+                          : "#F8FAFC"
+                      }
                       cursor="pointer"
                       onClick={() =>
                         setExamForm((prev) => ({
@@ -657,13 +694,22 @@ export default function AddExam() {
                       <Flex justify="space-between" align="center">
                         <Box pr={2}>
                           <HStack spacing={1.5} mb={0.5}>
-                            <Icon as={FaShieldAlt} color="#6366F1" boxSize={3} />
-                            <Text fontSize="12px" fontWeight="700" color="#0F172A">
+                            <Icon
+                              as={FaShieldAlt}
+                              color="#6366F1"
+                              boxSize={3}
+                            />
+                            <Text
+                              fontSize="12px"
+                              fontWeight="700"
+                              color="#0F172A"
+                            >
                               AI Biometric Check-in
                             </Text>
                           </HStack>
                           <Text fontSize="10px" color="#64748B">
-                            Mandates camera face recognition verification before exam entry
+                            Mandates camera face recognition verification before
+                            exam entry
                           </Text>
                         </Box>
                         <Checkbox.Root
@@ -707,7 +753,8 @@ export default function AddExam() {
                     Step 2: Subject Section Builder
                   </Text>
                   <Text fontSize="11px" color="#64748B">
-                    Query repository questions, select items, and append to this examination.
+                    Query repository questions, select items, and append to this
+                    examination.
                   </Text>
                 </Box>
               </Flex>
@@ -742,9 +789,21 @@ export default function AddExam() {
                 </Text>
                 <HStack spacing={2} wrap="wrap">
                   {[
-                    { key: "all", label: "All Question Banks", icon: FaLayerGroup },
-                    { key: "teacher", label: "My Bank (Teacher Uploaded)", icon: FaUserGraduate },
-                    { key: "api", label: "Platform General Bank", icon: FaGlobe },
+                    {
+                      key: "all",
+                      label: "All Question Banks",
+                      icon: FaLayerGroup,
+                    },
+                    {
+                      key: "teacher",
+                      label: "My Bank (Teacher Uploaded)",
+                      icon: FaUserGraduate,
+                    },
+                    {
+                      key: "api",
+                      label: "Platform General Bank",
+                      icon: FaGlobe,
+                    },
                   ].map((src) => {
                     const isActive = sourceFilter === src.key;
                     return (
@@ -771,10 +830,18 @@ export default function AddExam() {
                 </HStack>
               </Box>
 
-              <SimpleGrid columns={{ base: 1, md: 12 }} gap={3} alignItems="flex-end">
+              <SimpleGrid
+                columns={{ base: 1, md: 12 }}
+                gap={3}
+                alignItems="flex-end"
+              >
                 <Box gridColumn={{ base: "1", md: "span 5" }}>
                   <Field.Root required>
-                    <Field.Label fontWeight="700" fontSize="11px" color="#475569">
+                    <Field.Label
+                      fontWeight="700"
+                      fontSize="11px"
+                      color="#475569"
+                    >
                       Subject / Course <Field.RequiredIndicator />
                     </Field.Label>
                     <NativeSelect.Root size="md" w="100%">
@@ -816,7 +883,11 @@ export default function AddExam() {
 
                 <Box gridColumn={{ base: "1", md: "span 3" }}>
                   <Field.Root>
-                    <Field.Label fontWeight="700" fontSize="11px" color="#475569">
+                    <Field.Label
+                      fontWeight="700"
+                      fontSize="11px"
+                      color="#475569"
+                    >
                       Year (Optional)
                     </Field.Label>
                     <Input
@@ -944,7 +1015,9 @@ export default function AddExam() {
                     fontSize="11px"
                     borderRadius="lg"
                     onClick={() => setViewMode("selected")}
-                    _hover={{ bg: viewMode === "selected" ? "#4338CA" : "#E2E8F0" }}
+                    _hover={{
+                      bg: viewMode === "selected" ? "#4338CA" : "#E2E8F0",
+                    }}
                   >
                     Section Selection ({selectedQuestionsIds.length})
                   </Button>
@@ -1028,7 +1101,9 @@ export default function AddExam() {
                         borderRadius="md"
                         onClick={deselectAllQuestions}
                       >
-                        {viewMode === "selected" ? "Clear Section" : "Deselect Page"}
+                        {viewMode === "selected"
+                          ? "Clear Section"
+                          : "Deselect Page"}
                       </Button>
                     )}
                     {viewMode === "all" && questions.length > 0 && (
@@ -1048,7 +1123,13 @@ export default function AddExam() {
                 </Flex>
 
                 {/* Questions Scrollable Deck */}
-                <VStack spacing={2.5} align="stretch" maxH="380px" overflowY="auto" pr={1}>
+                <VStack
+                  spacing={2.5}
+                  align="stretch"
+                  maxH="380px"
+                  overflowY="auto"
+                  pr={1}
+                >
                   {displayedQuestions.map((q, idx) => {
                     const isSelected = selectedIdSet.has(q.id);
                     const isTeacher = isTeacherQuestion(q);
@@ -1063,7 +1144,10 @@ export default function AddExam() {
                         cursor="pointer"
                         onClick={() => toggleSelectQuestion(q)}
                         transition="all 0.1s ease"
-                        _hover={{ borderColor: "#818CF8", bg: "rgba(99, 102, 241, 0.02)" }}
+                        _hover={{
+                          borderColor: "#818CF8",
+                          bg: "rgba(99, 102, 241, 0.02)",
+                        }}
                       >
                         <Flex gap={3} align="flex-start">
                           <Checkbox.Root
@@ -1142,25 +1226,35 @@ export default function AddExam() {
                               )}
                             </HStack>
 
-                            <Text fontSize="12px" fontWeight="600" color="#0F172A" mb={1.5}>
+                            <Text
+                              fontSize="12px"
+                              fontWeight="600"
+                              color="#0F172A"
+                              mb={1.5}
+                            >
                               {q.questionText || q.question}
                             </Text>
 
                             {q.options && (
                               <SimpleGrid columns={{ base: 1, sm: 2 }} gap={1}>
-                                {Object.entries(q.options).map(([key, value]) => (
-                                  <Text
-                                    key={key}
-                                    fontSize="10px"
-                                    color="#64748B"
-                                    bg="#F8FAFC"
-                                    p={1}
-                                    borderRadius="md"
-                                    border="1px solid #F1F5F9"
-                                  >
-                                    <strong style={{ color: "#334155" }}>{key.toUpperCase()}:</strong> {value}
-                                  </Text>
-                                ))}
+                                {Object.entries(q.options).map(
+                                  ([key, value]) => (
+                                    <Text
+                                      key={key}
+                                      fontSize="10px"
+                                      color="#64748B"
+                                      bg="#F8FAFC"
+                                      p={1}
+                                      borderRadius="md"
+                                      border="1px solid #F1F5F9"
+                                    >
+                                      <strong style={{ color: "#334155" }}>
+                                        {key.toUpperCase()}:
+                                      </strong>{" "}
+                                      {value}
+                                    </Text>
+                                  ),
+                                )}
                               </SimpleGrid>
                             )}
                           </Box>
@@ -1204,7 +1298,9 @@ export default function AddExam() {
                 fontSize="12px"
                 _hover={{ bg: "#047857" }}
                 onClick={saveSection}
-                isDisabled={!effectiveSubject || selectedQuestionsIds.length === 0}
+                isDisabled={
+                  !effectiveSubject || selectedQuestionsIds.length === 0
+                }
                 leftIcon={<Icon as={FaCheckCircle} />}
                 boxShadow="0 4px 12px rgba(5, 150, 105, 0.2)"
               >
@@ -1245,7 +1341,8 @@ export default function AddExam() {
                 fontSize="11px"
                 fontWeight="bold"
               >
-                {sections.length} {sections.length === 1 ? "Section" : "Sections"}
+                {sections.length}{" "}
+                {sections.length === 1 ? "Section" : "Sections"}
               </Badge>
             </Flex>
 
@@ -1258,7 +1355,9 @@ export default function AddExam() {
                 border="1px solid #E2E8F0"
                 textAlign="center"
               >
-                <Text fontSize="10px" color="#64748B" fontWeight="medium">Questions</Text>
+                <Text fontSize="10px" color="#64748B" fontWeight="medium">
+                  Questions
+                </Text>
                 <Text fontSize="16px" fontWeight="800" color="#4F46E5">
                   {totalExamQuestions}
                 </Text>
@@ -1270,7 +1369,9 @@ export default function AddExam() {
                 border="1px solid #E2E8F0"
                 textAlign="center"
               >
-                <Text fontSize="10px" color="#64748B" fontWeight="medium">Duration</Text>
+                <Text fontSize="10px" color="#64748B" fontWeight="medium">
+                  Duration
+                </Text>
                 <Text fontSize="16px" fontWeight="800" color="#0F172A">
                   {examForm.duration ? `${examForm.duration}m` : "—"}
                 </Text>
@@ -1282,7 +1383,9 @@ export default function AddExam() {
                 border="1px solid #E2E8F0"
                 textAlign="center"
               >
-                <Text fontSize="10px" color="#64748B" fontWeight="medium">Total Score</Text>
+                <Text fontSize="10px" color="#64748B" fontWeight="medium">
+                  Total Score
+                </Text>
                 <Text fontSize="16px" fontWeight="800" color="#059669">
                   {examForm.totalMarks || "—"}
                 </Text>
@@ -1304,15 +1407,27 @@ export default function AddExam() {
                 mb={5}
               >
                 <Icon as={FaRegLightbulb} color="#94A3B8" boxSize={5} mb={2} />
-                <Text fontSize="12px" fontWeight="bold" color="#334155" mb={0.5}>
+                <Text
+                  fontSize="12px"
+                  fontWeight="bold"
+                  color="#334155"
+                  mb={0.5}
+                >
                   No Sections Attached Yet
                 </Text>
                 <Text fontSize="11px" color="#64748B">
-                  Use the left section builder to fetch questions and click "Add Section".
+                  Use the left section builder to fetch questions and click "Add
+                  Section".
                 </Text>
               </Box>
             ) : (
-              <VStack spacing={2.5} align="stretch" mb={5} maxH="380px" overflowY="auto">
+              <VStack
+                spacing={2.5}
+                align="stretch"
+                mb={5}
+                maxH="380px"
+                overflowY="auto"
+              >
                 {sections.map((sec, idx) => {
                   const isExpanded = expandedSectionIdx === idx;
                   return (
@@ -1357,20 +1472,38 @@ export default function AddExam() {
                               {sec.section}
                             </Text>
                             <Text fontSize="10px" color="#64748B">
-                              {sec.questions.length} Qs {sec.year && `• ${sec.year}`}
+                              {sec.questions.length} Qs{" "}
+                              {sec.year && `• ${sec.year}`}
                               {" • "}
-                              <span style={{ color: "#7C3AED", fontWeight: "700" }}>
-                                {sec.questions.filter((q) => isTeacherQuestion(q)).length} My Bank
+                              <span
+                                style={{ color: "#7C3AED", fontWeight: "700" }}
+                              >
+                                {
+                                  sec.questions.filter((q) =>
+                                    isTeacherQuestion(q),
+                                  ).length
+                                }{" "}
+                                My Bank
                               </span>
                               {", "}
-                              <span style={{ color: "#2563EB", fontWeight: "700" }}>
-                                {sec.questions.filter((q) => !isTeacherQuestion(q)).length} Platform
+                              <span
+                                style={{ color: "#2563EB", fontWeight: "700" }}
+                              >
+                                {
+                                  sec.questions.filter(
+                                    (q) => !isTeacherQuestion(q),
+                                  ).length
+                                }{" "}
+                                Platform
                               </span>
                             </Text>
                           </Box>
                         </HStack>
 
-                        <HStack spacing={1} onClick={(e) => e.stopPropagation()}>
+                        <HStack
+                          spacing={1}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Button
                             size="2xs"
                             variant="ghost"
@@ -1414,7 +1547,12 @@ export default function AddExam() {
                       {/* Expandable Preview */}
                       {isExpanded && (
                         <Box p={3} borderTop="1px solid #F1F5F9" bg="white">
-                          <VStack spacing={1.5} align="stretch" maxH="180px" overflowY="auto">
+                          <VStack
+                            spacing={1.5}
+                            align="stretch"
+                            maxH="180px"
+                            overflowY="auto"
+                          >
                             {sec.questions.map((q, qIdx) => {
                               const isTeacher = isTeacherQuestion(q);
                               return (

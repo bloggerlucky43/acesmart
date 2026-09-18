@@ -18,30 +18,37 @@ export const registerUser = async (form) => {
   } catch (error) {
     toaster.create({
       title:
+        error.response?.data?.error ||
         error.response?.data?.message ||
         "An error occurred during registration",
       type: "error",
     });
-    throw new Error(error.response?.data?.error);
+    throw error;
   }
 };
 
 export const loginUser = async (form) => {
-  try {
-    const response = await api.post("/auth/login", form);
-    const data = response.data;
-    console.log("At login function", data);
+  const response = await api.post("/auth/login", form);
+  const data = response.data;
+  console.log("At login function", data);
 
-    if (!data.success) {
-      toaster.create({
-        title: data.message || "Login failed",
-        type: "error",
-      });
-    }
-    return data;
-  } catch (error) {
-    console.error(error);
+  if (!data.success) {
+    toaster.create({
+      title: data.message || "Login failed",
+      type: "error",
+    });
   }
+  return data;
+};
+
+export const verifyEmail = async ({ email, otp }) => {
+  const response = await api.post("/auth/verify-email", { email, otp });
+  return response.data;
+};
+
+export const resendVerification = async ({ email }) => {
+  const response = await api.post("/auth/resend-verification", { email });
+  return response.data;
 };
 
 export const requestPasswordReset = async ({ email }) => {

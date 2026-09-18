@@ -5,24 +5,32 @@ import {
   Icon,
   Button,
   Box,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import { FaBell, FaPlus, FaCalendarAlt, FaBars } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
 import MobileSideBar from "../../mobile/component/MobileSidebar";
+import MobileNavBar from "../../mobile/component/MobileNavbar";
 
 const Navbar = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isMobile = useBreakpointValue({ base: true, lg: false });
 
   const teacherName = user?.name || user?.username || "Educator";
+  const firstName = teacherName.trim().split(/\s+/)[0];
   const today = new Date().toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
+
+  if (isMobile) {
+    return <MobileNavBar />;
+  }
 
   return (
     <>
@@ -81,8 +89,9 @@ const Navbar = () => {
             fontWeight="800"
             color="#0F172A"
             fontFamily="'Outfit', sans-serif"
+            isTruncated
           >
-            Welcome back, {teacherName}
+            Welcome back, {firstName}
           </Text>
           <Box
             w="8px"
@@ -158,24 +167,16 @@ const Navbar = () => {
         {/* User Avatar Badge */}
         <Flex
           align="center"
-          gap={2.5}
+          justify="center"
           p={1}
-          pr={3}
           borderRadius="full"
           bg="#F8FAFC"
           border="1px solid #E2E8F0"
+          title={teacherName}
         >
           <Avatar.Root size="xs" bg="#6A1B9A" color="white">
             <Avatar.Fallback name={teacherName} />
           </Avatar.Root>
-          <Text
-            fontSize="13px"
-            fontWeight="700"
-            color="#1E293B"
-            display={{ base: "none", md: "block" }}
-          >
-            {teacherName}
-          </Text>
         </Flex>
       </Flex>
     </Flex>
