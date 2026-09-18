@@ -44,6 +44,25 @@ export const loginUser = async (form) => {
   }
 };
 
+export const requestPasswordReset = async ({ email }) => {
+  const response = await api.post("/auth/forgot-password", { email });
+  return response.data;
+};
+
+export const verifyResetOtp = async ({ email, otp }) => {
+  const response = await api.post("/auth/verify-reset-otp", { email, otp });
+  return response.data;
+};
+
+export const resetPassword = async ({ resetToken, password, confirmPassword }) => {
+  const response = await api.post("/auth/reset-password", {
+    resetToken,
+    password,
+    confirmPassword,
+  });
+  return response.data;
+};
+
 export const getSingleUser = async () => {
   try {
     const response = await api.get("/auth/me", { withCredentials: true });
@@ -63,11 +82,7 @@ export const getSingleUser = async () => {
 
 export const logoutUser = async () => {
   try {
-    const response = await api.post(
-      "/auth/logout",
-      {},
-      { withCredentials: true }
-    );
+    await api.post("/auth/logout", {}, { withCredentials: true });
     toaster.success({ title: "Logged out successfully" });
   } catch (error) {
     console.error(error);

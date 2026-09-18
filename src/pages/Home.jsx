@@ -31,6 +31,7 @@ import { ExamProvider } from "./TakeExam/component/ExamContext";
 import PageLoader from "../components/ui/pageloader";
 import LoginPage from "./auth/LoginPage";
 import RegisterPage from "./auth/RegisterPage";
+import ForgotPasswordPage from "./auth/ForgotPasswordPage";
 
 // School Management System (SMS) Components
 import TeacherScanClockIn from "./teacher/sms/TeacherScanClockIn";
@@ -118,6 +119,7 @@ const Home = () => {
               element={tenantSchool ? <Navigate to="/student" replace /> : <Landing />}
             />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/pricing" element={<PricingPage />} />
 

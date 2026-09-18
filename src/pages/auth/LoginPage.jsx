@@ -302,6 +302,16 @@ export default function LoginPage() {
                   <Field.Label fontSize="13px" fontWeight="700" color="gray.700">
                     Password
                   </Field.Label>
+                  <Link
+                    to="/forgot-password"
+                    style={{
+                      color: "#6A1B9A",
+                      fontWeight: "600",
+                      fontSize: "13px",
+                    }}
+                  >
+                    Forgot password?
+                  </Link>
                 </Flex>
                 <PasswordInput
                   value={form.password}
