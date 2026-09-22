@@ -32,6 +32,7 @@ export default function FaceVerificationModal({
   const [cameraReady, setCameraReady] = useState(false);
   const [modelReady, setModelReady] = useState(false);
   const [storedDescriptor, setStoredDescriptor] = useState(null);
+  const [cameraError, setCameraError] = useState(null);
 
   const detectorOptions = new faceapi.TinyFaceDetectorOptions({
     inputSize: 160,
@@ -63,6 +64,50 @@ export default function FaceVerificationModal({
     verifyingRef.current = false;
   };
 
+  const startCamera = async () => {
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: { ideal: 320 },
+          height: { ideal: 240 },
+        },
+      });
+      console.log("Camera stream obtained:", stream);
+
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = async () => {
+          await videoRef.current.play();
+          console.log("Video metadata loaded, camera is ready");
+          setCameraReady(true);
+        };
+      }
+    } catch (err) {
+      console.error("Camera error:", err);
+      const isPermission =
+        err.name === "NotAllowedError" ||
+        err.name === "PermissionDeniedError" ||
+        String(err.message).toLowerCase().includes("permission");
+
+      setCameraError(
+        isPermission
+          ? "Camera permission was denied. Please allow camera access in your browser by clicking the lock or camera icon in the address bar, then click 'Retry Camera'."
+          : (err.message || "Unable to access web camera. Please check camera connections.")
+      );
+
+      toaster.error({
+        title: isPermission ? "Camera Permission Denied" : "Unable to access camera",
+        description: isPermission
+          ? "Please allow camera access in your browser address bar."
+          : err.message,
+      });
+      stopCamera();
+    }
+  };
+
   // ================= START CAMERA =================
   useEffect(() => {
     if (!isOpen) return;
@@ -75,33 +120,6 @@ export default function FaceVerificationModal({
       onSuccess(); // only skip if device not capable
       return;
     }
-
-    const startCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "user",
-            width: { ideal: 320 },
-            height: { ideal: 240 },
-          },
-        });
-        console.log("Camera stream obtained:", stream);
-
-        streamRef.current = stream;
-        videoRef.current.srcObject = stream;
-
-        videoRef.current.onloadedmetadata = async () => {
-          await videoRef.current.play();
-          console.log("Video metadata loaded,camera is ready");
-          setCameraReady(true);
-        };
-      } catch (err) {
-        console.error("Camera error:", err);
-        toaster.error({ title: "Unable to access camera" });
-        stopCamera();
-        onClose();
-      }
-    };
 
     startCamera();
 
@@ -287,11 +305,35 @@ export default function FaceVerificationModal({
           Face Verification
         </Text>
 
-        {!cameraReady && (
+        {cameraError ? (
+          <Box
+            bg="rgba(239, 68, 68, 0.08)"
+            border="1px solid rgba(239, 68, 68, 0.3)"
+            borderRadius="12px"
+            p={4}
+            my={3}
+          >
+            <Text fontSize="13px" fontWeight="bold" color="#DC2626" mb={1}>
+              Camera Access Blocked
+            </Text>
+            <Text fontSize="12px" color="#4B5563" mb={3} lineHeight="1.5">
+              {cameraError}
+            </Text>
+            <Button
+              size="sm"
+              bg="#2563EB"
+              color="white"
+              _hover={{ bg: "#1D4ED8" }}
+              onClick={startCamera}
+            >
+              Retry Camera
+            </Button>
+          </Box>
+        ) : !cameraReady ? (
           <Flex align="center" justify="center" h="220px">
             <Spinner />
           </Flex>
-        )}
+        ) : null}
 
         <video
           ref={videoRef}
@@ -306,7 +348,7 @@ export default function FaceVerificationModal({
         />
 
         {cameraReady && (
-          <Text mt={3} textAlign="center">
+          <Text mt={3} textAlign="center" fontSize="13px" color="#475569">
             Hold still while we verify your face
           </Text>
         )}

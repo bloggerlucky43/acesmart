@@ -67,6 +67,8 @@ function StartExam() {
             if (!res.exam.enableBiometricCheckin) {
               setBiometricVerified(true);
             }
+          } else if (res && !res.success && res.message) {
+            toaster.error({ title: res.message });
           }
         }).catch((err) => {
           console.warn("Failed pre-fetching exam details:", err);
@@ -106,15 +108,15 @@ function StartExam() {
         studentId: userDetails?.studentId,
         examId: id,
       });
-      if (res.success && res.exam) {
+      if (res?.success && res?.exam) {
         loadExamData(res.exam, userDetails.studentId);
         toaster.success({ title: "Assessment loaded. Good luck!" });
         navigate(`/take_exam?examId=${id}`);
       } else {
-        toaster.error({ title: res.message || "Unable to load active exam" });
+        toaster.error({ title: res?.message || "Unable to load active exam" });
       }
     } catch (error) {
-      toaster.error({ title: "Network error loading exam questions. Please retry." });
+      toaster.error({ title: error?.message || "Failed to initialize exam. Please retry." });
     } finally {
       setIsLoading(false);
     }

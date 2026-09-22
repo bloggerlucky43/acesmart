@@ -80,9 +80,20 @@ export default function ExamTopBar() {
         py={2.5}
         boxShadow="0 4px 20px rgba(0, 0, 0, 0.3)"
       >
-        <Flex justify="space-between" align="center">
+        <Flex
+          justify="space-between"
+          align="center"
+          flexWrap={{ base: "wrap", md: "nowrap" }}
+          rowGap={2}
+          columnGap={2}
+        >
           {/* Left: Branding & Candidate Profile */}
-          <HStack spacing={{ base: 2, md: 4 }}>
+          <HStack
+            spacing={{ base: 2, sm: 3, md: 4 }}
+            order={{ base: 1, md: 0 }}
+            minW={0}
+            flexShrink={0}
+          >
             <Flex
               w="36px"
               h="36px"
@@ -91,18 +102,21 @@ export default function ExamTopBar() {
               align="center"
               justify="center"
               display={{ base: "none", sm: "flex" }}
+              flexShrink={0}
             >
               <Icon as={FaBrain} boxSize={4} color="white" />
             </Flex>
 
-            <Box>
+            <Box minW={0}>
               <HStack spacing={2}>
                 <Text
-                  fontSize="13px"
+                  fontSize={{ base: "12px", md: "13px" }}
                   fontWeight="800"
                   color="white"
                   fontFamily="'Outfit', sans-serif"
                   lineHeight="1.2"
+                  isTruncated
+                  maxW={{ base: "140px", sm: "220px", md: "none" }}
                 >
                   {examData?.title || "Live CBT Examination"}
                 </Text>
@@ -113,22 +127,30 @@ export default function ExamTopBar() {
                   fontSize="9px"
                   borderRadius="full"
                   px={2}
+                  display={{ base: "none", sm: "inline-flex" }}
                 >
                   PROCTORED
                 </Badge>
               </HStack>
 
               <HStack spacing={2} mt={0.5}>
-                <Text fontSize="11px" color="#94A3B8" fontWeight="medium">
+                <Text
+                  fontSize="11px"
+                  color="#94A3B8"
+                  fontWeight="medium"
+                  isTruncated
+                  maxW={{ base: "110px", sm: "180px", md: "none" }}
+                >
                   {candidateName}
                 </Text>
-                <Text fontSize="10px" color="#64748B">•</Text>
+                <Text fontSize="10px" color="#64748B" display={{ base: "none", sm: "inline" }}>•</Text>
                 <Badge
                   bg="#1E293B"
                   color="#CBD5E1"
                   fontSize="9px"
                   borderRadius="md"
                   px={1.5}
+                  display={{ base: "none", sm: "inline-flex" }}
                 >
                   {studentId}
                 </Badge>
@@ -139,7 +161,8 @@ export default function ExamTopBar() {
           {/* Center: Live Digital Countdown Clock */}
           <Flex
             align="center"
-            gap={2.5}
+            justify="center"
+            gap={{ base: 2, md: 2.5 }}
             bg={isUrgent ? "rgba(239, 68, 68, 0.2)" : "rgba(30, 41, 59, 0.9)"}
             border="1px solid"
             borderColor={isUrgent ? "#EF4444" : "rgba(255, 255, 255, 0.12)"}
@@ -147,11 +170,15 @@ export default function ExamTopBar() {
             py={1.5}
             borderRadius="full"
             boxShadow="0 2px 10px rgba(0, 0, 0, 0.2)"
+            order={{ base: 3, md: 0 }}
+            w={{ base: "100%", md: "auto" }}
+            mt={{ base: 1, md: 0 }}
           >
             <Icon
               as={FaClock}
               color={isUrgent ? "#EF4444" : "#818CF8"}
               boxSize={4}
+              flexShrink={0}
             />
             <Box textAlign="center">
               <Text fontSize="9px" color="#94A3B8" textTransform="uppercase" letterSpacing="0.5px">
@@ -170,7 +197,7 @@ export default function ExamTopBar() {
           </Flex>
 
           {/* Right: Tools & Submit Action */}
-          <HStack spacing={2}>
+          <HStack spacing={{ base: 1.5, md: 2 }} order={{ base: 2, md: 0 }} flexShrink={0}>
             {/* Calculator Toggle */}
             <Button
               size="sm"
@@ -182,6 +209,7 @@ export default function ExamTopBar() {
               borderRadius="lg"
               h="36px"
               fontSize="12px"
+              px={{ base: 2, md: 3 }}
               onClick={() => setShowCalculator((prev) => !prev)}
               leftIcon={<Icon as={FaCalculator} />}
             >
@@ -212,9 +240,9 @@ export default function ExamTopBar() {
               color="white"
               borderRadius="lg"
               h="36px"
-              px={{ base: 3, md: 4 }}
+              px={{ base: 2.5, md: 4 }}
               fontWeight="700"
-              fontSize="12px"
+              fontSize={{ base: "11px", md: "12px" }}
               boxShadow="0 2px 10px rgba(16, 185, 129, 0.3)"
               _hover={{
                 transform: "translateY(-1px)",
@@ -223,7 +251,8 @@ export default function ExamTopBar() {
               onClick={() => setIsSubmitModalOpen(true)}
               leftIcon={<Icon as={FaCheckCircle} />}
             >
-              Submit Test
+              <Text display={{ base: "none", sm: "inline" }}>Submit Test</Text>
+              <Text display={{ base: "inline", sm: "none" }}>Submit</Text>
             </Button>
           </HStack>
         </Flex>

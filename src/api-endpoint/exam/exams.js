@@ -5,7 +5,7 @@ export const getQuestions = async (
   subjectOrOptions,
   legacyYear,
   legacySource = "all",
-  legacyLimit = 100
+  legacyLimit = 100,
 ) => {
   try {
     const params = new URLSearchParams();
@@ -153,17 +153,22 @@ export const fetchExams = async () => {
   }
 };
 
-export const examLogin = async (examDetails) => {
+export const examLogin = async (payload) => {
   try {
+    const studentId = payload?.studentId || payload?.examDetail?.studentId;
+    const firstName = payload?.firstName || payload?.examDetail?.firstName;
+    const examId = payload?.examId || payload?.id;
+
     const response = await api.post(`/exams/login`, {
-      studentId: examDetails?.studentId,
-      firstName: examDetails?.firstName,
+      studentId: studentId ? String(studentId).trim() : "",
+      firstName: firstName ? String(firstName).trim() : "",
+      examId,
     });
     const data = response.data;
 
     if (!data.success) {
       toaster.create({
-        title: data.message,
+        title: data.message || "Authentication failed",
         type: "error",
       });
     }
@@ -171,28 +176,50 @@ export const examLogin = async (examDetails) => {
     return data;
   } catch (error) {
     console.error("Exam login failed:", error);
+    const errorMessage =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      "Exam login failed. Please verify credentials.";
     toaster.create({
-      title: error?.response?.data?.error || "Exam login failed",
+      title: errorMessage,
       type: "error",
     });
+    return {
+      success: false,
+      message: errorMessage,
+    };
   }
 };
 
 export const fetchLiveExam = async ({ studentId, examId }) => {
   try {
-    const response = await api.get(`/exams/${studentId}/${examId}`);
+    const response = await api.get(`/exams/live-exam/${examId}`, {
+      params: { studentId },
+    });
 
     const data = response.data;
     console.log("the response from fetch live exams", data);
     if (!data.exam) {
       toaster.create({
-        title: data.message,
+        title: data.message || "Failed to load examination",
         type: "error",
       });
     }
     return data;
   } catch (error) {
-    console.error("Error fetching exam", error);
+    console.error("Error fetching live exam:", error);
+    const errorMessage =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      "Failed to load exam questions. Please verify access.";
+    toaster.create({
+      title: errorMessage,
+      type: "error",
+    });
+    return {
+      success: false,
+      message: errorMessage,
+    };
   }
 };
 export const getExamById = async (examId) => {
@@ -230,23 +257,26 @@ export const fetchExamResults = async (examId) => {
       return { success: true, data: [] };
     }
     throw new Error(
-      error?.response?.data?.message || error?.message || "Failed to fetch exam results"
+      error?.response?.data?.message ||
+        error?.message ||
+        "Failed to fetch exam results",
     );
   }
 };
 export const checkResultExisting = async ({ studentId, examId }) => {
   try {
-    const response = await api.get(`/exams/result/${studentId}/${examId}`, {
+    const response = await api.get(`/exams/result-status/${examId}`, {
+      params: { studentId },
       withCredentials: true,
     });
 
     const data = response.data;
-    console.log(data);
+    console.log("checkResultExisting data:", data);
 
     return data;
-    // if()
   } catch (error) {
     console.error("Error checking result existence", error);
+    return { success: false, exists: false };
   }
 };
 

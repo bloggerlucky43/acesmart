@@ -39,20 +39,27 @@ const ExamLoginPage = () => {
     if (window.innerWidth < 768) {
       toaster.warning({
         title: "Desktop Screen Recommended",
-        description: "For optimal testing experience and diagram rendering, please use a PC or laptop.",
+        description:
+          "For optimal testing experience and diagram rendering, please use a PC or laptop.",
       });
     }
 
     if (!examDetail.firstName?.trim() || !examDetail.studentId?.trim()) {
-      toaster.error({ title: "Please enter your Registration Number and Password" });
+      toaster.error({
+        title: "Please enter your Registration Number and Password",
+      });
       return;
     }
     setLoading(true);
     setError("");
 
     try {
-      const res = await examLogin(examDetail);
-      if (res.success) {
+      const res = await examLogin({
+        studentId: examDetail.studentId.trim(),
+        firstName: examDetail.firstName.trim(),
+        examId: id,
+      });
+      if (res?.success) {
         toaster.create({
           title: "Candidate Verified Successfully",
           type: "success",
@@ -60,14 +67,18 @@ const ExamLoginPage = () => {
 
         localStorage.setItem(
           "examStudent",
-          JSON.stringify({ ...res.student, examId: id })
+          JSON.stringify({ ...res.student, examId: id }),
         );
         navigate(`/ex/${id}`);
       } else {
-        setError(res.message || "Invalid candidate credentials. Please check details.");
+        setError(
+          res?.message || "Invalid candidate credentials. Please check details.",
+        );
       }
     } catch (err) {
-      setError("Authentication failed. Please verify your Student ID and Password.");
+      setError(
+        err?.message || "Authentication failed. Please verify your Student ID and Password.",
+      );
     } finally {
       setLoading(false);
     }
@@ -239,7 +250,8 @@ const ExamLoginPage = () => {
               <HStack spacing={2} align="flex-start">
                 <Icon as={FaLaptop} color="#60A5FA" boxSize={3.5} mt={0.5} />
                 <Text fontSize="11px" color="#94A3B8" lineHeight="1.4">
-                  Assessment will launch in full screen. Tab switching and copy shortcuts are disabled by proctoring.
+                  Assessment will launch in full screen. Tab switching and copy
+                  shortcuts are disabled by proctoring.
                 </Text>
               </HStack>
             </Box>
