@@ -21,6 +21,9 @@ import {
   FaCopy,
   FaSearch,
   FaNotesMedical,
+  FaCalendarDay,
+  FaCalendarWeek,
+  FaChartBar,
 } from "react-icons/fa";
 import {
   getClassArmsApi,
@@ -29,8 +32,11 @@ import {
 } from "../../../api-endpoint/sms/smsEndpoints";
 import { toaster } from "../../../components/ui/toaster";
 import DashboardLayout from "../../../constants/dashboardlayout";
+import WeeklyAttendanceMatrix from "./components/WeeklyAttendanceMatrix";
+import TermlyAttendanceSummary from "./components/TermlyAttendanceSummary";
 
 export default function StudentAttendanceManager() {
+  const [viewMode, setViewMode] = useState("daily"); // 'daily' | 'weekly' | 'termly'
   const [classes, setClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedDate, setSelectedDate] = useState(
@@ -409,31 +415,114 @@ export default function StudentAttendanceManager() {
                 fontWeight="800"
                 fontSize="10px"
               >
-                Morning & Afternoon
+                {viewMode === "daily"
+                  ? "Morning & Afternoon"
+                  : viewMode === "weekly"
+                  ? "Monday – Friday Sheet"
+                  : "Term Cumulative & Report Cards"}
               </Badge>
             </Flex>
             <Text fontSize={{ base: "12px", md: "13px" }} color="#64748B" mt={0.5}>
-              Mark Morning (AM) and Afternoon (PM) sessions separately or both at once
+              {viewMode === "daily"
+                ? "Mark Morning (AM) and Afternoon (PM) sessions separately or both at once"
+                : viewMode === "weekly"
+                ? "Weekly school register with Mon-Fri session pills, weekly % and truancy flags"
+                : "Term cumulative totals, times opened vs times present, and exam qualification"}
             </Text>
           </Box>
 
+          {viewMode === "daily" && (
+            <Button
+              bg="linear-gradient(135deg, #10B981 0%, #059669 100%)"
+              color="white"
+              borderRadius="xl"
+              px={{ base: 4, md: 6 }}
+              h={{ base: "40px", md: "44px" }}
+              fontWeight="800"
+              fontSize="13px"
+              boxShadow="0 4px 14px rgba(16, 185, 129, 0.35)"
+              _hover={{ opacity: 0.92 }}
+              onClick={handleSaveAttendance}
+              loading={saving}
+            >
+              <Icon as={FaSave} mr={2} boxSize={3.5} />
+              Save Attendance
+            </Button>
+          )}
+        </Flex>
+
+        {/* View Mode Segmented Switcher */}
+        <Flex
+          bg="white"
+          p={1.5}
+          borderRadius="2xl"
+          border="1px solid #E2E8F0"
+          gap={1.5}
+          w="100%"
+          mb={{ base: 4, md: 5 }}
+          boxShadow="0 2px 8px rgba(0,0,0,0.02)"
+          overflowX="auto"
+        >
           <Button
-            bg="linear-gradient(135deg, #10B981 0%, #059669 100%)"
-            color="white"
+            flex={{ base: "1 0 auto", md: 1 }}
+            size="sm"
+            h="40px"
+            px={{ base: 3, md: 5 }}
             borderRadius="xl"
-            px={{ base: 4, md: 6 }}
-            h={{ base: "40px", md: "44px" }}
-            fontWeight="800"
             fontSize="13px"
-            boxShadow="0 4px 14px rgba(16, 185, 129, 0.35)"
-            _hover={{ opacity: 0.92 }}
-            onClick={handleSaveAttendance}
-            loading={saving}
+            fontWeight="800"
+            bg={viewMode === "daily" ? "#4338CA" : "transparent"}
+            color={viewMode === "daily" ? "white" : "#475569"}
+            boxShadow={viewMode === "daily" ? "0 4px 12px rgba(67, 56, 202, 0.25)" : "none"}
+            _hover={{ bg: viewMode === "daily" ? "#4338CA" : "#F1F5F9" }}
+            onClick={() => setViewMode("daily")}
           >
-            <Icon as={FaSave} mr={2} boxSize={3.5} />
-            Save Attendance
+            <Icon as={FaCalendarDay} mr={2} boxSize={3.5} />
+            Daily Roll-Call
+          </Button>
+
+          <Button
+            flex={{ base: "1 0 auto", md: 1 }}
+            size="sm"
+            h="40px"
+            px={{ base: 3, md: 5 }}
+            borderRadius="xl"
+            fontSize="13px"
+            fontWeight="800"
+            bg={viewMode === "weekly" ? "#4338CA" : "transparent"}
+            color={viewMode === "weekly" ? "white" : "#475569"}
+            boxShadow={viewMode === "weekly" ? "0 4px 12px rgba(67, 56, 202, 0.25)" : "none"}
+            _hover={{ bg: viewMode === "weekly" ? "#4338CA" : "#F1F5F9" }}
+            onClick={() => setViewMode("weekly")}
+          >
+            <Icon as={FaCalendarWeek} mr={2} boxSize={3.5} />
+            Weekly Matrix (Mon–Fri)
+          </Button>
+
+          <Button
+            flex={{ base: "1 0 auto", md: 1 }}
+            size="sm"
+            h="40px"
+            px={{ base: 3, md: 5 }}
+            borderRadius="xl"
+            fontSize="13px"
+            fontWeight="800"
+            bg={viewMode === "termly" ? "#4338CA" : "transparent"}
+            color={viewMode === "termly" ? "white" : "#475569"}
+            boxShadow={viewMode === "termly" ? "0 4px 12px rgba(67, 56, 202, 0.25)" : "none"}
+            _hover={{ bg: viewMode === "termly" ? "#4338CA" : "#F1F5F9" }}
+            onClick={() => setViewMode("termly")}
+          >
+            <Icon as={FaChartBar} mr={2} boxSize={3.5} />
+            Termly Summary & Report Cards
           </Button>
         </Flex>
+
+        {/* ========================================================
+            TAB 1: DAILY ROLL-CALL REGISTER (Interactive Marking)
+           ======================================================== */}
+        {viewMode === "daily" && (
+          <>
 
         {/* Daily Session Status Bar */}
         <Flex
@@ -1278,7 +1367,32 @@ export default function StudentAttendanceManager() {
             </Flex>
           )}
         </Box>
+          </>
+        )}
+
+        {/* ========================================================
+            TAB 2: WEEKLY ATTENDANCE MATRIX (Mon–Fri Register)
+           ======================================================== */}
+        {viewMode === "weekly" && (
+          <WeeklyAttendanceMatrix
+            selectedClassId={selectedClassId}
+            classes={classes}
+            onSelectClassId={setSelectedClassId}
+          />
+        )}
+
+        {/* ========================================================
+            TAB 3: TERMLY ATTENDANCE SUMMARY & REPORT CARD SYNC
+           ======================================================== */}
+        {viewMode === "termly" && (
+          <TermlyAttendanceSummary
+            selectedClassId={selectedClassId}
+            classes={classes}
+            onSelectClassId={setSelectedClassId}
+          />
+        )}
       </Box>
     </DashboardLayout>
   );
 }
+

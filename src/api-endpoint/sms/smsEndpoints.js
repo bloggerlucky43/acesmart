@@ -97,6 +97,18 @@ export const getClassAttendanceByDateApi = async (classArmId, date, session) => 
   return data;
 };
 
+export const getClassAttendanceAnalyticsApi = async (classArmId, params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "")
+  ).toString();
+  const { data } = await api.get(
+    `/attendance/student/class/${classArmId}/analytics${query ? `?${query}` : ""}`,
+    { withCredentials: true }
+  );
+  return data;
+};
+
+
 // Fee & Debtor Management
 export const getInstitutionFeeOverviewApi = async () => {
   const { data } = await api.get("/fees/institution/overview", { withCredentials: true });

@@ -45,6 +45,7 @@ export default function PaymentModal({
   onClose,
   plan,
   billingCycle = "monthly",
+  studentCount = null,
   onPaymentSuccess,
 }) {
   const [quote, setQuote] = useState(null);
@@ -72,6 +73,7 @@ export default function PaymentModal({
             onPaymentSuccess({
               plan,
               billingCycle,
+              studentCount,
               amount: currency(data.totalCharge),
               reference: data.reference,
               date: new Date().toISOString().split("T")[0],
@@ -91,7 +93,12 @@ export default function PaymentModal({
     setError(null);
     setQuote(null);
     setPaymentDone(false);
-    quotePaymentApi({ purpose: "subscription", planId: plan.id, billingCycle })
+    quotePaymentApi({
+      purpose: "subscription",
+      planId: plan.id,
+      billingCycle,
+      studentCount: studentCount ? Number(studentCount) : undefined,
+    })
       .then((res) => {
         if (cancelled) return;
         if (res?.success) setQuote(res.data);
@@ -108,7 +115,7 @@ export default function PaymentModal({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, plan?.id, billingCycle]);
+  }, [isOpen, plan?.id, billingCycle, studentCount]);
 
   if (!isOpen || !plan) return null;
 
@@ -121,6 +128,7 @@ export default function PaymentModal({
         purpose: "subscription",
         planId: plan.id,
         billingCycle,
+        studentCount: studentCount ? Number(studentCount) : undefined,
       });
       if (!res?.success || !res?.data?.authorization_url) {
         throw new Error(res?.message || "Failed to start checkout");
