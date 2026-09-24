@@ -88,8 +88,12 @@ export const markStudentAttendanceBatchApi = async (payload) => {
   return data;
 };
 
-export const getClassAttendanceByDateApi = async (classArmId, date) => {
-  const { data } = await api.get(`/attendance/student/class/${classArmId}${date ? `?date=${date}` : ""}`, { withCredentials: true });
+export const getClassAttendanceByDateApi = async (classArmId, date, session) => {
+  const params = new URLSearchParams();
+  if (date) params.append("date", date);
+  if (session) params.append("session", session);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const { data } = await api.get(`/attendance/student/class/${classArmId}${query}`, { withCredentials: true });
   return data;
 };
 

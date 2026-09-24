@@ -223,14 +223,28 @@ const StudentAttendance = () => {
                     border="1px solid #F1F5F9"
                     gap={3}
                   >
-                    <Text fontSize="13px" fontWeight="700" color="#0F172A">
-                      {new Date(record.date).toLocaleDateString(undefined, {
-                        weekday: "short",
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </Text>
+                    <Flex align="center" gap={2}>
+                      <Text fontSize="13px" fontWeight="700" color="#0F172A">
+                        {new Date(record.date).toLocaleDateString(undefined, {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </Text>
+                      <Badge
+                        fontSize="10px"
+                        fontWeight="800"
+                        px={2}
+                        py={0.5}
+                        borderRadius="md"
+                        bg={record.session === "afternoon" ? "#EFF6FF" : "#FFFBEB"}
+                        color={record.session === "afternoon" ? "#1D4ED8" : "#B45309"}
+                        border={record.session === "afternoon" ? "1px solid #BFDBFE" : "1px solid #FDE68A"}
+                      >
+                        {record.session === "afternoon" ? "PM" : "AM"}
+                      </Badge>
+                    </Flex>
                     <Flex align="center" gap={3}>
                       {record.remark && (
                         <Text fontSize="11px" color="#94A3B8" isTruncated maxW="200px">
