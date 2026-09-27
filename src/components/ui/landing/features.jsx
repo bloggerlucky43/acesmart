@@ -4,8 +4,9 @@ import {
   Flex,
   Icon,
   SimpleGrid,
-  Badge,
+  Button,
 } from "@chakra-ui/react";
+import { useState } from "react";
 import {
   FaShieldAlt,
   FaSquareRootAlt,
@@ -13,57 +14,114 @@ import {
   FaChartLine,
   FaFileExcel,
   FaLaptopCode,
-  FaCheck,
   FaArrowRight,
+  FaFileInvoiceDollar,
+  FaQrcode,
+  FaUsers,
+  FaGlobe,
+  FaStamp,
+  FaSchool,
 } from "react-icons/fa";
+import { MdAssignmentTurnedIn, MdSchool } from "react-icons/md";
 
-const featureList = [
+const smsFeatureList = [
+  {
+    icon: MdAssignmentTurnedIn,
+    title: "Automated Terminal Report Cards",
+    badge: "Nigerian Curriculum",
+    badgeColor: "purple",
+    desc: "Calculates CA (30/40) + Exam (70/60), computes student position in class, grade remarks, psychomotor domain ratings, and principal stamps on watermark PDFs.",
+    accent: "#6A1B9A",
+  },
+  {
+    icon: FaFileInvoiceDollar,
+    title: "Bursary & Paystack Collections",
+    badge: "Automated Split",
+    badgeColor: "green",
+    desc: "Generate class-specific fee schedules, collect online tuition via Paystack split settlement directly to your school bank, and issue automated digital receipts.",
+    accent: "#059669",
+  },
+  {
+    icon: FaQrcode,
+    title: "Staff QR Attendance System",
+    badge: "Punctuality Clock-in",
+    badgeColor: "blue",
+    desc: "Dynamic time-expiring QR codes displayed at the school gate or staff room. Teachers clock-in via mobile with automated late arrival flagging and monthly registers.",
+    accent: "#2563EB",
+  },
+  {
+    icon: FaUsers,
+    title: "Class Arms & Student Directory",
+    badge: "Institutional Hierarchy",
+    badgeColor: "orange",
+    desc: "Seamlessly organize multi-arm classes (e.g. JSS 1 Gold, SSS 2 Science), allocate subject teachers, manage student biodata, and link parent contacts.",
+    accent: "#D97706",
+  },
+  {
+    icon: FaGlobe,
+    title: "Student & Parent Result Portal",
+    badge: "Online Scratch Checker",
+    badgeColor: "teal",
+    desc: "Parents and students check term results directly on the portal with registration numbers or scratch-card PIN tokens, completely eliminating office congestion.",
+    accent: "#0D9488",
+  },
+  {
+    icon: FaStamp,
+    title: "White-Label Subdomain Portals",
+    badge: "Custom School Brand",
+    badgeColor: "pink",
+    desc: "Every school receives a dedicated web portal (e.g. yourschool.acesmart.site) fully branded with your crest/logo, motto, and custom term academic calendar.",
+    accent: "#DB2777",
+  },
+];
+
+const cbtFeatureList = [
+  {
+    icon: FaDatabase,
+    title: "50,000+ Past Questions Bank",
+    badge: "WAEC, JAMB & NECO",
+    badgeColor: "green",
+    desc: "Instant access to verified Nigerian national examination questions with subject syllabus tagging for mock exams, continuous assessments, and practice tests.",
+    accent: "#059669",
+  },
   {
     icon: FaShieldAlt,
     title: "AI Biometric Verification",
     badge: "Anti-Cheating",
     badgeColor: "purple",
-    desc: "Computer vision face detection and verification prevents impersonation during candidate check-in and test sessions.",
+    desc: "Computer vision face detection and candidate presence monitoring prevents impersonation during candidate check-in and active test sessions.",
     accent: "#6A1B9A",
   },
   {
     icon: FaSquareRootAlt,
     title: "LaTeX & MathJax Engine",
-    badge: "Scientific",
+    badge: "Scientific Formulas",
     badgeColor: "blue",
-    desc: "Crystal-clear rendering for complex mathematical equations, chemistry structures, and physics symbols on all screens.",
+    desc: "Crystal-clear rendering for complex mathematical equations, chemistry structures, square roots, and physics symbols across all screen sizes.",
     accent: "#2563EB",
-  },
-  {
-    icon: FaDatabase,
-    title: "50,000+ Past Questions Bank",
-    badge: "Curated",
-    badgeColor: "green",
-    desc: "Instant access to JAMB UTME, WAEC, NECO, and Post-UTME questions with automated ALOC API synchronization.",
-    accent: "#059669",
   },
   {
     icon: FaChartLine,
     title: "Automated Instant Grading",
-    badge: "Real-Time",
+    badge: "Zero Manual Marking",
     badgeColor: "orange",
-    desc: "Instant score calculation, subject breakdowns, percentile analysis, and interactive visual charts for teachers.",
+    desc: "Instant score calculation, subject breakdowns, percentile analysis, and interactive visual charts for teachers with 1-click grade export.",
     accent: "#D97706",
-  },
-  {
-    icon: FaFileExcel,
-    title: "Bulk Excel Import & Export",
-    badge: "Productivity",
-    badgeColor: "teal",
-    desc: "Upload entire student rosters with one click via Excel (.xlsx) and download standardized grade sheets effortlessly.",
-    accent: "#0D9488",
   },
   {
     icon: FaLaptopCode,
     title: "Network-Resilient CBT Engine",
     badge: "High Reliability",
+    badgeColor: "teal",
+    desc: "Local persistence and state autosave safeguard candidate answers against unexpected power cuts or connectivity drops during examination sessions.",
+    accent: "#0D9488",
+  },
+  {
+    icon: FaFileExcel,
+    title: "Bulk Excel Rosters & Questions",
+    badge: "1-Click Import",
     badgeColor: "pink",
-    desc: "Local persistence and state autosave safeguard candidate answers against unexpected power cuts or connectivity drops.",
+    desc: "Upload entire student rosters with one click via Excel (.xlsx) and import large question banks with automated format validation and error checking.",
     accent: "#DB2777",
   },
 ];
@@ -71,22 +129,26 @@ const featureList = [
 const workflowSteps = [
   {
     step: "01",
-    title: "Configure Your Exam",
-    desc: "Select questions from the 50,000+ question bank or write custom questions. Set timers, pass marks, and instructions.",
+    title: "Set Up Your School Portal",
+    desc: "Register your institution, configure class arms (JSS1 - SSS3), set up school fees, and customize your term dates and school crest.",
   },
   {
     step: "02",
-    title: "Enroll Candidates",
-    desc: "Import your student list via Excel or register candidates individually. Issue secure student exam codes and passwords.",
+    title: "Enrol Students & Staff",
+    desc: "Import your student roster via Excel or individual forms. Teachers clock in via QR code and record continuous assessment scores or CBT tests.",
   },
   {
     step: "03",
-    title: "Auto-Grade & Export",
-    desc: "Candidates complete their timed tests with biometric verification. Export full results, score cards, and analytics in seconds.",
+    title: "Publish Results & Collect Fees",
+    desc: "Generate terminal report cards with 1-click principal approval. Collect fees online via Paystack and let parents check results from anywhere.",
   },
 ];
 
 const Features = ({ aboutRef }) => {
+  const [activeTab, setActiveTab] = useState("sms"); // "sms" | "cbt"
+
+  const activeList = activeTab === "sms" ? smsFeatureList : cbtFeatureList;
+
   return (
     <Box
       ref={aboutRef}
@@ -96,7 +158,7 @@ const Features = ({ aboutRef }) => {
       <Box maxW="1320px" mx="auto" px={{ base: 4, md: 8 }}>
         
         {/* Section Header */}
-        <Box textAlign="center" maxW="760px" mx="auto" mb={16}>
+        <Box textAlign="center" maxW="800px" mx="auto" mb={10}>
           <Text
             fontSize="12px"
             fontWeight="800"
@@ -105,7 +167,7 @@ const Features = ({ aboutRef }) => {
             textTransform="uppercase"
             mb={2}
           >
-            Built for Modern Education
+            Dual-Engine Educational Cloud
           </Text>
           <Text
             as="h2"
@@ -117,16 +179,63 @@ const Features = ({ aboutRef }) => {
             lineHeight="1.2"
             mb={4}
           >
-            Everything You Need to Run High-Stakes CBT Examinations
+            Everything Your School Needs in One Unified Platform
           </Text>
           <Text fontSize={{ base: "15px", md: "17px" }} color="gray.600">
-            From standardized national testing to daily classroom quizzes, AceSmart delivers the speed, security, and precision required by educators.
+            From automated terminal report cards and Paystack fee collections to AI-proctored CBT exams with 50,000+ past questions.
           </Text>
         </Box>
 
+        {/* Feature Category Toggle Tabs */}
+        <Flex justify="center" mb={14}>
+          <Flex
+            bg="white"
+            p={1.5}
+            borderRadius="2xl"
+            border="1px solid"
+            borderColor="gray.200"
+            boxShadow="0 6px 20px rgba(106, 27, 154, 0.08)"
+            gap={2}
+            maxW="560px"
+            w="100%"
+          >
+            <Button
+              flex="1"
+              h="46px"
+              borderRadius="xl"
+              fontSize={{ base: "13px", sm: "14px" }}
+              fontWeight="800"
+              bg={activeTab === "sms" ? "#6A1B9A" : "transparent"}
+              color={activeTab === "sms" ? "white" : "gray.600"}
+              _hover={{ bg: activeTab === "sms" ? "#581580" : "purple.50" }}
+              onClick={() => setActiveTab("sms")}
+              transition="all 0.2s"
+            >
+              <Icon as={MdSchool} mr={2} boxSize={4.5} />
+              School Management (ERP)
+            </Button>
+
+            <Button
+              flex="1"
+              h="46px"
+              borderRadius="xl"
+              fontSize={{ base: "13px", sm: "14px" }}
+              fontWeight="800"
+              bg={activeTab === "cbt" ? "#6A1B9A" : "transparent"}
+              color={activeTab === "cbt" ? "white" : "gray.600"}
+              _hover={{ bg: activeTab === "cbt" ? "#581580" : "purple.50" }}
+              onClick={() => setActiveTab("cbt")}
+              transition="all 0.2s"
+            >
+              <Icon as={FaLaptopCode} mr={2} boxSize={4.5} />
+              CBT Examination Engine
+            </Button>
+          </Flex>
+        </Flex>
+
         {/* Feature Cards Grid */}
         <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={8} mb={24}>
-          {featureList.map((f, i) => (
+          {activeList.map((f, i) => (
             <Box
               key={i}
               bg="white"
@@ -186,13 +295,13 @@ const Features = ({ aboutRef }) => {
                 >
                   {f.title}
                 </Text>
-                <Text fontSize="14px" color="gray.600" lineHeight="1.6">
+                <Text fontSize="14px" color="gray.600" lineHeight="1.65">
                   {f.desc}
                 </Text>
               </Box>
 
               <Flex align="center" gap={2} mt={6} color={f.accent} fontSize="13px" fontWeight="700">
-                <Text>Learn how it works</Text>
+                <Text>{activeTab === "sms" ? "Explore ERP module" : "Explore CBT feature"}</Text>
                 <Icon as={FaArrowRight} boxSize={3} />
               </Flex>
             </Box>
@@ -217,7 +326,7 @@ const Features = ({ aboutRef }) => {
               textTransform="uppercase"
               mb={2}
             >
-              Effortless Workflow
+              Effortless Implementation
             </Text>
             <Text
               fontSize={{ base: "24px", md: "32px" }}
@@ -225,7 +334,7 @@ const Features = ({ aboutRef }) => {
               color="gray.900"
               fontFamily="'Outfit', sans-serif"
             >
-              How Institutions Conduct Exams in 3 Simple Steps
+              Get Your School Operational in 3 Simple Steps
             </Text>
           </Box>
 

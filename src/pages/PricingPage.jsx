@@ -18,8 +18,10 @@ import {
   FAQS,
   getTierForStudentCount,
   calculateSchoolCost,
+  calculateAnnualSavings,
   calculateParentCollection,
   calculateSchoolProfit,
+  ANNUAL_DISCOUNT_PERCENT,
 } from "../constants/pricingData";
 import PaymentModal from "../components/payment/PaymentModal";
 import Navbar from "../components/ui/landing/navbar";
@@ -35,7 +37,7 @@ import {
 
 export default function PricingPage() {
   const [audience, setAudience] = useState("educators"); // "educators" | "candidates"
-  const [billingCycle, setBillingCycle] = useState("termly"); // "monthly" | "termly"
+  const [billingCycle, setBillingCycle] = useState("termly"); // "monthly" | "termly" | "annual"
   const [studentCount, setStudentCount] = useState(150);
   const [parentLevy, setParentLevy] = useState(1200);
   const [selectedPlanForCheckout, setSelectedPlanForCheckout] = useState(null);
@@ -45,9 +47,10 @@ export default function PricingPage() {
 
   // Dynamic calculations for calculator
   const activeTier = useMemo(() => getTierForStudentCount(studentCount), [studentCount]);
-  const schoolCost = useMemo(() => calculateSchoolCost(studentCount), [studentCount]);
-  const parentTotal = useMemo(() => calculateParentCollection(studentCount, parentLevy), [studentCount, parentLevy]);
-  const netProfit = useMemo(() => calculateSchoolProfit(studentCount, parentLevy), [studentCount, parentLevy]);
+  const schoolCost = useMemo(() => calculateSchoolCost(studentCount, billingCycle), [studentCount, billingCycle]);
+  const parentTotal = useMemo(() => calculateParentCollection(studentCount, parentLevy, billingCycle), [studentCount, parentLevy, billingCycle]);
+  const netProfit = useMemo(() => calculateSchoolProfit(studentCount, parentLevy, billingCycle), [studentCount, parentLevy, billingCycle]);
+  const annualSavings = useMemo(() => calculateAnnualSavings(studentCount), [studentCount]);
 
   const handleOpenCheckout = (plan, dynamicCount = null) => {
     setSelectedPlanForCheckout(plan);
@@ -101,6 +104,18 @@ export default function PricingPage() {
           >
             PER-STUDENT FAIR PRICING
           </Badge>
+          <Badge
+            bg="rgba(16, 185, 129, 0.2)"
+            color="#34D399"
+            border="1px solid rgba(16, 185, 129, 0.3)"
+            borderRadius="full"
+            px={3}
+            py={1}
+            fontSize="11px"
+            fontWeight="bold"
+          >
+            ANNUAL PLAN: SAVE 20%
+          </Badge>
         </HStack>
 
         <Text
@@ -117,7 +132,7 @@ export default function PricingPage() {
 
         <Text fontSize={{ base: "13px", md: "15px" }} color="#94A3B8" maxW="680px" mx="auto" mb={8}>
           Instead of expensive flat fees, AceSmart charges transparently per student (₦400 – ₦500/child/term).
-          Pass the cost to parents via a standard ICT levy, and your school runs 100% digital for free.
+          Pay annually to receive an automatic <b>20% discount</b> across your school session!
         </Text>
 
         {/* Audience Switcher (Schools vs Candidates) */}
@@ -155,18 +170,18 @@ export default function PricingPage() {
         {/* Billing Switcher (Only for Educators) */}
         {audience === "educators" && (
           <Flex justify="center" align="center" gap={3}>
-            <HStack bg="#1E293B" p={1} borderRadius="xl" border="1px solid #334155">
+            <HStack bg="#1E293B" p={1} borderRadius="xl" border="1px solid #334155" flexWrap="wrap" justify="center">
               <Button
                 size="sm"
                 borderRadius="lg"
-                px={4}
+                px={3.5}
                 fontSize="12px"
                 fontWeight="bold"
                 bg={billingCycle === "monthly" ? "#334155" : "transparent"}
                 color={billingCycle === "monthly" ? "white" : "#94A3B8"}
                 onClick={() => setBillingCycle("monthly")}
               >
-                Monthly Billing
+                Monthly
               </Button>
               <Button
                 size="sm"
@@ -174,14 +189,31 @@ export default function PricingPage() {
                 px={4}
                 fontSize="12px"
                 fontWeight="bold"
-                bg={billingCycle === "termly" ? "#334155" : "transparent"}
+                bg={billingCycle === "termly" ? "#2563EB" : "transparent"}
                 color={billingCycle === "termly" ? "white" : "#94A3B8"}
                 onClick={() => setBillingCycle("termly")}
               >
                 <HStack spacing={1.5}>
-                  <Text>Termly (3 Months)</Text>
+                  <Text>Termly (Per Term)</Text>
                   <Badge bg="#10B981" color="white" fontSize="9px" borderRadius="full" px={1.5}>
                     RECOMMENDED
+                  </Badge>
+                </HStack>
+              </Button>
+              <Button
+                size="sm"
+                borderRadius="lg"
+                px={4}
+                fontSize="12px"
+                fontWeight="bold"
+                bg={billingCycle === "annual" ? "#10B981" : "transparent"}
+                color={billingCycle === "annual" ? "white" : "#94A3B8"}
+                onClick={() => setBillingCycle("annual")}
+              >
+                <HStack spacing={1.5}>
+                  <Text>Annual (Full Session)</Text>
+                  <Badge bg="#F59E0B" color="white" fontSize="9px" borderRadius="full" px={1.5}>
+                    SAVE 20% 🔥
                   </Badge>
                 </HStack>
               </Button>
@@ -227,9 +259,16 @@ export default function PricingPage() {
                   </Text>
                 </Box>
 
-                <Badge bg="rgba(16, 185, 129, 0.15)" color="#34D399" border="1px solid rgba(16, 185, 129, 0.3)" borderRadius="full" px={3} py={1} fontSize="12px" fontWeight="bold">
-                  Zero Cost to School
-                </Badge>
+                <HStack spacing={2}>
+                  {billingCycle === "annual" && (
+                    <Badge bg="rgba(245, 158, 11, 0.2)" color="#FBBF24" border="1px solid rgba(245, 158, 11, 0.3)" borderRadius="full" px={3} py={1} fontSize="12px" fontWeight="bold">
+                      20% Prepay Discount Active
+                    </Badge>
+                  )}
+                  <Badge bg="rgba(16, 185, 129, 0.15)" color="#34D399" border="1px solid rgba(16, 185, 129, 0.3)" borderRadius="full" px={3} py={1} fontSize="12px" fontWeight="bold">
+                    Zero Cost to School
+                  </Badge>
+                </HStack>
               </Flex>
 
               {/* Slider & Controls */}
@@ -302,52 +341,71 @@ export default function PricingPage() {
                 {/* Metric 1: Rate */}
                 <Box bg="#0F172A" p={4} borderRadius="xl" border="1px solid #1E293B">
                   <Text fontSize="11px" fontWeight="700" color="#94A3B8" textTransform="uppercase">
-                    Your Tier Rate
+                    {billingCycle === "annual" ? "Annual Tier Rate" : "Your Tier Rate"}
                   </Text>
-                  <Text fontSize="22px" fontWeight="900" color="white" mt={1}>
-                    ₦{activeTier.rate}
-                  </Text>
+                  <HStack align="baseline" spacing={1.5} mt={1}>
+                    <Text fontSize="22px" fontWeight="900" color="white">
+                      ₦{billingCycle === "annual" ? activeTier.annualRate.toLocaleString() : activeTier.rate}
+                    </Text>
+                    {billingCycle === "annual" && (
+                      <Badge bg="rgba(16, 185, 129, 0.2)" color="#34D399" fontSize="10px">
+                        20% OFF
+                      </Badge>
+                    )}
+                  </HStack>
                   <Text fontSize="11px" color="#64748B" mt={0.5}>
-                    Per child / term ({activeTier.label})
+                    {billingCycle === "annual"
+                      ? `Per child / full year (${activeTier.label})`
+                      : `Per child / term (${activeTier.label})`}
                   </Text>
                 </Box>
 
                 {/* Metric 2: School Cost */}
                 <Box bg="#0F172A" p={4} borderRadius="xl" border="1px solid #1E293B">
                   <Text fontSize="11px" fontWeight="700" color="#F87171" textTransform="uppercase">
-                    AceSmart Termly Bill
+                    {billingCycle === "annual"
+                      ? "AceSmart Annual Bill"
+                      : billingCycle === "monthly"
+                      ? "AceSmart Monthly Bill"
+                      : "AceSmart Termly Bill"}
                   </Text>
                   <Text fontSize="22px" fontWeight="900" color="#F87171" mt={1}>
                     ₦{schoolCost.toLocaleString()}
                   </Text>
                   <Text fontSize="11px" color="#64748B" mt={0.5}>
-                    Covers CBT, 2x Attendance, SMS
+                    {billingCycle === "annual"
+                      ? `Full session • Saves ₦${annualSavings.toLocaleString()}!`
+                      : "Covers CBT, 2x Attendance, SMS"}
                   </Text>
                 </Box>
 
                 {/* Metric 3: Parent Collection */}
                 <Box bg="#0F172A" p={4} borderRadius="xl" border="1px solid #1E293B">
                   <Text fontSize="11px" fontWeight="700" color="#60A5FA" textTransform="uppercase">
-                    Collected From Parents
+                    {billingCycle === "annual" ? "Annual Parent Levy" : "Collected From Parents"}
                   </Text>
                   <Text fontSize="22px" fontWeight="900" color="#60A5FA" mt={1}>
                     ₦{parentTotal.toLocaleString()}
                   </Text>
                   <Text fontSize="11px" color="#64748B" mt={0.5}>
-                    Based on ₦{parentLevy.toLocaleString()} ICT levy / child
+                    {billingCycle === "annual"
+                      ? `3 terms @ ₦${parentLevy.toLocaleString()} ICT levy / child`
+                      : `Based on ₦${parentLevy.toLocaleString()} ICT levy / child`}
                   </Text>
                 </Box>
 
                 {/* Metric 4: Net Profit */}
                 <Box bg="rgba(16, 185, 129, 0.12)" p={4} borderRadius="xl" border="1.5px solid #10B981">
                   <Text fontSize="11px" fontWeight="800" color="#34D399" textTransform="uppercase">
-                    School Net Profit
+                    {billingCycle === "annual" ? "Annual Net Surplus" : "School Net Profit"}
                   </Text>
                   <Text fontSize="22px" fontWeight="900" color="#34D399" mt={1}>
                     +₦{netProfit.toLocaleString()}
                   </Text>
                   <Text fontSize="11px" color="#A7F3D0" mt={0.5}>
-                    Pure surplus for your school!
+                    {billingCycle === "annual"
+                      ? "Pure surplus for the entire school session!"
+                      : "Pure surplus for your school!"}
                   </Text>
                 </Box>
               </SimpleGrid>
@@ -366,7 +424,18 @@ export default function PricingPage() {
                 <HStack spacing={2.5}>
                   <Icon as={FaCoins} color="#FBBF24" boxSize={5} />
                   <Text fontSize="13px" color="#CBD5E1">
-                    With <b>{studentCount} students</b>, your school makes an extra <b>₦{netProfit.toLocaleString()} profit</b> every term while running modern CBT exams and 2x attendance for ₦0 cost!
+                    {billingCycle === "annual" ? (
+                      <>
+                        With <b>{studentCount} students</b> paying annually, your school saves{" "}
+                        <b style={{ color: "#34D399" }}>₦{annualSavings.toLocaleString()} (20% OFF)</b> and nets an extra{" "}
+                        <b style={{ color: "#34D399" }}>₦{netProfit.toLocaleString()} profit</b> over the academic session!
+                      </>
+                    ) : (
+                      <>
+                        With <b>{studentCount} students</b>, your school makes an extra{" "}
+                        <b style={{ color: "#34D399" }}>₦{netProfit.toLocaleString()} profit</b> every term while running modern CBT exams and 2x attendance for ₦0 cost!
+                      </>
+                    )}
                   </Text>
                 </HStack>
 
@@ -382,7 +451,9 @@ export default function PricingPage() {
                   _hover={{ opacity: 0.95 }}
                   onClick={handleCalculatorCheckout}
                 >
-                  Subscribe for {studentCount} Students
+                  {billingCycle === "annual"
+                    ? `Subscribe Annually (${studentCount} Students) • 20% OFF`
+                    : `Subscribe for ${studentCount} Students`}
                 </Button>
               </Flex>
             </Box>
@@ -395,13 +466,23 @@ export default function PricingPage() {
                 Choose a Plan by School Capacity
               </Text>
               <Text fontSize="13px" color="#94A3B8" mt={1}>
-                Upgrade or scale as your student body grows with automated pro-rated billing
+                {billingCycle === "annual"
+                  ? "Annual plans include an automatic 20% discount across all school tiers"
+                  : "Upgrade or scale as your student body grows with automated pro-rated billing"}
               </Text>
             </Box>
 
             <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} gap={6} alignItems="stretch">
               {EDUCATOR_PLANS.map((plan) => {
-                const price = billingCycle === "termly" ? plan.termlyPrice : plan.monthlyPrice;
+                const isAnnual = billingCycle === "annual";
+                const price = isAnnual
+                  ? plan.annualPrice
+                  : billingCycle === "termly"
+                  ? plan.termlyPrice
+                  : plan.monthlyPrice;
+
+                const originalAnnual = plan.termlyPrice > 0 ? plan.termlyPrice * 3 : 0;
+
                 const formattedPrice =
                   price === 0
                     ? "Free"
@@ -410,6 +491,18 @@ export default function PricingPage() {
                         currency: "NGN",
                         maximumFractionDigits: 0,
                       }).format(price);
+
+                const formattedOriginal =
+                  originalAnnual > 0
+                    ? new Intl.NumberFormat("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        maximumFractionDigits: 0,
+                      }).format(originalAnnual)
+                    : null;
+
+                const rateLabel = isAnnual ? plan.annualRatePerChild : plan.ratePerChild;
+                const cycleSuffix = isAnnual ? "year" : billingCycle === "termly" ? "term" : "mo";
 
                 return (
                   <Box
@@ -462,9 +555,21 @@ export default function PricingPage() {
                           fontSize="11px"
                           fontWeight="700"
                         >
-                          {plan.ratePerChild}
+                          {rateLabel}
                         </Badge>
                       </Box>
+
+                      {/* Strikethrough if Annual */}
+                      {isAnnual && formattedOriginal && price > 0 && (
+                        <HStack spacing={2} mb={1}>
+                          <Text fontSize="13px" color="#64748B" textDecoration="line-through">
+                            {formattedOriginal}/year
+                          </Text>
+                          <Badge bg="rgba(16, 185, 129, 0.2)" color="#34D399" fontSize="10px" borderRadius="full" px={1.5}>
+                            SAVE 20%
+                          </Badge>
+                        </HStack>
+                      )}
 
                       <HStack align="baseline" spacing={1} mb={5}>
                         <Text fontSize="28px" fontWeight="900" color="white" lineHeight="1">
@@ -472,7 +577,7 @@ export default function PricingPage() {
                         </Text>
                         {price > 0 && (
                           <Text fontSize="12px" color="#94A3B8">
-                            /{billingCycle === "termly" ? "term" : "mo"}
+                            /{cycleSuffix}
                           </Text>
                         )}
                       </HStack>
@@ -505,7 +610,11 @@ export default function PricingPage() {
                       _hover={{ bg: plan.popular ? "#1D4ED8" : "#475569" }}
                       onClick={() => handleOpenCheckout(plan)}
                     >
-                      {plan.id === "starter" ? "Get Started Free" : plan.ctaText}
+                      {plan.id === "starter"
+                        ? "Get Started Free"
+                        : isAnnual
+                        ? `${plan.ctaText} (Save 20%)`
+                        : plan.ctaText}
                     </Button>
                   </Box>
                 );

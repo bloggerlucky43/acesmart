@@ -64,6 +64,22 @@ export const getQuestions = async (
   }
 };
 
+export const getTopicsBySubject = async (subject = "") => {
+  try {
+    const params = new URLSearchParams();
+    if (subject && subject !== "All" && subject !== "all") {
+      params.append("subject", String(subject).toLowerCase().trim());
+    }
+    const response = await api.get(`/questions/topics?${params.toString()}`, {
+      withCredentials: true,
+    });
+    return response.data?.data || [];
+  } catch (error) {
+    console.warn("getTopicsBySubject notice:", error?.response?.data?.message || error.message);
+    return [];
+  }
+};
+
 export const formatSubjectTitle = (rawSubject) => {
   if (!rawSubject) return "";
   const sub = String(rawSubject).toLowerCase().trim();

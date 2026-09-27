@@ -274,7 +274,14 @@ export default function PaymentModal({
                   {plan.name}
                 </Text>
                 <Text fontSize="12px" color="#94A3B8">
-                  Billing cycle: <span style={{ textTransform: "capitalize", color: "#CBD5E1" }}>{billingCycle}</span>
+                  Billing cycle:{" "}
+                  <span style={{ color: "#CBD5E1", fontWeight: "600" }}>
+                    {billingCycle === "annual"
+                      ? "Annual (Full Academic Year • 20% Discount)"
+                      : billingCycle === "termly"
+                      ? "Termly (Per School Term)"
+                      : "Monthly"}
+                  </span>
                 </Text>
               </Box>
 
@@ -308,6 +315,22 @@ export default function PaymentModal({
 
             {quote && (
               <Box bg="#0F172A" borderRadius="14px" border="1px solid #334155" p={4} mb={5} fontSize="12px">
+                {billingCycle === "annual" && (
+                  <Flex justify="space-between" align="center" mb={2.5} pb={2} borderBottom="1px solid #1E293B">
+                    <Badge bg="rgba(16, 185, 129, 0.2)" color="#34D399" fontSize="10px" borderRadius="full" px={2} py={0.5}>
+                      20% ANNUAL PREPAY DISCOUNT APPLIED
+                    </Badge>
+                    <Text color="#94A3B8" fontSize="11px">
+                      3 Terms Pre-paid
+                    </Text>
+                  </Flex>
+                )}
+                {studentCount && (
+                  <Flex justify="space-between" align="center" mb={2}>
+                    <Text color="#94A3B8">Enrolled Capacity:</Text>
+                    <Text color="white" fontWeight="bold">{studentCount} Students</Text>
+                  </Flex>
+                )}
                 <Flex justify="space-between" align="center">
                   <Box>
                     <Text color="#CBD5E1" fontWeight="800">

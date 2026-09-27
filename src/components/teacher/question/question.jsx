@@ -44,25 +44,12 @@ import {
   parseBulkTextWithAI,
 } from "../../../api-endpoint/questions/questions";
 import { TableSkeleton, CardGridSkeleton } from "../../ui/skeletons";
+import SearchableSubjectSelect from "../../ui/SearchableSubjectSelect";
+import { MASTER_NIGERIAN_SUBJECTS } from "../../../constants/subjectsData";
 
 const SUBJECTS_LIST = [
   "All",
-  "Mathematics",
-  "English",
-  "Biology",
-  "Physics",
-  "Chemistry",
-  "Economics",
-  "Government",
-  "Agricultural Science",
-  "Literature",
-  "Commerce",
-  "Accounting",
-  "Yoruba",
-  "Geography",
-  "Civic Education",
-  "CRK",
-  "IRK",
+  ...Array.from(new Set(MASTER_NIGERIAN_SUBJECTS.map((s) => s.name))),
 ];
 
 export default function QuestionBankHub() {
@@ -1576,19 +1563,13 @@ export default function QuestionBankHub() {
                 <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
                   Default Subject
                 </Text>
-                <NativeSelect.Root size="sm" maxW="280px">
-                  <NativeSelect.Field
+                <Box maxW="380px">
+                  <SearchableSubjectSelect
                     value={bulkSubject}
-                    onChange={(e) => setBulkSubject(e.target.value)}
-                    borderRadius="xl"
-                  >
-                    {SUBJECTS_LIST.filter((s) => s !== "All").map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </NativeSelect.Field>
-                </NativeSelect.Root>
+                    onChange={(val) => setBulkSubject(val)}
+                    placeholder="Search or select curriculum subject (e.g. Physics, Civic, CRS)..."
+                  />
+                </Box>
               </Box>
 
               <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
@@ -1749,19 +1730,11 @@ D) Joule
                 <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
                   Subject
                 </Text>
-                <NativeSelect.Root size="sm">
-                  <NativeSelect.Field
-                    value={singleQ.subject}
-                    onChange={(e) => setSingleQ({ ...singleQ, subject: e.target.value })}
-                    borderRadius="xl"
-                  >
-                    {SUBJECTS_LIST.filter((s) => s !== "All").map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </NativeSelect.Field>
-                </NativeSelect.Root>
+                <SearchableSubjectSelect
+                  value={singleQ.subject}
+                  onChange={(val) => setSingleQ({ ...singleQ, subject: val })}
+                  placeholder="Search subject (e.g. Further Math, Civic, Commerce)..."
+                />
               </Box>
 
               <Box>

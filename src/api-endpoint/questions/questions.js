@@ -40,6 +40,23 @@ export const fetchQuestions = async ({
 };
 
 /**
+ * Fetch available distinct topics for a subject from the server
+ */
+export const fetchTopicsBySubject = async (subject = "") => {
+  try {
+    const params = new URLSearchParams();
+    if (subject && subject !== "all" && subject !== "All") {
+      params.append("subject", subject.toLowerCase().trim());
+    }
+    const res = await api.get(`/questions/topics?${params.toString()}`);
+    return res.data?.data || [];
+  } catch (error) {
+    console.warn("fetchTopicsBySubject notice:", error?.response?.data?.message || error.message);
+    return [];
+  }
+};
+
+/**
  * Create a single teacher question
  */
 export const createSingleQuestion = async (questionData) => {

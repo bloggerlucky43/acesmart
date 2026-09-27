@@ -17,10 +17,10 @@ import { STORAGE_KEY } from "../../../libs/helper";
 import { useNavigate, useParams } from "react-router-dom";
 import { toaster } from "../../ui/toaster";
 import { useEffect, useState, useMemo } from "react";
-import { getQuestions } from "../../../api-endpoint/exam/exams";
+import { getQuestions, getExamById } from "../../../api-endpoint/exam/exams";
 import DashboardLayout from "../../../constants/dashboardlayout";
-import { getExamById } from "../../../api-endpoint/exam/exams";
 import { SUBJECTS_LIST, isTeacherQuestion } from "./addExam";
+import SearchableSubjectSelect from "../../ui/SearchableSubjectSelect";
 
 export default function EditExamStructure() {
   const { examId } = useParams();
@@ -302,18 +302,8 @@ export default function EditExamStructure() {
 
   const editSection = (index) => {
     const section = sections[index];
-
-    if (
-      SUBJECTS_LIST.filter((s) => s !== "Other / Custom Subject").includes(
-        section.section
-      )
-    ) {
-      setSubject(section.section);
-      setCustomSubject("");
-    } else {
-      setSubject("Other / Custom Subject");
-      setCustomSubject(section.section);
-    }
+    setSubject(section.section || "Mathematics");
+    setCustomSubject("");
     setYear(section.year || "");
     setQuestions(section.questions);
     setSelectedQuestionsIds(section.questions);
@@ -442,38 +432,15 @@ export default function EditExamStructure() {
                 <Field.Label fontSize="xs" fontWeight="bold" color="#475569">
                   Subject <Field.RequiredIndicator />
                 </Field.Label>
-                <NativeSelect.Root size="sm" w="100%">
-                  <NativeSelect.Field
-                    bg="white"
-                    borderRadius="md"
-                    h="38px"
-                    fontSize="13px"
-                    borderColor="#CBD5E1"
-                    _focus={{ borderColor: "#6366F1" }}
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                  >
-                    <option value="">-- Select Subject --</option>
-                    {SUBJECTS_LIST.map((subj) => (
-                      <option key={subj} value={subj}>
-                        {subj}
-                      </option>
-                    ))}
-                  </NativeSelect.Field>
-                </NativeSelect.Root>
-                {subject === "Other / Custom Subject" && (
-                  <Input
-                    mt={2}
-                    placeholder="Type custom subject..."
-                    value={customSubject}
-                    bg="white"
-                    size="sm"
-                    borderRadius="md"
-                    borderColor="#CBD5E1"
-                    _focus={{ borderColor: "#6366F1" }}
-                    onChange={(e) => setCustomSubject(e.target.value)}
-                  />
-                )}
+                <SearchableSubjectSelect
+                  value={subject}
+                  onChange={(newSubj) => {
+                    setSubject(newSubj);
+                    setCustomSubject("");
+                  }}
+                  placeholder="Search subject (e.g. Mathematics, Civic)..."
+                  allowCustom={true}
+                />
               </Field.Root>
 
               <Field.Root w={{ base: "100%", md: "150px" }}>

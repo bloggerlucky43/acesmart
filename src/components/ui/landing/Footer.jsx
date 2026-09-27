@@ -58,14 +58,14 @@ const Footer = ({ onLoginOpen, onDrawerOpen, onExamModalOpen }) => {
             </Flex>
 
             <Text fontSize="14px" color="gray.400" lineHeight="1.6" mb={6}>
-              The intelligent Computer-Based Testing and examination management
-              platform built for Nigerian schools, colleges, and students.
-              Empowering next-generation learning with speed, accuracy, and AI proctoring.
+              The unified School Management System (SMS) and Computer-Based Testing
+              (CBT) platform built for Nigerian schools, colleges, and students.
+              Automating report cards, bursary collections, and exams with precision.
             </Text>
 
             <Flex align="center" gap={2} color="green.400" fontSize="13px" fontWeight="600">
               <Icon as={FaShieldAlt} />
-              <Text>256-Bit SSL Encrypted & Secure Examination Engine</Text>
+              <Text>256-Bit SSL Encrypted & Secure School Cloud</Text>
             </Flex>
           </Box>
 
@@ -76,22 +76,22 @@ const Footer = ({ onLoginOpen, onDrawerOpen, onExamModalOpen }) => {
             </Text>
             <Stack gap={2.5} fontSize="14px" color="gray.400">
               <Text _hover={{ color: "purple.200" }} cursor="pointer">
-                AI Facial Verification
+                Automated Terminal Report Cards
               </Text>
               <Text _hover={{ color: "purple.200" }} cursor="pointer">
-                50,000+ Past Questions Bank
+                Bursary & Paystack Collections
               </Text>
               <Text _hover={{ color: "purple.200" }} cursor="pointer">
-                LaTeX MathJax Equations
+                Staff QR Attendance & Clock-In
               </Text>
               <Text _hover={{ color: "purple.200" }} cursor="pointer">
-                Instant Auto-Grading Engine
+                50,000+ WAEC & JAMB Question Bank
               </Text>
               <Text _hover={{ color: "purple.200" }} cursor="pointer">
-                Excel Bulk Student Roster
+                AI Facial Verification & Proctoring
               </Text>
-              <Text _hover={{ color: "purple.200" }} cursor="pointer">
-                Export PDF Result Slips
+              <Text _hover={{ color: "purple.200" }} cursor="pointer" onClick={() => navigate("/portal")}>
+                Public Student Result Portal
               </Text>
             </Stack>
           </Box>
@@ -99,23 +99,23 @@ const Footer = ({ onLoginOpen, onDrawerOpen, onExamModalOpen }) => {
           {/* Col 3: Curricula & Exams */}
           <Box gridColumn={{ lg: "span 2" }}>
             <Text fontSize="15px" fontWeight="700" color="white" mb={4}>
-              Supported Exams
+              Academic Curricula
             </Text>
             <Stack gap={2.5} fontSize="14px" color="gray.400">
+              <Text _hover={{ color: "purple.200" }} cursor="pointer">
+                Universal Basic Education (JSS)
+              </Text>
+              <Text _hover={{ color: "purple.200" }} cursor="pointer">
+                Senior Secondary (SSS)
+              </Text>
               <Text _hover={{ color: "purple.200" }} cursor="pointer">
                 JAMB UTME CBT
               </Text>
               <Text _hover={{ color: "purple.200" }} cursor="pointer">
-                WAEC SSCE
+                WAEC SSCE Past Series
               </Text>
               <Text _hover={{ color: "purple.200" }} cursor="pointer">
-                NECO Senior School
-              </Text>
-              <Text _hover={{ color: "purple.200" }} cursor="pointer">
-                Post-UTME Screenings
-              </Text>
-              <Text _hover={{ color: "purple.200" }} cursor="pointer">
-                Termly School Tests
+                Continuous Assessments (CA)
               </Text>
             </Stack>
           </Box>
@@ -133,13 +133,13 @@ const Footer = ({ onLoginOpen, onDrawerOpen, onExamModalOpen }) => {
                 border="1px solid whiteAlpha.200"
                 cursor="pointer"
                 _hover={{ bg: "whiteAlpha.200" }}
-                onClick={onExamModalOpen}
+                onClick={() => navigate("/portal")}
               >
-                <Text fontSize="13px" fontWeight="700" color="white">
-                  Student Exam Room
+                <Text fontSize="13px" fontWeight="700" color="#34D399">
+                  Student Result Portal & Checkers
                 </Text>
                 <Text fontSize="11px" color="gray.400">
-                  Enter test code & take CBT exam
+                  Check terminal results & pay school fees
                 </Text>
               </Box>
 
@@ -150,13 +150,13 @@ const Footer = ({ onLoginOpen, onDrawerOpen, onExamModalOpen }) => {
                 border="1px solid whiteAlpha.200"
                 cursor="pointer"
                 _hover={{ bg: "whiteAlpha.200" }}
-                onClick={() => navigate("/pricing")}
+                onClick={onExamModalOpen}
               >
                 <Text fontSize="13px" fontWeight="700" color="white">
-                  Pricing & Subscriptions
+                  Candidate CBT Room
                 </Text>
                 <Text fontSize="11px" color="gray.400">
-                  School tiers & candidate prep passes
+                  Enter test access code & take CBT exam
                 </Text>
               </Box>
 
@@ -170,10 +170,10 @@ const Footer = ({ onLoginOpen, onDrawerOpen, onExamModalOpen }) => {
                 onClick={onLoginOpen}
               >
                 <Text fontSize="13px" fontWeight="700" color="white">
-                  Teacher & Admin Login
+                  Staff & Admin Login
                 </Text>
                 <Text fontSize="11px" color="gray.400">
-                  Manage questions, exams & results
+                  Access School ERP & Teacher Dashboard
                 </Text>
               </Box>
             </Stack>

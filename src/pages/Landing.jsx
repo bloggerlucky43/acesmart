@@ -56,7 +56,6 @@ function Landing() {
 
   return (
     <Box minH="100vh" bg="#FAFAFA" position="relative">
-      {/* Top Navigation */}
       <Navbar
         onNavClick={scrollToSection}
         refs={{
@@ -150,7 +149,12 @@ function Landing() {
 
             <form onSubmit={handleLaunchExam}>
               <Box mb={4}>
-                <Text fontSize="13px" fontWeight="700" color="gray.700" mb={1.5}>
+                <Text
+                  fontSize="13px"
+                  fontWeight="700"
+                  color="gray.700"
+                  mb={1.5}
+                >
                   Exam ID or Room Code
                 </Text>
                 <Input
@@ -164,7 +168,10 @@ function Landing() {
                   h="48px"
                   fontSize="15px"
                   borderColor={examError ? "red.400" : "gray.300"}
-                  _focus={{ borderColor: "#6A1B9A", boxShadow: "0 0 0 1px #6A1B9A" }}
+                  _focus={{
+                    borderColor: "#6A1B9A",
+                    boxShadow: "0 0 0 1px #6A1B9A",
+                  }}
                   autoFocus
                 />
                 {examError && (
@@ -233,7 +240,14 @@ function Landing() {
             justifyContent="space-between"
           >
             <Box>
-              <Flex align="center" justify="space-between" pb={4} borderBottom="1px solid" borderColor="gray.100" mb={6}>
+              <Flex
+                align="center"
+                justify="space-between"
+                pb={4}
+                borderBottom="1px solid"
+                borderColor="gray.100"
+                mb={6}
+              >
                 <Flex align="center" gap={2}>
                   <Flex
                     w="36px"

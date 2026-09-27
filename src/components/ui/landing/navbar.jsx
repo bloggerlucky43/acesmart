@@ -88,30 +88,30 @@ const Navbar = ({
                   fontSize="10px"
                   fontWeight="700"
                   color="#6A1B9A"
-                  letterSpacing="0.5px"
+                  letterSpacing="0.4px"
                 >
-                  CBT
+                  SMS + CBT
                 </Text>
               </Box>
             </Flex>
             <Text
               fontSize="11px"
-              fontWeight="500"
+              fontWeight="600"
               color="gray.500"
               letterSpacing="0.2px"
             >
-              Smart Exam Portal
+              School ERP & Examination Cloud
             </Text>
           </Box>
         </Flex>
 
         {/* Desktop Navigation Links */}
         <Flex
-          gap={8}
+          gap={7}
           align="center"
           display={{ base: "none", lg: "flex" }}
-          fontWeight="500"
-          fontSize="15px"
+          fontWeight="600"
+          fontSize="14.5px"
           color="gray.600"
         >
           <Text
@@ -128,7 +128,15 @@ const Navbar = ({
             _hover={{ color: "#6A1B9A" }}
             transition="color 0.2s"
           >
-            Features
+            School ERP
+          </Text>
+          <Text
+            cursor="pointer"
+            onClick={(e) => onNavClick(refs.about, e)}
+            _hover={{ color: "#6A1B9A" }}
+            transition="color 0.2s"
+          >
+            CBT Engine
           </Text>
           <Text
             cursor="pointer"
@@ -140,11 +148,13 @@ const Navbar = ({
           </Text>
           <Text
             cursor="pointer"
-            onClick={(e) => onNavClick(refs.testimonials, e)}
-            _hover={{ color: "#6A1B9A" }}
+            onClick={() => navigate("/student")}
+            _hover={{ color: "#10B981" }}
+            color="#059669"
+            fontWeight="700"
             transition="color 0.2s"
           >
-            Testimonials
+            Result Portal
           </Text>
           <Text
             cursor="pointer"
@@ -224,14 +234,14 @@ const Navbar = ({
               borderRadius="xl"
               px={4}
               fontSize="14px"
-              fontWeight="600"
+              fontWeight="700"
               _hover={{
                 color: "#6A1B9A",
                 bg: "purple.50",
               }}
               onClick={onLoginOpen}
             >
-              Teacher Login
+              Staff & Admin Login
             </Button>
 
             {/* Register / Get Started CTA */}

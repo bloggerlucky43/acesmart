@@ -42,6 +42,7 @@ import {
   SUBJECTS_LIST,
   isTeacherQuestion,
 } from "../../../components/teacher/exam/addExam";
+import SearchableSubjectSelect from "../../../components/ui/SearchableSubjectSelect";
 
 export default function MobileAddExam() {
   const [subject, setSubject] = useState("Mathematics");
@@ -275,17 +276,8 @@ export default function MobileAddExam() {
 
   const editSection = (index) => {
     const sec = sections[index];
-    if (
-      SUBJECTS_LIST.filter((s) => s !== "Other / Custom Subject").includes(
-        sec.section,
-      )
-    ) {
-      setSubject(sec.section);
-      setCustomSubject("");
-    } else {
-      setSubject("Other / Custom Subject");
-      setCustomSubject(sec.section);
-    }
+    setSubject(sec.section || "Mathematics");
+    setCustomSubject("");
     setYear(sec.year || "");
     setQuestions(sec.questions);
     setSelectedQuestionsIds(sec.questions);
@@ -755,40 +747,15 @@ export default function MobileAddExam() {
                 <Field.Label fontWeight="700" fontSize="10.5px" color="#475569">
                   Subject / Course <Field.RequiredIndicator />
                 </Field.Label>
-                <NativeSelect.Root size="sm" w="100%">
-                  <NativeSelect.Field
-                    bg="white"
-                    borderRadius="lg"
-                    h="40px"
-                    fontSize="13px"
-                    borderColor="#CBD5E1"
-                    _focus={{ borderColor: "#6366F1" }}
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                  >
-                    <option value="">-- Select Subject --</option>
-                    {SUBJECTS_LIST.map((subj) => (
-                      <option key={subj} value={subj}>
-                        {subj}
-                      </option>
-                    ))}
-                  </NativeSelect.Field>
-                </NativeSelect.Root>
-                {subject === "Other / Custom Subject" && (
-                  <Box mt={2}>
-                    <Input
-                      placeholder="Type custom subject name..."
-                      bg="white"
-                      borderRadius="lg"
-                      h="38px"
-                      fontSize="13px"
-                      borderColor="#CBD5E1"
-                      _focus={{ borderColor: "#6366F1" }}
-                      value={customSubject}
-                      onChange={(e) => setCustomSubject(e.target.value)}
-                    />
-                  </Box>
-                )}
+                <SearchableSubjectSelect
+                  value={subject}
+                  onChange={(newSubj) => {
+                    setSubject(newSubj);
+                    setCustomSubject("");
+                  }}
+                  placeholder="Search subject (e.g. Mathematics, Civic)..."
+                  allowCustom={true}
+                />
               </Field.Root>
 
               <Field.Root>

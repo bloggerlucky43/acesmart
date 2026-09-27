@@ -48,7 +48,9 @@ export default function LoginPage() {
 
         localStorage.setItem("USER_KEY", JSON.stringify(res.data));
         setUser(res.data);
-        if (res.data.role === "institution_admin") {
+        if (res.data.role === "superadmin" || res.data.role === "admin") {
+          navigate("/superadmin/dashboard", { replace: true });
+        } else if (res.data.role === "institution_admin") {
           navigate("/institution/dashboard", { replace: true });
         } else {
           navigate("/teacher_dashboard", { replace: true });

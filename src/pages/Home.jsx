@@ -68,16 +68,37 @@ import StudentResources from "./student/StudentResources";
 import StudentSettings from "./student/StudentSettings";
 import StudentSupport from "./student/StudentSupport";
 
+// Super Admin Components
+import SuperAdminDashboard from "./superadmin/SuperAdminDashboard";
+import SuperAdminInstitutions from "./superadmin/SuperAdminInstitutions";
+import SuperAdminTransactions from "./superadmin/SuperAdminTransactions";
+import SuperAdminUsers from "./superadmin/SuperAdminUsers";
+import SuperAdminSubjects from "./superadmin/SuperAdminSubjects";
+import GhostModeBanner from "../components/superadmin/GhostModeBanner";
+
 // Role-Guard: Restrict Institution Admin/ERP features from regular teachers
 const InstitutionAdminRoute = ({ children }) => {
   const { user } = useAuth();
   const isInstitutionAdmin =
     user?.role === "institution_admin" ||
     user?.role === "admin" ||
-    user?.role === "institution";
+    user?.role === "institution" ||
+    user?.role === "superadmin";
 
   if (!isInstitutionAdmin) {
     return <Navigate to="/teacher_dashboard" replace />;
+  }
+
+  return children;
+};
+
+// Role-Guard: Restrict Super Admin Central Portal
+const SuperAdminRoute = ({ children }) => {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "superadmin" || user?.role === "admin";
+
+  if (!isSuperAdmin) {
+    return <Navigate to="/login" replace />;
   }
 
   return children;
@@ -113,11 +134,14 @@ const Home = () => {
         </Routes>
       </ExamProvider>
       <AuthProvider>
+        <GhostModeBanner />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route
               path="/"
-              element={tenantSchool ? <Navigate to="/student" replace /> : <Landing />}
+              element={
+                tenantSchool ? <Navigate to="/student" replace /> : <Landing />
+              }
             />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -125,10 +149,7 @@ const Home = () => {
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/pricing" element={<PricingPage />} />
 
-            {/* Paystack return/callback (cosmetic; server verify is authoritative) */}
             <Route path="/payment/callback" element={<PaymentCallback />} />
-
-            {/* Student & Parent Portal */}
             <Route
               path="/student"
               element={
@@ -154,7 +175,10 @@ const Home = () => {
               <Route path="profile" element={<StudentProfile />} />
               <Route path="settings" element={<StudentSettings />} />
               <Route path="support" element={<StudentSupport />} />
-              <Route path="portal" element={<Navigate to="/student" replace />} />
+              <Route
+                path="portal"
+                element={<Navigate to="/student" replace />}
+              />
             </Route>
 
             {/* Institutional Admin ERP Routes (Restricted to Institution Admins only) */}
@@ -248,9 +272,18 @@ const Home = () => {
             />
 
             {/* Teacher SMS Routes */}
-            <Route path="/teacher/scan-clockin" element={<TeacherScanClockIn />} />
-            <Route path="/teacher/attendance" element={<StudentAttendanceManager />} />
-            <Route path="/teacher/report-cards" element={<ResultAndReportCardManager />} />
+            <Route
+              path="/teacher/scan-clockin"
+              element={<TeacherScanClockIn />}
+            />
+            <Route
+              path="/teacher/attendance"
+              element={<StudentAttendanceManager />}
+            />
+            <Route
+              path="/teacher/report-cards"
+              element={<ResultAndReportCardManager />}
+            />
 
             {/* Teacher CBT Routes */}
             <Route path="/teacher_dashboard" element={<Teacher />} />
@@ -265,10 +298,12 @@ const Home = () => {
               path="/teacher/exams/edit/:examId/structure"
               element={<EditExamStructure />}
             />
+
             <Route
               path="/teacher/exams/edit/:examId/draft"
               element={<EditDraft />}
             />
+
             <Route
               path="/teacher/exam/questions"
               element={<ExamQuestionPage />}
@@ -276,6 +311,52 @@ const Home = () => {
             <Route path="/teacher/exam_result" element={<Performance />} />
             <Route path="/teacher/exam_results/:id" element={<ResultPage />} />
             <Route path="/teacher/billing" element={<BillingPage />} />
+
+            {/* Super Admin Control Center */}
+            <Route
+              path="/superadmin"
+              element={<Navigate to="/superadmin/dashboard" replace />}
+            />
+            <Route
+              path="/superadmin/dashboard"
+              element={
+                <SuperAdminRoute>
+                  <SuperAdminDashboard />
+                </SuperAdminRoute>
+              }
+            />
+            <Route
+              path="/superadmin/institutions"
+              element={
+                <SuperAdminRoute>
+                  <SuperAdminInstitutions />
+                </SuperAdminRoute>
+              }
+            />
+            <Route
+              path="/superadmin/transactions"
+              element={
+                <SuperAdminRoute>
+                  <SuperAdminTransactions />
+                </SuperAdminRoute>
+              }
+            />
+            <Route
+              path="/superadmin/users"
+              element={
+                <SuperAdminRoute>
+                  <SuperAdminUsers />
+                </SuperAdminRoute>
+              }
+            />
+            <Route
+              path="/superadmin/subjects"
+              element={
+                <SuperAdminRoute>
+                  <SuperAdminSubjects />
+                </SuperAdminRoute>
+              }
+            />
           </Routes>
         </Suspense>
         <Toaster />
