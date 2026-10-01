@@ -210,7 +210,7 @@ const StudentOverview = () => {
       </Box>
 
       {/* Prefect Duty Sign-In Card (Only appears for appointed school prefects) */}
-      <PrefectDutyCard student={student} onAttendanceRecorded={load} />
+      <PrefectDutyCard student={student} onAttendanceRecorded={refresh} />
 
       <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap={4} mb={8}>
         <StatCard

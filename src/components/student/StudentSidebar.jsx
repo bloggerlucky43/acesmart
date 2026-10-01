@@ -183,6 +183,20 @@ const StudentSidebar = ({ isMobile = false, onNavigate }) => {
                       <Text flex={1} isTruncated>
                         {link.name}
                       </Text>
+                      {link.badge && (
+                        <Badge
+                          bg={student?.isPrefect ? "#FEF08A" : "#1E293B"}
+                          color={student?.isPrefect ? "#854D0E" : "#94A3B8"}
+                          fontSize="9px"
+                          fontWeight="800"
+                          px={1.5}
+                          py={0.2}
+                          borderRadius="full"
+                          border={student?.isPrefect ? "1px solid #CA8A04" : "1px solid #334155"}
+                        >
+                          {student?.isPrefect ? "DUTY" : link.badge}
+                        </Badge>
+                      )}
                       {isActive && (
                         <Box
                           w="6px"
@@ -239,8 +253,8 @@ const StudentSidebar = ({ isMobile = false, onNavigate }) => {
               >
                 {studentName}
               </Text>
-              <Text fontSize="10px" color="#A855F7" fontWeight="600" isTruncated>
-                {classArm}
+              <Text fontSize="10px" color={student?.isPrefect ? "#FDE047" : "#A855F7"} fontWeight="700" isTruncated>
+                {student?.isPrefect ? `★ ${student.prefectRole || "Prefect"}` : classArm}
               </Text>
             </Box>
           </Flex>

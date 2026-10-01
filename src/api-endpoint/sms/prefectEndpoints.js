@@ -100,3 +100,19 @@ export const studentPrefectClockInApi = async (payload) => {
     return { success: false, message: error.response?.data?.message };
   }
 };
+
+/**
+ * Fetch a student's prefect role, today's attendance record, and duty history
+ */
+export const getStudentPrefectStatusApi = async (studentId) => {
+  try {
+    const { data } = await api.get(`/portal/student/${studentId}/prefect-status`, {
+      withCredentials: true,
+    });
+    return data;
+  } catch (error) {
+    console.error("getStudentPrefectStatusApi error:", error);
+    return { success: false, data: null };
+  }
+};
+

@@ -69,6 +69,7 @@ import StudentAnnouncements from "./student/StudentAnnouncements";
 import StudentResources from "./student/StudentResources";
 import StudentSettings from "./student/StudentSettings";
 import StudentSupport from "./student/StudentSupport";
+import StudentPrefectDuty from "./student/StudentPrefectDuty";
 
 // Super Admin Components
 import SuperAdminDashboard from "./superadmin/SuperAdminDashboard";
@@ -178,6 +179,7 @@ const Home = () => {
               <Route path="profile" element={<StudentProfile />} />
               <Route path="settings" element={<StudentSettings />} />
               <Route path="support" element={<StudentSupport />} />
+              <Route path="prefect" element={<StudentPrefectDuty />} />
               <Route
                 path="portal"
                 element={<Navigate to="/student" replace />}

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Box, Text, Flex, Icon, Badge } from "@chakra-ui/react";
 import {
   FaBrain,
@@ -22,12 +23,18 @@ import {
   FaHistory,
   FaReceipt,
   FaSignature,
+  FaAward,
+  FaBook,
+  FaBullhorn,
+  FaCommentDots,
 } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
+import FeedbackModal from "../../components/ui/FeedbackModal";
 
 const MobileSideBar = ({ onClose }) => {
   const { user, logout } = useAuth();
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const isInstitutionAdmin =
     user?.role === "institution_admin" ||
     user?.role === "admin" ||
@@ -49,9 +56,11 @@ const MobileSideBar = ({ onClose }) => {
               { name: "Faculty Directory", path: "/institution/staff", icon: FaUsers },
               { name: "Staff Attendance QR", path: "/institution/staff-qr", icon: FaQrcode },
               { name: "Attendance History", path: "/institution/attendance-history", icon: FaHistory },
+              { name: "School Prefects", path: "/institution/prefects", icon: FaAward },
               { name: "Fees & Invoicing", path: "/institution/fees", icon: FaCalculator },
               { name: "Debtor Defaulters", path: "/institution/debtors", icon: FaMoneyBillWave },
               { name: "Payment History", path: "/institution/payments", icon: FaReceipt },
+              { name: "Portal Content", path: "/institution/portal-content", icon: FaBullhorn },
               { name: "Result Approvals", path: "/institution/approvals", icon: FaSignature },
               { name: "School Settings", path: "/institution/settings", icon: FaCog },
             ],
@@ -62,6 +71,7 @@ const MobileSideBar = ({ onClose }) => {
       title: "CLASS & TEACHING (SMS)",
       links: [
         { name: "My Clock-In (QR)", path: "/teacher/scan-clockin", icon: FaQrcode },
+        { name: "Class Study Materials", path: "/teacher/resources", icon: FaBook },
         { name: "Student Attendance", path: "/teacher/attendance", icon: FaCalendarCheck },
         { name: "Report Cards & Broadsheets", path: "/teacher/report-cards", icon: FaGraduationCap },
       ],
@@ -199,8 +209,30 @@ const MobileSideBar = ({ onClose }) => {
           </Box>
         </Box>
 
-        {/* Footer Logout */}
-        <Box pt={4} borderTop="1px solid #1E293B">
+        {/* Footer Actions */}
+        <Box pt={3} borderTop="1px solid #1E293B">
+          <Flex
+            as="button"
+            w="100%"
+            align="center"
+            justify="center"
+            gap={2}
+            py={2}
+            mb={2}
+            borderRadius="xl"
+            bg="rgba(168, 85, 247, 0.12)"
+            border="1px solid rgba(168, 85, 247, 0.25)"
+            color="#D8B4FE"
+            fontSize="12.5px"
+            fontWeight="700"
+            cursor="pointer"
+            _hover={{ bg: "rgba(168, 85, 247, 0.22)", color: "white" }}
+            onClick={() => setIsFeedbackOpen(true)}
+          >
+            <Icon as={FaCommentDots} boxSize={3.5} color="#C084FC" />
+            <Text>Feedback & Suggestions</Text>
+          </Flex>
+
           <Flex
             as="button"
             w="100%"
@@ -221,6 +253,12 @@ const MobileSideBar = ({ onClose }) => {
           </Flex>
         </Box>
       </Box>
+
+      {/* Feedback Modal */}
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+      />
     </Box>
   );
 };

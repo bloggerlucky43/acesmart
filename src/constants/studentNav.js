@@ -12,6 +12,7 @@ import {
   FaUserEdit,
   FaCog,
   FaQuestionCircle,
+  FaAward,
 } from "react-icons/fa";
 
 export const STUDENT_PORTAL_ROOT = "/student";
@@ -43,6 +44,7 @@ export const STUDENT_NAV = [
   {
     title: "MY SCHOOL",
     links: [
+      { name: "Prefect Sign-In", path: "/student/prefect", icon: FaAward, badge: "Prefect" },
       { name: "Announcements", path: "/student/announcements", icon: FaBell },
       { name: "Study Resources", path: "/student/resources", icon: FaBook },
       { name: "My Profile", path: "/student/profile", icon: FaUserEdit },
