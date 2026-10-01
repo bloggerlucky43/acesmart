@@ -17,15 +17,16 @@ import {
   FaGraduationCap,
 } from "react-icons/fa";
 import { MASTER_NIGERIAN_SUBJECTS } from "../../constants/subjectsData";
+import { fetchSubjectsApi } from "../../api-endpoint/subjects/subjectEndpoints";
 
 /**
  * Modern Searchable Typeahead Combobox for Subject Selection
  * Features:
  * - Real-time filtering by subject name, abbreviation code, or track category
+ * - Dynamic live synchronization with backend database (Global & Custom Subjects)
  * - Category track badging (Sciences, Commercial, Arts, BECE, Vocational, Custom)
  * - Full keyboard navigation (ArrowUp, ArrowDown, Enter, Escape)
  * - Inline addition of custom institution-specific subjects
- * - Replaces full-page static subject grids with a compact, modern UX
  */
 export default function SearchableSubjectSelect({
   value = "",
@@ -38,29 +39,72 @@ export default function SearchableSubjectSelect({
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [apiSubjects, setApiSubjects] = useState([]);
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Combine built-in Nigerian master catalog with institution custom subjects
+  // Fetch live global and custom subjects from backend database
+  useEffect(() => {
+    let isMounted = true;
+    fetchSubjectsApi()
+      .then((res) => {
+        if (isMounted && res?.data && Array.isArray(res.data)) {
+          setApiSubjects(res.data);
+        }
+      })
+      .catch((err) => console.warn("Failed to fetch live subjects:", err));
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Combine live database subjects (global + institution custom), built-in Nigerian master catalog, and prop custom subjects
   const allSubjects = useMemo(() => {
-    const customList = (customSubjects || []).map((s) => {
-      if (typeof s === "string") {
-        return { name: s, category: "Custom School Subject", level: "Custom", code: "CST" };
+    const list = [];
+    const seenNames = new Set();
+
+    // 1. Live API subjects (highest precedence: includes newly created SuperAdmin global subjects and institution subjects)
+    for (const sub of apiSubjects) {
+      if (sub?.name && !seenNames.has(sub.name.toLowerCase().trim())) {
+        seenNames.add(sub.name.toLowerCase().trim());
+        list.push({
+          name: sub.name,
+          category: sub.category || (sub.isGlobal ? "General" : "Custom School Subject"),
+          level: sub.level || "Senior Secondary",
+          code: sub.code || (sub.isGlobal ? "GLB" : "CST"),
+          isGlobal: sub.isGlobal ?? true,
+        });
       }
-      return {
-        ...s,
-        category: s.category || "Custom School Subject",
-        level: s.level || "Custom",
-      };
-    });
+    }
 
-    const masterNames = new Set(MASTER_NIGERIAN_SUBJECTS.map((s) => s.name.toLowerCase()));
-    const filteredCustom = customList.filter(
-      (c) => !masterNames.has(c.name.toLowerCase())
-    );
+    // 2. Built-in Nigerian master catalog (fallback/default seed)
+    for (const sub of MASTER_NIGERIAN_SUBJECTS) {
+      if (sub?.name && !seenNames.has(sub.name.toLowerCase().trim())) {
+        seenNames.add(sub.name.toLowerCase().trim());
+        list.push(sub);
+      }
+    }
 
-    return [...MASTER_NIGERIAN_SUBJECTS, ...filteredCustom];
-  }, [customSubjects]);
+    // 3. Custom subjects passed via props
+    for (const s of customSubjects || []) {
+      const name = typeof s === "string" ? s : s?.name;
+      if (name && !seenNames.has(name.toLowerCase().trim())) {
+        seenNames.add(name.toLowerCase().trim());
+        list.push(
+          typeof s === "string"
+            ? { name, category: "Custom School Subject", level: "Custom", code: "CST" }
+            : {
+                ...s,
+                category: s.category || "Custom School Subject",
+                level: s.level || "Custom",
+              }
+        );
+      }
+    }
+
+    return list;
+  }, [apiSubjects, customSubjects]);
 
   // Filter subjects based on query
   const filteredList = useMemo(() => {

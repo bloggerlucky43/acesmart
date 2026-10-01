@@ -16,6 +16,7 @@ import {
   FaPlayCircle,
   FaLink,
   FaQuestionCircle,
+  FaDownload,
 } from "react-icons/fa";
 import StudentPageHeading from "../../components/student/StudentPageHeading";
 import {
@@ -182,23 +183,38 @@ const StudentResources = () => {
                   </Text>
                 )}
 
-                <Button
-                  as="a"
-                  href={resource.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  mt="auto"
-                  h="40px"
-                  bg="#4338CA"
-                  color="white"
-                  borderRadius="xl"
-                  fontWeight="700"
-                  fontSize="13px"
-                  _hover={{ opacity: 0.95 }}
-                >
-                  <Icon as={FaExternalLinkAlt} mr={2} boxSize={3} />
-                  Open Resource
-                </Button>
+                <Flex gap={2} mt="auto">
+                  <Button
+                    as="a"
+                    href={resource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    flex={1}
+                    h="40px"
+                    bg="#4338CA"
+                    color="white"
+                    borderRadius="xl"
+                    fontWeight="700"
+                    fontSize="13px"
+                    _hover={{ opacity: 0.95 }}
+                  >
+                    <Icon as={FaExternalLinkAlt} mr={2} boxSize={3} />
+                    Open Resource
+                  </Button>
+                  <Button
+                    as="a"
+                    href={resource.url}
+                    download={resource.title || "study-resource"}
+                    h="40px"
+                    variant="outline"
+                    borderRadius="xl"
+                    fontWeight="700"
+                    fontSize="13px"
+                  >
+                    <Icon as={FaDownload} mr={1.5} boxSize={3} />
+                    Download
+                  </Button>
+                </Flex>
               </PortalCard>
             );
           })}

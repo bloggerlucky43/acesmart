@@ -297,7 +297,7 @@ export default function TeacherScanClockIn() {
                   Teacher Attendance Clock-In
                 </Text>
                 <Text fontSize="13px" color="#64748B">
-                  {institutionName} • Klacify-Style Barcode Attendance Terminal
+                  {institutionName} Barcode Attendance Terminal
                 </Text>
               </Box>
             </Flex>

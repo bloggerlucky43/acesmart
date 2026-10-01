@@ -38,6 +38,7 @@ import VerifyEmailPage from "./auth/VerifyEmailPage";
 import TeacherScanClockIn from "./teacher/sms/TeacherScanClockIn";
 import StudentAttendanceManager from "./teacher/sms/StudentAttendanceManager";
 import ResultAndReportCardManager from "./teacher/sms/ResultAndReportCardManager";
+import TeacherResources from "./teacher/resources/TeacherResources";
 import SchoolAdminDashboard from "./institution/SchoolAdminDashboard";
 import StaffQrGenerator from "./institution/StaffQrGenerator";
 import StaffAttendanceHistory from "./institution/StaffAttendanceHistory";
@@ -49,6 +50,7 @@ import InstitutionSettings from "./institution/InstitutionSettings";
 import StaffManager from "./institution/StaffManager";
 import PortalContentManager from "./institution/PortalContentManager";
 import PrincipalApprovals from "./institution/PrincipalApprovals";
+import PrefectManager from "./institution/PrefectManager";
 
 // Student & Parent Portal
 import { StudentPortalProvider } from "../libs/StudentPortalProvider";
@@ -74,6 +76,7 @@ import SuperAdminInstitutions from "./superadmin/SuperAdminInstitutions";
 import SuperAdminTransactions from "./superadmin/SuperAdminTransactions";
 import SuperAdminUsers from "./superadmin/SuperAdminUsers";
 import SuperAdminSubjects from "./superadmin/SuperAdminSubjects";
+import SuperAdminFeedback from "./superadmin/SuperAdminFeedback";
 import GhostModeBanner from "../components/superadmin/GhostModeBanner";
 
 // Role-Guard: Restrict Institution Admin/ERP features from regular teachers
@@ -215,6 +218,14 @@ const Home = () => {
               }
             />
             <Route
+              path="/institution/prefects"
+              element={
+                <InstitutionAdminRoute>
+                  <PrefectManager />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
               path="/institution/fees"
               element={
                 <InstitutionAdminRoute>
@@ -283,6 +294,10 @@ const Home = () => {
             <Route
               path="/teacher/report-cards"
               element={<ResultAndReportCardManager />}
+            />
+            <Route
+              path="/teacher/resources"
+              element={<TeacherResources />}
             />
 
             {/* Teacher CBT Routes */}
@@ -354,6 +369,14 @@ const Home = () => {
               element={
                 <SuperAdminRoute>
                   <SuperAdminSubjects />
+                </SuperAdminRoute>
+              }
+            />
+            <Route
+              path="/superadmin/feedback"
+              element={
+                <SuperAdminRoute>
+                  <SuperAdminFeedback />
                 </SuperAdminRoute>
               }
             />

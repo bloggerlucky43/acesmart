@@ -23,6 +23,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import StudentPageHeading from "../../components/student/StudentPageHeading";
 import StudentFeePaymentModal from "../../components/sms/StudentFeePaymentModal";
+import PrefectDutyCard from "../../components/student/PrefectDutyCard";
 import { useStudentPortal } from "../../libs/StudentPortalProvider";
 
 const StatCard = ({ icon, label, value, tint = "#EEF2FF", accent = "#4338CA" }) => (
@@ -207,6 +208,9 @@ const StudentOverview = () => {
           </Button>
         </Flex>
       </Box>
+
+      {/* Prefect Duty Sign-In Card (Only appears for appointed school prefects) */}
+      <PrefectDutyCard student={student} onAttendanceRecorded={load} />
 
       <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap={4} mb={8}>
         <StatCard

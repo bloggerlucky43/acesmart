@@ -29,10 +29,15 @@ import {
   FaBullhorn,
   FaSignature,
   FaReceipt,
+  FaAward,
+  FaBook,
+  FaCommentDots,
 } from "react-icons/fa";
+import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { logoutUser } from "../../api-endpoint/auth/auths";
 import { useAuth } from "../../libs/AuthProvider";
+import FeedbackModal from "../ui/FeedbackModal";
 
 const Sidebar = () => {
   const { user, setUser } = useAuth();
@@ -78,6 +83,7 @@ const Sidebar = () => {
               { name: "Faculty Directory", path: "/institution/staff", icon: FaUsers },
               { name: "Staff Attendance QR", path: "/institution/staff-qr", icon: FaQrcode },
               { name: "Attendance History", path: "/institution/attendance-history", icon: FaHistory },
+              { name: "School Prefects", path: "/institution/prefects", icon: FaAward },
               { name: "Fees & Invoicing", path: "/institution/fees", icon: FaCalculator },
               { name: "Debtor Defaulters", path: "/institution/debtors", icon: FaMoneyBillWave },
               { name: "Payment History", path: "/institution/payments", icon: FaReceipt },
@@ -93,6 +99,7 @@ const Sidebar = () => {
       title: "CLASS & TEACHING (SMS)",
       links: [
         { name: "My Clock-In (QR)", path: "/teacher/scan-clockin", icon: FaQrcode },
+        { name: "Class Study Materials", path: "/teacher/resources", icon: FaBook },
         { name: "Student Attendance", path: "/teacher/attendance", icon: FaCalendarCheck },
         { name: "Report Cards & Broadsheets", path: "/teacher/report-cards", icon: FaGraduationCap },
       ],

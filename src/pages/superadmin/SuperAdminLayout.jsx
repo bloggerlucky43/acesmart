@@ -21,6 +21,7 @@ import {
   FaBookOpen,
   FaLock,
   FaExclamationTriangle,
+  FaCommentDots,
 } from "react-icons/fa";
 import { useAuth } from "../../libs/AuthProvider";
 import { getAdminPinStatusApi } from "../../api-endpoint/sms/superAdminEndpoints";
@@ -53,6 +54,7 @@ export default function SuperAdminLayout({ children }) {
     { label: "Curriculum Subjects", path: "/superadmin/subjects", icon: FaBookOpen },
     { label: "Global Transactions", path: "/superadmin/transactions", icon: FaCreditCard },
     { label: "Universal Users", path: "/superadmin/users", icon: FaUsers },
+    { label: "User Feedbacks", path: "/superadmin/feedback", icon: FaCommentDots },
   ];
 
   const handleLogout = async () => {

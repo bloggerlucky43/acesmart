@@ -43,17 +43,34 @@ import {
   parseDocumentQuestions,
   parseBulkTextWithAI,
 } from "../../../api-endpoint/questions/questions";
+import { fetchSubjectsApi } from "../../../api-endpoint/subjects/subjectEndpoints";
 import { TableSkeleton, CardGridSkeleton } from "../../ui/skeletons";
 import SearchableSubjectSelect from "../../ui/SearchableSubjectSelect";
 import { MASTER_NIGERIAN_SUBJECTS } from "../../../constants/subjectsData";
 
-const SUBJECTS_LIST = [
+const INITIAL_SUBJECTS_LIST = [
   "All",
   ...Array.from(new Set(MASTER_NIGERIAN_SUBJECTS.map((s) => s.name))),
 ];
 
 export default function QuestionBankHub() {
   const [activeTab, setActiveTab] = useState("explorer"); // 'explorer' | 'ocr' | 'bulk' | 'single'
+  const [subjectsList, setSubjectsList] = useState(INITIAL_SUBJECTS_LIST);
+
+  // Fetch live subjects to ensure newly added SuperAdmin global subjects appear
+  useEffect(() => {
+    fetchSubjectsApi()
+      .then((res) => {
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const names = new Set(MASTER_NIGERIAN_SUBJECTS.map((s) => s.name));
+          res.data.forEach((sub) => {
+            if (sub?.name) names.add(sub.name);
+          });
+          setSubjectsList(["All", ...Array.from(names)]);
+        }
+      })
+      .catch((err) => console.warn("Failed to load subjects:", err));
+  }, []);
 
   // -------------------------------------------------------------
   // TAB 1: QUESTION BANK EXPLORER STATE (DUAL-SOURCING & AI HEALTH)
@@ -693,7 +710,7 @@ export default function QuestionBankHub() {
                         fontWeight="600"
                         color="#334155"
                       >
-                        {SUBJECTS_LIST.map((s) => (
+                        {subjectsList.map((s) => (
                           <option key={s} value={s}>
                             {s === "All" ? "All Subjects" : s}
                           </option>
@@ -1096,7 +1113,7 @@ export default function QuestionBankHub() {
                       onChange={(e) => setDocSubject(e.target.value)}
                       borderRadius="xl"
                     >
-                      {SUBJECTS_LIST.filter((s) => s !== "All").map((s) => (
+                      {subjectsList.filter((s) => s !== "All").map((s) => (
                         <option key={s} value={s}>
                           {s}
                         </option>

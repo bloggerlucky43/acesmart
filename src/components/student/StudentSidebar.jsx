@@ -1,12 +1,15 @@
+import { useState } from "react";
 import { Box, Flex, Text, Icon, Badge, Avatar } from "@chakra-ui/react";
-import { FaGraduationCap, FaSignOutAlt, FaBookOpen } from "react-icons/fa";
+import { FaGraduationCap, FaSignOutAlt, FaBookOpen, FaCommentDots } from "react-icons/fa";
 import { NavLink, useNavigate } from "react-router-dom";
 import { STUDENT_NAV } from "../../constants/studentNav";
 import { useStudentPortal } from "../../libs/StudentPortalProvider";
+import FeedbackModal from "../ui/FeedbackModal";
 
 const StudentSidebar = ({ isMobile = false, onNavigate }) => {
   const navigate = useNavigate();
   const { student, institution, logout } = useStudentPortal();
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   const schoolName = institution?.name;
   const schoolLogo = institution?.logoUrl;
@@ -260,7 +263,38 @@ const StudentSidebar = ({ isMobile = false, onNavigate }) => {
             <Icon as={FaSignOutAlt} boxSize={3.5} />
           </Flex>
         </Flex>
+
+        {/* Student Feedback & Bug Report Button */}
+        <Flex
+          as="button"
+          align="center"
+          gap={2}
+          w="100%"
+          px={3}
+          py={2}
+          mt={2.5}
+          borderRadius="xl"
+          bg="rgba(99, 102, 241, 0.12)"
+          border="1px solid rgba(99, 102, 241, 0.25)"
+          color="#A5B4FC"
+          fontSize="11.5px"
+          fontWeight="700"
+          cursor="pointer"
+          _hover={{ bg: "rgba(99, 102, 241, 0.22)", color: "white" }}
+          transition="all 0.15s ease"
+          onClick={() => setIsFeedbackOpen(true)}
+        >
+          <Icon as={FaCommentDots} boxSize={3.5} color="#818CF8" />
+          <Text flex={1} textAlign="left">Give Feedback & Suggestions</Text>
+        </Flex>
       </Box>
+
+      {/* Feedback Modal */}
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        studentId={student?.id}
+      />
     </Box>
   );
 };

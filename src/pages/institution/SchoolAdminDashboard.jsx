@@ -17,6 +17,7 @@ import {
   FaCog,
   FaFileAlt,
   FaCheckCircle,
+  FaAward,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import {
@@ -357,6 +358,30 @@ export default function SchoolAdminDashboard() {
             </Text>
             <Text fontSize="13px" color="#64748B" mt={1}>
               Sync CBT test scores, enter grades, and print official stamped report cards.
+            </Text>
+          </Box>
+
+          {/* Action 5: School Prefects & Daily Attendance Code */}
+          <Box
+            flex="1"
+            minW="240px"
+            bg="white"
+            p={6}
+            borderRadius="2xl"
+            border="1px solid #E2E8F0"
+            cursor="pointer"
+            _hover={{ transform: "translateY(-3px)", boxShadow: "0 10px 24px rgba(0,0,0,0.06)" }}
+            transition="all 0.2s"
+            onClick={() => navigate("/institution/prefects")}
+          >
+            <Flex w="48px" h="48px" borderRadius="xl" bg="#FEF3C7" color="#D97706" align="center" justify="center" mb={4}>
+              <Icon as={FaAward} boxSize={6} />
+            </Flex>
+            <Text fontSize="16px" fontWeight="800" color="#0F172A">
+              School Prefects & Codes
+            </Text>
+            <Text fontSize="13px" color="#64748B" mt={1}>
+              Appoint student leaders, view daily attendance code, and monitor sign-in roster.
             </Text>
           </Box>
         </Flex>
