@@ -12,6 +12,7 @@ import {
 import SubmitModal from "./SubmitModal";
 import { useExam } from "./ExamContext";
 import { toaster } from "../../../components/ui/toaster";
+import { formatStudentFullName } from "../../../libs/helper";
 import Calculator from "./calculator/calculator";
 
 export default function ExamTopBar() {
@@ -63,7 +64,7 @@ export default function ExamTopBar() {
     }
   };
 
-  const candidateName = `${examUserDetails?.firstName ?? ""} ${examUserDetails?.lastName ?? ""}`.trim() || "Candidate";
+  const candidateName = formatStudentFullName(examUserDetails?.firstName, examUserDetails?.lastName) || "Candidate";
   const studentId = examUserDetails?.studentId || "CBT-001";
   const isUrgent = typeof timeLeft === "number" && timeLeft <= 300; // <= 5 minutes
 

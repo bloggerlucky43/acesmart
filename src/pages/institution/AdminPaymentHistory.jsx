@@ -26,6 +26,7 @@ import {
 } from "../../api-endpoint/sms/smsEndpoints";
 import { useAuth } from "../../libs/AuthProvider";
 import { toaster } from "../../components/ui/toaster";
+import { formatStudentName } from "../../libs/helper";
 import DashboardLayout from "../../constants/dashboardlayout";
 
 const PAYMENT_METHODS = [
@@ -183,7 +184,7 @@ export default function AdminPaymentHistory() {
     const lines = payments.map((p) =>
       [
         formatDateTime(p.paidAt),
-        p.studentName,
+        formatStudentName(p.studentName),
         p.studentCode,
         p.classArmName,
         p.amount,
@@ -635,7 +636,7 @@ export default function AdminPaymentHistory() {
                         </td>
                         <td style={{ padding: "14px 16px" }}>
                           <Text fontWeight="800" fontSize="14px" color="#0F172A">
-                            {p.studentName}
+                            {formatStudentName(p.studentName)}
                           </Text>
                           {(p.term || p.session) && (
                             <Text fontSize="11px" color="#94A3B8">
@@ -699,7 +700,7 @@ export default function AdminPaymentHistory() {
                   minW="200px"
                 >
                   <Text fontSize="13px" fontWeight="800" color="#0F172A">
-                    {s.studentName}
+                    {formatStudentName(s.studentName)}
                   </Text>
                   <Text fontSize="11px" color="#4338CA" fontWeight="700">
                     {s.studentCode}

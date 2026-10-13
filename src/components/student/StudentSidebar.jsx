@@ -4,6 +4,7 @@ import { FaGraduationCap, FaSignOutAlt, FaBookOpen, FaCommentDots } from "react-
 import { NavLink, useNavigate } from "react-router-dom";
 import { STUDENT_NAV } from "../../constants/studentNav";
 import { useStudentPortal } from "../../libs/StudentPortalProvider";
+import { getFormattedStudentName } from "../../libs/helper";
 import FeedbackModal from "../ui/FeedbackModal";
 
 const StudentSidebar = ({ isMobile = false, onNavigate }) => {
@@ -13,7 +14,7 @@ const StudentSidebar = ({ isMobile = false, onNavigate }) => {
 
   const schoolName = institution?.name;
   const schoolLogo = institution?.logoUrl;
-  const studentName = student?.name || student?.fullName || "Student";
+  const studentName = getFormattedStudentName(student, "Student");
   const classArm = student?.classArm || "Unassigned";
 
   const handleLogout = () => {

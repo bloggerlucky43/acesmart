@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa";
 import StudentPageHeading from "../../components/student/StudentPageHeading";
 import { useStudentPortal } from "../../libs/StudentPortalProvider";
+import { getFormattedStudentName } from "../../libs/helper";
 
 const InfoRow = ({ label, value }) => (
   <Flex
@@ -35,7 +36,7 @@ const InfoRow = ({ label, value }) => (
 const StudentProfile = () => {
   const { student, institution, isUnlocked } = useStudentPortal();
 
-  const studentName = student?.name || student?.fullName || "Student";
+  const studentName = getFormattedStudentName(student, "Student");
 
   return (
     <Box>

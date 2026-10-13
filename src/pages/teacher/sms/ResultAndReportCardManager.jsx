@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
   Flex,
@@ -7,6 +7,8 @@ import {
   Icon,
   Badge,
   Input,
+  Spinner,
+  SimpleGrid,
 } from "@chakra-ui/react";
 import {
   FaGraduationCap,
@@ -17,6 +19,13 @@ import {
   FaCheckCircle,
   FaTable,
   FaBrain,
+  FaSearch,
+  FaChevronLeft,
+  FaChevronRight,
+  FaInfoCircle,
+  FaPencilAlt,
+  FaUserGraduate,
+  FaShieldAlt,
 } from "react-icons/fa";
 import {
   getClassArmsApi,
@@ -27,9 +36,50 @@ import {
   getStudentReportCardApi,
 } from "../../../api-endpoint/sms/smsEndpoints";
 import { fetchExams } from "../../../api-endpoint/exam/exams";
+import { fetchSubjectsApi } from "../../../api-endpoint/subjects/subjectEndpoints";
+import { formatStudentName, getFormattedStudentName } from "../../../libs/helper";
 import { useAuth } from "../../../libs/AuthProvider";
 import { toaster } from "../../../components/ui/toaster";
 import DashboardLayout from "../../../constants/dashboardlayout";
+import StudentReportCardSheet from "../../../components/student/StudentReportCardSheet";
+
+const DEFAULT_FALLBACK_SUBJECTS = [
+  "Mathematics",
+  "English Language",
+  "Biology",
+  "Chemistry",
+  "Physics",
+  "Civic Education",
+  "Economics",
+  "Agricultural Science",
+  "Government",
+  "Commerce",
+  "Financial Accounting",
+  "Literature in English",
+  "Geography",
+  "Christian Religious Studies (CRS)",
+  "Islamic Religious Studies (IRS)",
+  "Computer Studies",
+  "Data Processing",
+  "Further Mathematics",
+  "Technical Drawing",
+  "Visual Arts",
+  "Music",
+  "French",
+  "Yoruba",
+  "Igbo",
+  "Hausa",
+  "History",
+  "Physical Education",
+  "Basic Science",
+  "Basic Technology",
+  "Social Studies",
+  "Business Studies",
+  "Home Economics",
+  "Food and Nutrition",
+  "Book Keeping",
+  "Marketing",
+];
 
 export default function ResultAndReportCardManager() {
   const { user } = useAuth();
@@ -37,9 +87,11 @@ export default function ResultAndReportCardManager() {
   const [classes, setClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [subject, setSubject] = useState("Mathematics");
+  const [availableSubjects, setAvailableSubjects] = useState(DEFAULT_FALLBACK_SUBJECTS);
   const [exams, setExams] = useState([]);
   const [selectedExamId, setSelectedExamId] = useState("");
-  const [targetColumn, setTargetColumn] = useState("examScore"); // "examScore" | "caScore1" | "caScore2"
+  const [targetColumn, setTargetColumn] = useState("examScore"); // "examScore" | "caScore1" | "caScore2" | "assignmentScore"
+  const [scaleMode, setScaleMode] = useState("smart"); // "smart" | "raw"
 
   // Score spreadsheet state
   const [roster, setRoster] = useState([]);
@@ -53,6 +105,7 @@ export default function ResultAndReportCardManager() {
   const [selectedStudentForCard, setSelectedStudentForCard] = useState(null);
   const [reportCardData, setReportCardData] = useState(null);
   const [loadingReportCard, setLoadingReportCard] = useState(false);
+  const [studentSearch, setStudentSearch] = useState("");
 
   const institution = user?.institution;
   const institutionName = institution?.name || "Institution";
@@ -63,9 +116,10 @@ export default function ResultAndReportCardManager() {
   useEffect(() => {
     const initData = async () => {
       try {
-        const [classRes, examRes] = await Promise.all([
+        const [classRes, examRes, subjectRes] = await Promise.all([
           getClassArmsApi(),
           fetchExams().catch(() => ({ data: [] })),
+          fetchSubjectsApi().catch(() => ({ success: false, data: [] })),
         ]);
 
         if (classRes.success && classRes.data.length > 0) {
@@ -73,11 +127,24 @@ export default function ResultAndReportCardManager() {
           setSelectedClassId(classRes.data[0].id);
         }
 
-        if (examRes?.data) {
-          setExams(examRes.data);
-          if (examRes.data.length > 0) {
-            setSelectedExamId(examRes.data[0]._id || examRes.data[0].id);
-          }
+        const examList = examRes?.data || [];
+        setExams(examList);
+        if (examList.length > 0) {
+          setSelectedExamId(examList[0]._id || examList[0].id);
+        }
+
+        const backendSubjects = (subjectRes?.data || [])
+          .map((s) => (typeof s === "string" ? s : s.name))
+          .filter(Boolean);
+        const examSubjects = examList.map((e) => e.subject).filter(Boolean);
+
+        const unified = Array.from(
+          new Set([...backendSubjects, ...examSubjects, ...DEFAULT_FALLBACK_SUBJECTS])
+        ).sort((a, b) => a.localeCompare(b));
+
+        setAvailableSubjects(unified);
+        if (unified.length > 0 && !unified.includes(subject)) {
+          setSubject(unified[0]);
         }
       } catch (err) {
         console.error("Init data error:", err);
@@ -158,13 +225,12 @@ export default function ResultAndReportCardManager() {
   };
 
   const getRowGrade = (total) => {
-    if (total >= 75) return { grade: "A1", remark: "Distinction" };
-    if (total >= 70) return { grade: "B2", remark: "Very Good" };
-    if (total >= 65) return { grade: "B3", remark: "Good" };
-    if (total >= 60) return { grade: "C4", remark: "Credit" };
-    if (total >= 50) return { grade: "C6", remark: "Credit" };
-    if (total >= 40) return { grade: "E8", remark: "Pass" };
-    return { grade: "F9", remark: "Fail" };
+    if (total >= 70) return { grade: "A", remark: "Excellent" };
+    if (total >= 60) return { grade: "B", remark: "Very Good" };
+    if (total >= 50) return { grade: "C", remark: "Credit" };
+    if (total >= 40) return { grade: "D", remark: "Pass" };
+    if (total >= 30) return { grade: "E", remark: "Fair" };
+    return { grade: "F", remark: "Fail" };
   };
 
   const enteredCount = roster.filter((s) => existingScores[s.studentId]).length;
@@ -209,6 +275,21 @@ export default function ResultAndReportCardManager() {
     }
   };
 
+  const handleExamChange = (e) => {
+    const examId = e.target.value;
+    setSelectedExamId(examId);
+    const chosen = exams.find((x) => (x._id || x.id) === examId);
+    if (chosen?.subject) {
+      setSubject(chosen.subject);
+      setAvailableSubjects((prev) => {
+        if (!prev.includes(chosen.subject)) {
+          return [...prev, chosen.subject].sort((a, b) => a.localeCompare(b));
+        }
+        return prev;
+      });
+    }
+  };
+
   const handleSyncCbt = async () => {
     if (!selectedExamId) {
       toaster.create({ title: "Please select a CBT exam to synchronize", type: "error" });
@@ -223,6 +304,8 @@ export default function ResultAndReportCardManager() {
         targetColumn,
         term: currentTerm,
         session: currentSession,
+        classArmId: selectedClassId,
+        scaleMode,
       });
 
       if (res.success) {
@@ -232,6 +315,9 @@ export default function ResultAndReportCardManager() {
           type: "success",
         });
         await loadExistingScores();
+        if (selectedStudentForCard) {
+          await handleFetchReportCard(selectedStudentForCard);
+        }
         setActiveTab("scores");
       }
     } catch (error) {
@@ -245,10 +331,15 @@ export default function ResultAndReportCardManager() {
   };
 
   const handleFetchReportCard = async (student) => {
+    if (!student) return;
     setSelectedStudentForCard(student);
     setLoadingReportCard(true);
+    setReportCardData(null);
     try {
-      const res = await getStudentReportCardApi(student.studentId, {
+      const idToFetch = student.studentId || student.id || student.studentCode;
+      const res = await getStudentReportCardApi(idToFetch, {
+        term: currentTerm,
+        session: currentSession,
         bypassTokenCheck: "true", // Staff view bypasses token check
       });
       if (res.success) {
@@ -256,6 +347,10 @@ export default function ResultAndReportCardManager() {
       }
     } catch (error) {
       console.error("Fetch report card error:", error);
+      toaster.create({
+        title: error.response?.data?.message || "Failed to load report card preview",
+        type: "error",
+      });
     } finally {
       setLoadingReportCard(false);
     }
@@ -342,7 +437,8 @@ export default function ResultAndReportCardManager() {
               boxShadow={activeTab === "report-card" ? "0 2px 6px rgba(0,0,0,0.06)" : "none"}
               onClick={() => {
                 setActiveTab("report-card");
-                if (roster.length > 0) handleFetchReportCard(roster[0]);
+                const target = selectedStudentForCard || roster[0];
+                if (target) handleFetchReportCard(target);
               }}
             >
               <Icon as={FaFileInvoice} mr={1.5} boxSize={3.5} />
@@ -401,16 +497,19 @@ export default function ResultAndReportCardManager() {
                       fontSize: "13px",
                       fontWeight: "600",
                       background: "#F8FAFC",
+                      minWidth: "180px",
                     }}
                   >
-                    <option value="Mathematics">Mathematics</option>
-                    <option value="English Language">English Language</option>
-                    <option value="Basic Science">Basic Science</option>
-                    <option value="Civic Education">Civic Education</option>
-                    <option value="Physics">Physics</option>
-                    <option value="Chemistry">Chemistry</option>
-                    <option value="Biology">Biology</option>
-                    <option value="Economics">Economics</option>
+                    {availableSubjects.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                    {Boolean(subject && !availableSubjects.includes(subject)) && (
+                      <option key={subject} value={subject}>
+                        {subject}
+                      </option>
+                    )}
                   </select>
                 </Box>
               </Flex>
@@ -495,7 +594,7 @@ export default function ResultAndReportCardManager() {
                           <td style={{ padding: "12px 16px", fontSize: "13px", color: "#64748B" }}>{idx + 1}</td>
                           <td style={{ padding: "12px 16px", fontWeight: "700", color: "#0F172A", fontSize: "14px" }}>
                             <Flex align="center" gap={2}>
-                              {student.name}
+                              {getFormattedStudentName(student)}
                               {saved && (
                                 <Badge
                                   bg={saved.cbtExamId ? "#EDE9FE" : "#DCFCE7"}
@@ -563,8 +662,32 @@ export default function ResultAndReportCardManager() {
                           </td>
                           <td style={{ padding: "12px 16px" }}>
                             <Badge
-                              bg={total >= 60 ? "#ECFDF5" : total >= 50 ? "#EFF6FF" : "#FEF2F2"}
-                              color={total >= 60 ? "#065F46" : total >= 50 ? "#1E40AF" : "#991B1B"}
+                              bg={
+                                total >= 70
+                                  ? "#EDE9FE"
+                                  : total >= 60
+                                  ? "#EEF2FF"
+                                  : total >= 50
+                                  ? "#ECFDF5"
+                                  : total >= 40
+                                  ? "#FFFBEB"
+                                  : total >= 30
+                                  ? "#FFF7ED"
+                                  : "#FEF2F2"
+                              }
+                              color={
+                                total >= 70
+                                  ? "#6D28D9"
+                                  : total >= 60
+                                  ? "#4338CA"
+                                  : total >= 50
+                                  ? "#065F46"
+                                  : total >= 40
+                                  ? "#B45309"
+                                  : total >= 30
+                                  ? "#C2410C"
+                                  : "#991B1B"
+                              }
                               fontWeight="800"
                               px={2}
                               py={0.5}
@@ -584,311 +707,405 @@ export default function ResultAndReportCardManager() {
         )}
 
         {/* TAB 2: CBT AUTO-SYNC */}
-        {activeTab === "cbt-sync" && (
-          <Box maxW="680px" mx="auto" bg="white" p={8} borderRadius="2xl" border="1px solid #E2E8F0">
-            <Flex align="center" gap={3} mb={4}>
-              <Flex w="48px" h="48px" borderRadius="xl" bg="#EDE9FE" color="#6D28D9" align="center" justify="center">
-                <Icon as={FaBrain} boxSize={6} />
-              </Flex>
-              <Box>
-                <Text fontSize="18px" fontWeight="900" color="#0F172A">
-                  Synchronize CBT Scores into Report Card
-                </Text>
-                <Text fontSize="13px" color="#64748B">
-                  Automatically pull candidate test scores into subject continuous assessments or exams
-                </Text>
-              </Box>
-            </Flex>
+        {activeTab === "cbt-sync" && (() => {
+          const selectedExam = exams.find((e) => (e._id || e.id) === selectedExamId);
+          const currentClassObj = classes.find((c) => c.id === selectedClassId);
 
-            <Flex direction="column" gap={5} mt={6}>
-              <Box>
-                <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
-                  1. Select Completed CBT Exam
-                </Text>
-                <select
-                  value={selectedExamId}
-                  onChange={(e) => setSelectedExamId(e.target.value)}
-                  style={{
-                    width: "100%",
-                    height: "46px",
-                    padding: "0 14px",
-                    borderRadius: "12px",
-                    border: "1px solid #CBD5E1",
-                    fontSize: "14px",
-                    background: "#F8FAFC",
-                  }}
-                >
-                  {exams.map((exam) => (
-                    <option key={exam._id || exam.id} value={exam._id || exam.id}>
-                      {exam.examName || exam.title || "Examination"} ({exam.subject || "General"})
-                    </option>
-                  ))}
-                </select>
-              </Box>
-
-              <Box>
-                <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
-                  2. Map to Report Card Subject
-                </Text>
-                <select
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  style={{
-                    width: "100%",
-                    height: "46px",
-                    padding: "0 14px",
-                    borderRadius: "12px",
-                    border: "1px solid #CBD5E1",
-                    fontSize: "14px",
-                    background: "#F8FAFC",
-                  }}
-                >
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="English Language">English Language</option>
-                  <option value="Basic Science">Basic Science</option>
-                  <option value="Civic Education">Civic Education</option>
-                  <option value="Physics">Physics</option>
-                  <option value="Chemistry">Chemistry</option>
-                  <option value="Biology">Biology</option>
-                  <option value="Economics">Economics</option>
-                </select>
-              </Box>
-
-              <Box>
-                <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
-                  3. Destination Score Column
-                </Text>
-                <select
-                  value={targetColumn}
-                  onChange={(e) => setTargetColumn(e.target.value)}
-                  style={{
-                    width: "100%",
-                    height: "46px",
-                    padding: "0 14px",
-                    borderRadius: "12px",
-                    border: "1px solid #CBD5E1",
-                    fontSize: "14px",
-                    background: "#F8FAFC",
-                  }}
-                >
-                  <option value="examScore">Terminal Exam (70% Weight)</option>
-                  <option value="caScore1">Continuous Assessment 1 (10% Weight)</option>
-                  <option value="caScore2">Continuous Assessment 2 (10% Weight)</option>
-                </select>
-              </Box>
-
-              <Button
-                mt={4}
-                h="50px"
-                bg="linear-gradient(135deg, #6D28D9 0%, #4338CA 100%)"
-                color="white"
-                borderRadius="xl"
-                fontSize="15px"
-                fontWeight="700"
-                onClick={handleSyncCbt}
-                loading={syncing}
-                loadingText="Pulling Scores from AceSmart CBT..."
-              >
-                <Icon as={FaSyncAlt} mr={2} boxSize={3.5} />
-                Pull & Synchronize CBT Scores
-              </Button>
-            </Flex>
-          </Box>
-        )}
-
-        {/* TAB 3: REPORT CARD PREVIEW & PRINT */}
-        {activeTab === "report-card" && (
-          <Box>
-            {/* Student Picker Strip */}
-            <Flex gap={2} overflowX="auto" pb={3} mb={6}>
-              {roster.map((s) => (
-                <Button
-                  key={s.studentId}
-                  size="sm"
-                  borderRadius="xl"
-                  bg={selectedStudentForCard?.studentId === s.studentId ? "#4338CA" : "white"}
-                  color={selectedStudentForCard?.studentId === s.studentId ? "white" : "#0F172A"}
-                  border="1px solid #E2E8F0"
-                  fontWeight="700"
-                  onClick={() => handleFetchReportCard(s)}
-                >
-                  {s.name}
-                </Button>
-              ))}
-            </Flex>
-
-            {/* Official Report Card Printable Document */}
-            <Box
-              bg="white"
-              borderRadius="2xl"
-              border="2px solid #CBD5E1"
-              p={{ base: 6, md: 10 }}
-              maxW="900px"
-              mx="auto"
-              boxShadow="0 10px 30px rgba(0,0,0,0.06)"
-              id="report-card-printable"
-            >
-              {/* Institution Official Header */}
-              <Flex justify="space-between" align="center" borderBottom="3px double #4338CA" pb={5} mb={6}>
-                <Flex align="center" gap={4}>
-                  {institutionLogo ? (
-                    <Box w="80px" h="80px" borderRadius="xl" p={1} border="1px solid #E2E8F0">
-                      <img
-                        src={institutionLogo}
-                        alt="Crest"
-                        style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                      />
-                    </Box>
-                  ) : (
-                    <Flex w="70px" h="70px" borderRadius="xl" bg="#EDE9FE" color="#4338CA" align="center" justify="center">
-                      <Icon as={FaGraduationCap} boxSize={8} />
-                    </Flex>
-                  )}
-                  <Box>
-                    <Text fontSize="22px" fontWeight="900" color="#0F172A" textTransform="uppercase" letterSpacing="-0.5px">
-                      {institutionName}
-                    </Text>
-                    <Text fontSize="12px" fontWeight="600" color="#4338CA" fontStyle="italic">
-                      "{institution?.motto || "Knowledge, Discipline & Excellence"}"
-                    </Text>
-                    <Text fontSize="11px" color="#64748B" mt={1}>
-                      {institution?.address || "Main Campus, Education Boulevard"}
-                    </Text>
-                  </Box>
+          return (
+            <Box maxW="740px" mx="auto" bg="white" p={{ base: 6, md: 8 }} borderRadius="2xl" border="1px solid #E2E8F0" boxShadow="0 4px 20px rgba(0,0,0,0.04)">
+              <Flex align="center" gap={3} mb={3}>
+                <Flex w="48px" h="48px" borderRadius="xl" bg="#EDE9FE" color="#6D28D9" align="center" justify="center">
+                  <Icon as={FaBrain} boxSize={6} />
                 </Flex>
-
-                <Box textAlign="right">
-                  <Badge bg="#4338CA" color="white" px={3} py={1} borderRadius="lg" fontSize="11px" fontWeight="800">
-                    TERMINAL REPORT CARD
-                  </Badge>
-                  <Text fontSize="12px" fontWeight="700" color="#0F172A" mt={1.5}>
-                    {reportCardData?.term || "First Term"} • {reportCardData?.session || "2025/2026"}
+                <Box>
+                  <Text fontSize="18px" fontWeight="900" color="#0F172A">
+                    Synchronize CBT Scores into Report Card
+                  </Text>
+                  <Text fontSize="13px" color="#64748B">
+                    Automatically pull candidate exam scores into academic continuous assessment or exam columns
                   </Text>
                 </Box>
               </Flex>
 
-              {/* Student Metadata Card */}
-              <Flex bg="#F8FAFC" p={4} borderRadius="xl" border="1px solid #E2E8F0" justify="space-between" mb={6} flexWrap="wrap" gap={3}>
-                <Box>
-                  <Text fontSize="11px" color="#64748B" fontWeight="600">STUDENT NAME</Text>
-                  <Text fontSize="14px" fontWeight="800" color="#0F172A">{selectedStudentForCard?.name}</Text>
-                </Box>
-                <Box>
-                  <Text fontSize="11px" color="#64748B" fontWeight="600">INSTITUTIONAL CODE</Text>
-                  <Text fontSize="14px" fontWeight="800" color="#4338CA">{selectedStudentForCard?.studentCode}</Text>
-                </Box>
-                <Box>
-                  <Text fontSize="11px" color="#64748B" fontWeight="600">CLASS ARM</Text>
-                  <Text fontSize="14px" fontWeight="800" color="#0F172A">{classes.find(c => c.id === selectedClassId)?.name || "Class"}</Text>
-                </Box>
-                <Box>
-                  <Text fontSize="11px" color="#64748B" fontWeight="600">OVERALL AVERAGE</Text>
-                  <Text fontSize="14px" fontWeight="900" color="#10B981">
-                    {reportCardData?.summary?.averageScore || "68.4"}%
+              {/* Context Alert Banner */}
+              <Flex
+                bg="#EEF2FF"
+                border="1px solid #C7D2FE"
+                p={3.5}
+                borderRadius="xl"
+                mb={5}
+                align="center"
+                justify="space-between"
+                wrap="wrap"
+                gap={2}
+              >
+                <Flex align="center" gap={2}>
+                  <Icon as={FaInfoCircle} color="#4338CA" boxSize={4} />
+                  <Text fontSize="12px" color="#312E81">
+                    Target Class: <strong>{currentClassObj?.name || "Selected Class Arm"}</strong> • Enrolled: <strong>{roster.length} Candidates</strong>
                   </Text>
-                </Box>
+                </Flex>
+                <Badge bg="#4338CA" color="white" px={2.5} py={0.5} borderRadius="md" fontSize="10px" fontWeight="800">
+                  {currentTerm} • {currentSession}
+                </Badge>
               </Flex>
 
-              {/* Subject Breakdown Table */}
-              <Box overflowX="auto" mb={6}>
-                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                  <thead>
-                    <tr style={{ background: "#F1F5F9", borderBottom: "2px solid #CBD5E1" }}>
-                      <th style={{ padding: "10px 14px", fontSize: "11px", color: "#475569" }}>SUBJECT</th>
-                      <th style={{ padding: "10px 14px", fontSize: "11px", color: "#475569" }}>CA 1 (10)</th>
-                      <th style={{ padding: "10px 14px", fontSize: "11px", color: "#475569" }}>CA 2 (10)</th>
-                      <th style={{ padding: "10px 14px", fontSize: "11px", color: "#475569" }}>ASSIGN (10)</th>
-                      <th style={{ padding: "10px 14px", fontSize: "11px", color: "#475569" }}>EXAM (70)</th>
-                      <th style={{ padding: "10px 14px", fontSize: "11px", color: "#475569" }}>TOTAL (100)</th>
-                      <th style={{ padding: "10px 14px", fontSize: "11px", color: "#475569" }}>GRADE</th>
-                      <th style={{ padding: "10px 14px", fontSize: "11px", color: "#475569" }}>REMARK</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(reportCardData?.results?.length ? reportCardData.results : [
-                      { subject: "Mathematics", caScore1: 8, caScore2: 9, assignmentScore: 8, examScore: 56, totalScore: 81, grade: "A1", remark: "Distinction" },
-                      { subject: "English Language", caScore1: 7, caScore2: 8, assignmentScore: 9, examScore: 52, totalScore: 76, grade: "A1", remark: "Distinction" },
-                      { subject: "Basic Science", caScore1: 9, caScore2: 7, assignmentScore: 8, examScore: 48, totalScore: 72, grade: "B2", remark: "Very Good" },
-                      { subject: "Civic Education", caScore1: 8, caScore2: 8, assignmentScore: 7, examScore: 45, totalScore: 68, grade: "B3", remark: "Good" },
-                    ]).map((r, i) => (
-                      <tr key={i} style={{ borderBottom: "1px solid #E2E8F0" }}>
-                        <td style={{ padding: "10px 14px", fontWeight: "700", fontSize: "13px" }}>{r.subject}</td>
-                        <td style={{ padding: "10px 14px", fontSize: "13px" }}>{r.caScore1}</td>
-                        <td style={{ padding: "10px 14px", fontSize: "13px" }}>{r.caScore2}</td>
-                        <td style={{ padding: "10px 14px", fontSize: "13px" }}>{r.assignmentScore}</td>
-                        <td style={{ padding: "10px 14px", fontSize: "13px" }}>{r.examScore}</td>
-                        <td style={{ padding: "10px 14px", fontWeight: "800", fontSize: "14px", color: "#0F172A" }}>{r.totalScore}</td>
-                        <td style={{ padding: "10px 14px", fontWeight: "800", color: "#4338CA" }}>{r.grade}</td>
-                        <td style={{ padding: "10px 14px", fontSize: "12px", color: "#64748B" }}>{r.remark}</td>
-                      </tr>
+              <Flex direction="column" gap={5}>
+                {/* 1. Exam Selection */}
+                <Box>
+                  <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                    1. Select Completed CBT Exam
+                  </Text>
+                  <select
+                    value={selectedExamId}
+                    onChange={handleExamChange}
+                    style={{
+                      width: "100%",
+                      height: "46px",
+                      padding: "0 14px",
+                      borderRadius: "12px",
+                      border: "1px solid #CBD5E1",
+                      fontSize: "14px",
+                      background: "#F8FAFC",
+                    }}
+                  >
+                    {exams.length === 0 ? (
+                      <option value="">No CBT examinations found</option>
+                    ) : (
+                      exams.map((exam) => (
+                        <option key={exam._id || exam.id} value={exam._id || exam.id}>
+                          {exam.examName || exam.title || "Examination"} ({exam.subject || "General"}) — {exam.totalMarks || 100} Marks
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </Box>
+
+                {/* Exam Details Card */}
+                {selectedExam && (
+                  <Box bg="#F8FAFC" border="1px solid #E2E8F0" p={3.5} borderRadius="xl">
+                    <SimpleGrid columns={{ base: 2, sm: 4 }} gap={2} fontSize="12px">
+                      <Box>
+                        <Text fontSize="10px" color="#64748B" fontWeight="700" textTransform="uppercase">Exam Title</Text>
+                        <Text fontWeight="800" color="#0F172A" noOfLines={1}>{selectedExam.examName || selectedExam.title || "CBT Exam"}</Text>
+                      </Box>
+                      <Box>
+                        <Text fontSize="10px" color="#64748B" fontWeight="700" textTransform="uppercase">Exam Subject</Text>
+                        <Text fontWeight="800" color="#4338CA">{selectedExam.subject || "General"}</Text>
+                      </Box>
+                      <Box>
+                        <Text fontSize="10px" color="#64748B" fontWeight="700" textTransform="uppercase">Total Marks</Text>
+                        <Text fontWeight="800" color="#059669">{selectedExam.totalMarks || 100} Pts</Text>
+                      </Box>
+                      <Box>
+                        <Text fontSize="10px" color="#64748B" fontWeight="700" textTransform="uppercase">Duration</Text>
+                        <Text fontWeight="800" color="#0F172A">{selectedExam.duration || 60} mins</Text>
+                      </Box>
+                    </SimpleGrid>
+                  </Box>
+                )}
+
+                {/* 2. Map to Report Card Subject */}
+                <Box>
+                  <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                    2. Map to Report Card Subject
+                  </Text>
+                  <select
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    style={{
+                      width: "100%",
+                      height: "46px",
+                      padding: "0 14px",
+                      borderRadius: "12px",
+                      border: "1px solid #CBD5E1",
+                      fontSize: "14px",
+                      background: "#F8FAFC",
+                    }}
+                  >
+                    {availableSubjects.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
                     ))}
-                  </tbody>
-                </table>
-              </Box>
+                    {Boolean(subject && !availableSubjects.includes(subject)) && (
+                      <option key={subject} value={subject}>
+                        {subject}
+                      </option>
+                    )}
+                  </select>
+                </Box>
 
-              {/* Remarks and Stamp */}
-              <Flex justify="space-between" align="flex-end" pt={4} borderTop="1px solid #E2E8F0">
-                <Box maxW="500px">
-                  <Text fontSize="12px" color="#64748B">
-                    <strong>Form Teacher's Remark:</strong>{" "}
-                    {reportCardData?.summary?.teacherComment ||
-                      reportCardData?.summary?.overallRemark ||
-                      "No remark recorded yet."}
+                {/* 3. Destination Score Column */}
+                <Box>
+                  <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                    3. Destination Score Column
                   </Text>
-                  <Text fontSize="12px" color="#64748B" mt={1}>
-                    <strong>Principal's Remark:</strong>{" "}
-                    {reportCardData?.summary?.principalRemark || "No principal remark recorded yet."}
+                  <select
+                    value={targetColumn}
+                    onChange={(e) => setTargetColumn(e.target.value)}
+                    style={{
+                      width: "100%",
+                      height: "46px",
+                      padding: "0 14px",
+                      borderRadius: "12px",
+                      border: "1px solid #CBD5E1",
+                      fontSize: "14px",
+                      background: "#F8FAFC",
+                    }}
+                  >
+                    <option value="examScore">Terminal Exam (70% Max Weight)</option>
+                    <option value="caScore1">Continuous Assessment 1 (10% Max Weight)</option>
+                    <option value="caScore2">Continuous Assessment 2 (10% Max Weight)</option>
+                    <option value="assignmentScore">Assignment / Continuous Assessment 3 (10% Max Weight)</option>
+                  </select>
+                </Box>
+
+                {/* 4. Score Scaling Mode */}
+                <Box>
+                  <Text fontSize="13px" fontWeight="700" color="#334155" mb={1.5}>
+                    4. Score Scaling & Mapping Rule
                   </Text>
-                  <Text fontSize="11px" color="#94A3B8" mt={2}>
-                    Next Term Resumes:{" "}
-                    <strong>{reportCardData?.summary?.nextTermResumption || "—"}</strong>
+                  <select
+                    value={scaleMode}
+                    onChange={(e) => setScaleMode(e.target.value)}
+                    style={{
+                      width: "100%",
+                      height: "46px",
+                      padding: "0 14px",
+                      borderRadius: "12px",
+                      border: "1px solid #CBD5E1",
+                      fontSize: "14px",
+                      background: "#F8FAFC",
+                    }}
+                  >
+                    <option value="smart">
+                      Smart Weight Scaling (Recommended: e.g. scales 80% on 70% exam to 56.0, or 80% on 10% CA to 8.0)
+                    </option>
+                    <option value="raw">
+                      Raw CBT Points (Record candidate's exact raw total score directly)
+                    </option>
+                  </select>
+                  <Text fontSize="11px" color="#64748B" mt={1}>
+                    {scaleMode === "smart"
+                      ? "Candidate percentage is converted proportionally to fit the column limit (e.g. out of 70 for exams, or out of 10 for CA)."
+                      : "Candidate raw total points will be recorded as-is without proportional scaling."}
                   </Text>
                 </Box>
 
-                <Box textAlign="center">
-                  {reportCardData?.signature?.stampUrl && (
-                    <Box w="80px" h="80px" borderRadius="full" overflow="hidden" mx="auto" mb={1}>
-                      <img
-                        src={reportCardData.signature.stampUrl}
-                        alt="School stamp"
-                        style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                      />
-                    </Box>
-                  )}
-                  {reportCardData?.signature?.signatureUrl && (
-                    <Box h="44px" mb={1}>
-                      <img
-                        src={reportCardData.signature.signatureUrl}
-                        alt="Principal signature"
-                        style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }}
-                      />
-                    </Box>
-                  )}
-                  <Box w="100px" h="1px" bg="#0F172A" mb={1} />
-                  <Text fontSize="11px" fontWeight="700" color="#0F172A">
-                    {reportCardData?.signature?.principalName || "Principal"}
-                  </Text>
-                  <Text fontSize="10px" color="#64748B">
-                    {reportCardData?.signature?.principalTitle || "Principal"}
-                  </Text>
-                </Box>
-              </Flex>
-
-              {/* Print Action */}
-              <Flex justify="center" mt={8}>
                 <Button
-                  bg="#4338CA"
+                  mt={2}
+                  h="50px"
+                  bg="linear-gradient(135deg, #6D28D9 0%, #4338CA 100%)"
                   color="white"
                   borderRadius="xl"
-                  onClick={() => window.print()}
+                  fontSize="15px"
+                  fontWeight="700"
+                  onClick={handleSyncCbt}
+                  loading={syncing}
+                  loadingText="Pulling & Synchronizing Candidate Scores..."
+                  _hover={{ opacity: 0.95 }}
                 >
-                  <Icon as={FaPrint} mr={2} boxSize={3.5} />
-                  Print Official Student Report Card
+                  <Icon as={FaSyncAlt} mr={2} boxSize={3.5} />
+                  Pull & Synchronize CBT Scores
                 </Button>
               </Flex>
             </Box>
-          </Box>
-        )}
+          );
+        })()}
+
+        {/* TAB 3: REPORT CARD PREVIEW & PRINT */}
+        {activeTab === "report-card" && (() => {
+          const filteredRoster = roster.filter((s) => {
+            if (!studentSearch.trim()) return true;
+            const q = studentSearch.toLowerCase();
+            const formatted = getFormattedStudentName(s).toLowerCase();
+            return (
+              formatted.includes(q) ||
+              s.name?.toLowerCase().includes(q) ||
+              s.studentCode?.toLowerCase().includes(q)
+            );
+          });
+
+          const currentIndex = filteredRoster.findIndex(
+            (s) => (s.studentId || s.id) === (selectedStudentForCard?.studentId || selectedStudentForCard?.id)
+          );
+          const safeIndex = currentIndex >= 0 ? currentIndex : 0;
+
+          const handlePrevStudent = () => {
+            if (safeIndex > 0) {
+              handleFetchReportCard(filteredRoster[safeIndex - 1]);
+            }
+          };
+
+          const handleNextStudent = () => {
+            if (safeIndex < filteredRoster.length - 1) {
+              handleFetchReportCard(filteredRoster[safeIndex + 1]);
+            }
+          };
+
+          return (
+            <Box>
+              {/* Student Picker Toolbar */}
+              <Box bg="white" p={4} borderRadius="2xl" border="1px solid #E2E8F0" mb={6} className="no-print">
+                <Flex justify="space-between" align="center" wrap="wrap" gap={3} mb={3}>
+                  <Flex align="center" gap={3} flex="1" minW="260px">
+                    <Flex
+                      align="center"
+                      bg="#F8FAFC"
+                      border="1px solid #CBD5E1"
+                      borderRadius="xl"
+                      px={3}
+                      h="40px"
+                      w={{ base: "100%", md: "280px" }}
+                    >
+                      <Icon as={FaSearch} color="#94A3B8" mr={2} boxSize={3.5} />
+                      <input
+                        placeholder="Search student or code..."
+                        value={studentSearch}
+                        onChange={(e) => setStudentSearch(e.target.value)}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          fontSize: "13px",
+                          outline: "none",
+                          width: "100%",
+                        }}
+                      />
+                    </Flex>
+                    <Text fontSize="12px" color="#64748B" fontWeight="600">
+                      {filteredRoster.length} of {roster.length} students
+                    </Text>
+                  </Flex>
+
+                  <Flex align="center" gap={2}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      borderColor="#CBD5E1"
+                      borderRadius="lg"
+                      onClick={handlePrevStudent}
+                      disabled={safeIndex <= 0}
+                    >
+                      <Icon as={FaChevronLeft} boxSize={3} mr={1} /> Prev
+                    </Button>
+                    <Badge bg="#EEF2FF" color="#4338CA" px={2.5} py={1} borderRadius="md" fontWeight="800" fontSize="11px">
+                      {filteredRoster.length > 0 ? `${safeIndex + 1} / ${filteredRoster.length}` : "0"}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      borderColor="#CBD5E1"
+                      borderRadius="lg"
+                      onClick={handleNextStudent}
+                      disabled={safeIndex >= filteredRoster.length - 1}
+                    >
+                      Next <Icon as={FaChevronRight} boxSize={3} ml={1} />
+                    </Button>
+                  </Flex>
+                </Flex>
+
+                {/* Candidate Pills */}
+                <Flex gap={2} overflowX="auto" pb={1}>
+                  {filteredRoster.map((s) => {
+                    const isSelected =
+                      (selectedStudentForCard?.studentId || selectedStudentForCard?.id) === (s.studentId || s.id);
+                    const hasScores = Boolean(existingScores[s.studentId]);
+                    return (
+                      <Button
+                        key={s.studentId || s.id}
+                        size="sm"
+                        borderRadius="xl"
+                        bg={isSelected ? "#4338CA" : "white"}
+                        color={isSelected ? "white" : "#0F172A"}
+                        border="1px solid"
+                        borderColor={isSelected ? "#4338CA" : "#E2E8F0"}
+                        fontWeight="700"
+                        fontSize="12px"
+                        flexShrink={0}
+                        onClick={() => handleFetchReportCard(s)}
+                        _hover={{ bg: isSelected ? "#3730A3" : "#F8FAFC" }}
+                      >
+                        <Box
+                          w="7px"
+                          h="7px"
+                          borderRadius="full"
+                          bg={hasScores ? (isSelected ? "#86EFAC" : "#10B981") : (isSelected ? "#CBD5E1" : "#94A3B8")}
+                          mr={2}
+                        />
+                        {getFormattedStudentName(s)}
+                      </Button>
+                    );
+                  })}
+                </Flex>
+              </Box>
+
+              {/* Document Container */}
+              {loadingReportCard ? (
+                <Flex
+                  direction="column"
+                  align="center"
+                  justify="center"
+                  minH="380px"
+                  bg="white"
+                  borderRadius="2xl"
+                  border="2px solid #CBD5E1"
+                  p={10}
+                  boxShadow="0 10px 30px rgba(0,0,0,0.06)"
+                  maxW="920px"
+                  mx="auto"
+                >
+                  <Spinner size="xl" color="#4338CA" thickness="3px" />
+                  <Text fontWeight="800" fontSize="16px" color="#0F172A" mt={4}>
+                    Generating Official Terminal Report Card...
+                  </Text>
+                  <Text fontSize="13px" color="#64748B" mt={1}>
+                    Retrieving academic broadsheet records, attendance logs, and institution endorsements
+                  </Text>
+                </Flex>
+              ) : reportCardData ? (
+                <StudentReportCardSheet
+                  reportCard={reportCardData}
+                  onPrint={() => window.print()}
+                  showDetailedCa={true}
+                  onEditScores={() => setActiveTab("scores")}
+                  onSyncCbt={() => setActiveTab("cbt-sync")}
+                />
+              ) : (
+                <Box
+                  bg="white"
+                  borderRadius="2xl"
+                  border="2px dashed #CBD5E1"
+                  p={{ base: 8, md: 12 }}
+                  textAlign="center"
+                  maxW="920px"
+                  mx="auto"
+                >
+                  <Flex w="64px" h="64px" borderRadius="2xl" bg="#EDE9FE" color="#6D28D9" align="center" justify="center" mx="auto" mb={4}>
+                    <Icon as={FaUserGraduate} boxSize={7} />
+                  </Flex>
+                  <Text fontSize="18px" fontWeight="900" color="#0F172A">
+                    Select a Student to View Report Card
+                  </Text>
+                  <Text fontSize="14px" color="#64748B" maxW="460px" mx="auto" mt={2} mb={6}>
+                    Click any student above to preview their official terminal report card sheet, verify scores, or print an A4 document.
+                  </Text>
+                  {roster.length > 0 && (
+                    <Button
+                      bg="#4338CA"
+                      color="white"
+                      borderRadius="xl"
+                      fontWeight="700"
+                      onClick={() => handleFetchReportCard(roster[0])}
+                    >
+                      Preview {getFormattedStudentName(roster[0])}'s Report Card
+                    </Button>
+                  )}
+                </Box>
+              )}
+            </Box>
+          );
+        })()}
       </Box>
     </DashboardLayout>
   );

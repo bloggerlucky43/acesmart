@@ -31,6 +31,7 @@ import {
   markStudentAttendanceBatchApi,
 } from "../../../api-endpoint/sms/smsEndpoints";
 import { toaster } from "../../../components/ui/toaster";
+import { formatStudentName } from "../../../libs/helper";
 import DashboardLayout from "../../../constants/dashboardlayout";
 import WeeklyAttendanceMatrix from "./components/WeeklyAttendanceMatrix";
 import TermlyAttendanceSummary from "./components/TermlyAttendanceSummary";
@@ -878,7 +879,7 @@ export default function StudentAttendanceManager() {
                             #{idx + 1}
                           </Text>
                           <Text fontSize="14px" fontWeight="900" color="#0F172A">
-                            {student.name}
+                            {formatStudentName(student.name)}
                           </Text>
                         </Flex>
                         <Flex align="center" gap={2} mt={0.5}>
@@ -1183,7 +1184,7 @@ export default function StudentAttendanceManager() {
                         </td>
                         <td style={{ padding: "12px 16px" }}>
                           <Text fontWeight="800" color="#0F172A" fontSize="13px">
-                            {student.name}
+                            {formatStudentName(student.name)}
                           </Text>
                         </td>
                         <td style={{ padding: "12px 16px", fontSize: "12px", color: "#4338CA", fontWeight: "700" }}>

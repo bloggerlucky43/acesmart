@@ -25,6 +25,7 @@ import {
 } from "react-icons/fa";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { formatStudentName, formatStudentFullName } from "../../../../libs/helper";
 
 const MListOfStudent = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -106,8 +107,8 @@ const MListOfStudent = () => {
 
     const tableData = filteredStudents.map((s) => [
       s.studentId || "N/A",
-      s.firstName || "-",
-      s.lastName || "-",
+      s.firstName ? formatStudentName(s.firstName) : "-",
+      s.lastName ? formatStudentName(s.lastName) : "-",
       s.ClassArm?.name || s.department || "Unassigned (CBT Only)",
     ]);
 
@@ -282,7 +283,7 @@ const MListOfStudent = () => {
         /* Card-based Mobile Student Directory */
         <VStack gap={3} align="stretch">
           {filteredStudents.map((s, i) => {
-            const fullName = `${s.firstName || ""} ${s.lastName || ""}`.trim() || "Candidate";
+            const fullName = formatStudentFullName(s.firstName, s.lastName) || "Candidate";
             const initials = `${s.firstName?.[0] || ""}${s.lastName?.[0] || ""}`.toUpperCase() || "S";
             const hasClassArm = Boolean(s.ClassArm?.name);
 

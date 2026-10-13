@@ -17,6 +17,7 @@ import {
   deleteStudent,
   fetchStudent,
 } from "../../api-endpoint/student/students";
+import { formatStudentFullName, formatStudentName } from "../../libs/helper";
 import {
   FaUserEdit,
   FaSearch,
@@ -250,7 +251,7 @@ const StudentEditor = () => {
                         </Table.Cell>
 
                         <Table.Cell py={3.5} px={5} fontWeight="600" color="#1E293B">
-                          {l.firstName} {l.lastName}
+                          {formatStudentFullName(l.firstName, l.lastName)}
                         </Table.Cell>
 
                         <Table.Cell py={3.5} px={4} fontSize="12px" color="#475569" fontWeight="600">
@@ -337,7 +338,7 @@ const StudentEditor = () => {
                               px={2.5}
                               _hover={{ bg: "#DC2626", color: "white" }}
                               onClick={() => {
-                                if (window.confirm(`Are you sure you want to delete ${l.firstName}?`)) {
+                                if (window.confirm(`Are you sure you want to delete ${formatStudentName(l.firstName)}?`)) {
                                   deleteMutation.mutate(l.id);
                                 }
                               }}

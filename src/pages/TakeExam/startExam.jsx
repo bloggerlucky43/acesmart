@@ -16,6 +16,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { fetchLiveExam } from "../../api-endpoint/exam/exams";
 import { useExam } from "../TakeExam/component/ExamContext";
 import { toaster } from "../../components/ui/toaster";
+import { formatStudentFullName } from "../../libs/helper";
 import FaceVerificationModal from "./component/face/CaptureImage";
 import {
   FaShieldAlt,
@@ -122,7 +123,7 @@ function StartExam() {
     }
   };
 
-  const candidateName = `${userDetails?.firstName ?? ""} ${userDetails?.lastName ?? ""}`.trim() || "Candidate";
+  const candidateName = formatStudentFullName(userDetails?.firstName, userDetails?.lastName) || "Candidate";
 
   return (
     <Box

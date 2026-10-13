@@ -12,6 +12,7 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useStudentPortal } from "../../libs/StudentPortalProvider";
+import { getFormattedStudentName } from "../../libs/helper";
 import FeedbackModal from "../ui/FeedbackModal";
 
 const StudentTopbar = ({ onOpenMobileNav }) => {
@@ -21,7 +22,7 @@ const StudentTopbar = ({ onOpenMobileNav }) => {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const menuRef = useRef(null);
 
-  const studentName = student?.name || student?.fullName || "Student";
+  const studentName = getFormattedStudentName(student, "Student");
   const firstName = studentName.split(" ")[0] || "Student";
   const classArm = student?.classArm || "Class";
   const currentTerm = institution?.currentTerm || "Current Term";

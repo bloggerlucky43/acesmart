@@ -90,7 +90,7 @@ const Teacher = () => {
                     lineHeight="1.2"
                     mb={2}
                   >
-                    Welcome, {teacherName} 👋
+                    Welcome, {teacherName} 
                   </Text>
                   <Text fontSize="15px" color="purple.100" lineHeight="1.6">
                     Manage your CBT examination schedules, monitor live candidate progress,

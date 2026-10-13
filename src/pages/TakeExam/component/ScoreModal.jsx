@@ -14,7 +14,7 @@ import { useExam } from "./ExamContext";
 import { useRef, useState, useEffect } from "react";
 import { checkResultExisting } from "../../../api-endpoint/exam/exams";
 import { toaster } from "../../../components/ui/toaster";
-import { saveWithRetry } from "../../../libs/helper";
+import { saveWithRetry, formatStudentFullName, formatStudentName } from "../../../libs/helper";
 import { getWeakAreaDetection } from "../../../api-endpoint/ai/ai";
 import {
   FaCheckCircle,
@@ -71,8 +71,8 @@ function ScoreModal({ onClose }) {
 
   const isDemo = examData?.id === "demo-exam-cbt" || !examData?.id;
   const candidateName =
-    `${parsedStudent?.firstName ?? ""} ${parsedStudent?.lastName ?? ""}`.trim() ||
-    parsedStudent?.name ||
+    formatStudentFullName(parsedStudent?.firstName, parsedStudent?.lastName) ||
+    formatStudentName(parsedStudent?.name) ||
     "Candidate";
 
   // Check if result already exists & save result

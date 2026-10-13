@@ -20,6 +20,7 @@ import {
 } from "react-icons/fa";
 import { getClassAttendanceAnalyticsApi } from "../../../../api-endpoint/sms/smsEndpoints";
 import { toaster } from "../../../../components/ui/toaster";
+import { formatStudentName } from "../../../../libs/helper";
 
 export default function TermlyAttendanceSummary({
   selectedClassId,
@@ -561,7 +562,7 @@ export default function TermlyAttendanceSummary({
                           #{idx + 1}
                         </Text>
                         <Text fontSize="14px" fontWeight="900" color="#0F172A">
-                          {student.name}
+                          {formatStudentName(student.name)}
                         </Text>
                       </Flex>
                       <Text fontSize="11px" fontWeight="700" color="#4338CA" mt={0.5}>
@@ -680,7 +681,7 @@ export default function TermlyAttendanceSummary({
 
                       <td style={{ padding: "12px 14px" }}>
                         <Text fontSize="13px" fontWeight="800" color="#0F172A">
-                          {student.name}
+                          {formatStudentName(student.name)}
                         </Text>
                       </td>
 

@@ -27,6 +27,7 @@ import {
 } from "../../api-endpoint/sms/smsEndpoints";
 import { useAuth } from "../../libs/AuthProvider";
 import { toaster } from "../../components/ui/toaster";
+import { formatStudentName } from "../../libs/helper";
 import DashboardLayout from "../../constants/dashboardlayout";
 import AllocatePaymentModal from "../../components/sms/AllocatePaymentModal";
 
@@ -354,7 +355,7 @@ export default function AdminDebtorManager() {
                     <tr key={idx} style={{ borderBottom: "1px solid #F1F5F9" }}>
                       <td style={{ padding: "14px 16px" }}>
                         <Text fontWeight="800" fontSize="14px" color="#0F172A">
-                          {d.studentName}
+                          {formatStudentName(d.studentName)}
                         </Text>
                         <Text fontSize="12px" color="#4338CA" fontWeight="700">
                           {d.studentCode}

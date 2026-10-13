@@ -18,6 +18,7 @@ import {
   FaExclamationTriangle,
 } from "react-icons/fa";
 import { getClassAttendanceAnalyticsApi } from "../../../../api-endpoint/sms/smsEndpoints";
+import { formatStudentName } from "../../../../libs/helper";
 
 export default function WeeklyAttendanceMatrix({
   selectedClassId,
@@ -524,7 +525,7 @@ export default function WeeklyAttendanceMatrix({
                           #{idx + 1}
                         </Text>
                         <Text fontSize="14px" fontWeight="900" color="#0F172A">
-                          {student.name}
+                          {formatStudentName(student.name)}
                         </Text>
                       </Flex>
                       <Text fontSize="11px" fontWeight="700" color="#4338CA" mt={0.5}>
@@ -661,7 +662,7 @@ export default function WeeklyAttendanceMatrix({
 
                       <td style={{ padding: "12px 14px" }}>
                         <Text fontSize="13px" fontWeight="800" color="#0F172A">
-                          {student.name}
+                          {formatStudentName(student.name)}
                         </Text>
                         <Text fontSize="11px" fontWeight="600" color="#64748B">
                           {student.studentCode || "-"} &bull; {student.gender || ""}

@@ -36,6 +36,7 @@ import {
 } from "../../api-endpoint/sms/prefectEndpoints";
 import api from "../../libs/axios";
 import { toaster } from "../../components/ui/toaster";
+import { formatStudentFullName, formatStudentName } from "../../libs/helper";
 
 const COMMON_PREFECT_ROLES = [
   "Head Boy",
@@ -143,7 +144,7 @@ export default function PrefectManager() {
   };
 
   const handleRemovePrefect = async (studentId, studentName) => {
-    if (!window.confirm(`Relieve ${studentName} of their prefect office?`)) return;
+    if (!window.confirm(`Relieve ${formatStudentName(studentName)} of their prefect office?`)) return;
     const res = await assignPrefectApi({
       studentId,
       isPrefect: false,
@@ -754,7 +755,7 @@ export default function PrefectManager() {
                           : `-- Choose student (${filteredStudentsForModal.length} available) --`}
                       </option>
                       {filteredStudentsForModal.map((s) => {
-                        const fullName = `${s.firstName || ""} ${s.lastName || ""}`.trim();
+                        const fullName = formatStudentFullName(s.firstName, s.lastName);
                         const idDisplay = s.studentId ? ` (${s.studentId})` : "";
                         const classDisplay = s.ClassArm?.name ? ` • ${s.ClassArm.name}` : "";
                         const prefectNotice = s.isPrefect ? ` [Appointed: ${s.prefectRole}]` : "";

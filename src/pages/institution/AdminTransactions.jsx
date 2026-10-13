@@ -20,6 +20,7 @@ import {
 import { getInstitutionTransactionsApi } from "../../api-endpoint/sms/smsEndpoints";
 import { useAuth } from "../../libs/AuthProvider";
 import { toaster } from "../../components/ui/toaster";
+import { formatStudentName } from "../../libs/helper";
 import DashboardLayout from "../../constants/dashboardlayout";
 
 const STATUS_OPTIONS = [
@@ -385,7 +386,7 @@ export default function AdminTransactions() {
                           </td>
                           <td style={{ padding: "14px 16px" }}>
                             <Text fontWeight="800" fontSize="13px" color="#0F172A">
-                              {tx.studentName}
+                              {formatStudentName(tx.studentName)}
                             </Text>
                             <Text fontSize="11px" color="#94A3B8">
                               {tx.studentCode}

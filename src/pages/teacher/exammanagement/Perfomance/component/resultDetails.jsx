@@ -15,6 +15,7 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { fetchExamResults } from "../../../../../api-endpoint/exam/exams";
+import { formatStudentFullName } from "../../../../../libs/helper";
 import { useQuery } from "@tanstack/react-query";
 
 export default function ResultDetails() {
@@ -53,9 +54,7 @@ export default function ResultDetails() {
     const dataForExcel = results.map((res) => {
       const base = {
         "Student ID": res?.studentCode || res?.studentId,
-        Name: `${res?.Student?.firstName ?? ""} ${
-          res?.Student?.lastName ?? ""
-        }`,
+        Name: formatStudentFullName(res?.Student?.firstName, res?.Student?.lastName) || "Student",
         "Total Score": res?.totalScore,
         Percentage: `${Number(res?.percentage ?? 0).toFixed(2)}%`,
       };
@@ -300,7 +299,7 @@ export default function ResultDetails() {
 
                         <Table.Cell py={3.5} px={5} fontWeight="600" color="#1E293B">
                           {res?.Student
-                            ? `${res?.Student?.firstName} ${res?.Student?.lastName}`
+                            ? formatStudentFullName(res?.Student?.firstName, res?.Student?.lastName)
                             : "Candidate"}
                         </Table.Cell>
 

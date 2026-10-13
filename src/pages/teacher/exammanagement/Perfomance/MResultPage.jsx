@@ -19,6 +19,7 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { fetchExamResults, formatSubjectTitle } from "../../../../api-endpoint/exam/exams";
+import { formatStudentFullName, formatStudentName } from "../../../../libs/helper";
 import { getClassInsights } from "../../../../api-endpoint/ai/ai";
 import { TableSkeleton, AISummarySkeleton } from "../../../../components/ui/skeletons";
 import {
@@ -288,9 +289,7 @@ export const MResultPage = () => {
       const studentCode =
         res?.studentCode || res?.studentId || res?.Student?.studentId;
       const studentName =
-        `${res?.Student?.firstName || ""} ${
-          res?.Student?.lastName || ""
-        }`.trim() || "N/A";
+        formatStudentFullName(res?.Student?.firstName, res?.Student?.lastName) || "N/A";
       const violations =
         res?.violationCount ||
         (Array.isArray(res?.anomalies) ? res.anomalies.length : 0);
@@ -587,7 +586,7 @@ export const MResultPage = () => {
                 </Flex>
                 <Text fontSize="14px" fontWeight="bold" color="#0F172A" lineClamp={1}>
                   {topPodium[1]?.Student
-                    ? `${topPodium[1].Student.firstName} ${topPodium[1].Student.lastName}`
+                    ? formatStudentFullName(topPodium[1].Student.firstName, topPodium[1].Student.lastName)
                     : "Candidate #2"}
                 </Text>
                 <Text fontSize="11px" color="#64748B" mb={2}>
@@ -638,7 +637,7 @@ export const MResultPage = () => {
                 </Flex>
                 <Text fontSize="16px" fontWeight="800" color="#78350F" lineClamp={1}>
                   {topPodium[0]?.Student
-                    ? `${topPodium[0].Student.firstName} ${topPodium[0].Student.lastName}`
+                    ? formatStudentFullName(topPodium[0].Student.firstName, topPodium[0].Student.lastName)
                     : "Candidate #1"}
                 </Text>
                 <Text fontSize="11px" color="#92400E" mb={3}>
@@ -684,7 +683,7 @@ export const MResultPage = () => {
                 </Flex>
                 <Text fontSize="14px" fontWeight="bold" color="#0F172A" lineClamp={1}>
                   {topPodium[2]?.Student
-                    ? `${topPodium[2].Student.firstName} ${topPodium[2].Student.lastName}`
+                    ? formatStudentFullName(topPodium[2].Student.firstName, topPodium[2].Student.lastName)
                     : "Candidate #3"}
                 </Text>
                 <Text fontSize="11px" color="#64748B" mb={2}>
@@ -1224,7 +1223,7 @@ export const MResultPage = () => {
               <Table.Body>
                 {filteredResults.map((res, index) => {
                   const studentName = res?.Student
-                    ? `${res?.Student?.firstName || ""} ${res?.Student?.lastName || ""}`.trim()
+                    ? formatStudentFullName(res?.Student?.firstName, res?.Student?.lastName)
                     : "Unknown";
                   const studentCode =
                     res?.studentCode ||
@@ -1445,7 +1444,7 @@ export const MResultPage = () => {
                     Proctoring Audit Log
                   </Text>
                   <Text fontSize="12px" color="gray.500">
-                    {selectedCandidateAnomaly.studentName} (
+                    {formatStudentName(selectedCandidateAnomaly.studentName)} (
                     {selectedCandidateAnomaly.studentCode})
                   </Text>
                 </Box>

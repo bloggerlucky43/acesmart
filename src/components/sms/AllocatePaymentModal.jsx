@@ -26,6 +26,7 @@ import {
 import { recordFeePaymentApi, getClassArmsApi } from "../../api-endpoint/sms/smsEndpoints";
 import { fetchStudent } from "../../api-endpoint/student/students";
 import { toaster } from "../ui/toaster";
+import { formatStudentName } from "../../libs/helper";
 import { useAuth } from "../../libs/AuthProvider";
 
 const AllocatePaymentModal = ({
@@ -340,7 +341,7 @@ const AllocatePaymentModal = ({
                 </Box>
                 <Box>
                   <Text color="#64748B" fontWeight="600">Candidate Name:</Text>
-                  <Text fontWeight="800" color="#1E293B">{receiptData.studentName}</Text>
+                  <Text fontWeight="800" color="#1E293B">{formatStudentName(receiptData.studentName)}</Text>
                 </Box>
                 <Box>
                   <Text color="#64748B" fontWeight="600">Student ID:</Text>
