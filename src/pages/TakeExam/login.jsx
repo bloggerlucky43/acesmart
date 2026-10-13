@@ -78,20 +78,29 @@ const ExamLoginPage = () => {
         });
 
         const resolvedExamId = res?.exam?.id || activeExamKey;
+        const resolvedExamCode =
+          res?.exam?.examCode ||
+          (activeExamKey.length <= 12 ? activeExamKey : undefined);
 
         localStorage.setItem(
           "examStudent",
-          JSON.stringify({ ...res.student, examId: resolvedExamId }),
+          JSON.stringify({
+            ...res.student,
+            examId: resolvedExamId,
+            examCode: resolvedExamCode,
+          }),
         );
         navigate(`/ex/${resolvedExamId}`);
       } else {
         setError(
-          res?.message || "Invalid candidate credentials. Please check details.",
+          res?.message ||
+            "Invalid candidate credentials. Please check details.",
         );
       }
     } catch (err) {
       setError(
-        err?.message || "Authentication failed. Please verify your Student ID and Password.",
+        err?.message ||
+          "Authentication failed. Please verify your Student ID and Password.",
       );
     } finally {
       setLoading(false);
@@ -233,7 +242,11 @@ const ExamLoginPage = () => {
                     boxShadow: "0 0 0 1px #3B82F6",
                     bg: "#0F172A",
                   }}
-                  _placeholder={{ color: "#64748B", textTransform: "none", letterSpacing: "normal" }}
+                  _placeholder={{
+                    color: "#64748B",
+                    textTransform: "none",
+                    letterSpacing: "normal",
+                  }}
                   value={examDetail.examCode}
                   onChange={(e) =>
                     setExamDetail({

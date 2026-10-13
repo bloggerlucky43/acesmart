@@ -144,13 +144,17 @@ export const createExam = async (examDetails) => {
     });
   }
 };
-export const fetchExams = async () => {
+export const fetchExams = async (options = {}) => {
   try {
-    const response = await api.get(`/exams`, {
+    const params = new URLSearchParams();
+    if (options?.includeSections) {
+      params.append("includeSections", "true");
+    }
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+    const response = await api.get(`/exams${queryString}`, {
       withCredentials: true,
     });
     const data = response.data;
-    console.log("the response from fetchexams", data);
     if (!data.success) {
       toaster.create({
         title: data.message,

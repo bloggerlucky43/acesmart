@@ -393,7 +393,7 @@ export default function EditPage() {
                   fontWeight="bold"
                   onClick={handleSetStartNow}
                 >
-                  ⚡ Start Now (Immediate)
+               Start Now
                 </Button>
               </Flex>
               <Input

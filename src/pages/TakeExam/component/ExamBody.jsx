@@ -286,16 +286,25 @@ export default function ExamBody() {
         }
       }
 
-      // If terminated due to violations, redirect to /exam/:id cleanly without further warnings
+      const targetCode = examData?.examCode || parsedStudent?.examCode || examData?.id || "";
+      const exitUrl = targetCode ? `/exam/${targetCode}` : "/";
+
+      // If terminated due to violations, clean session and redirect to /exam/:examCode cleanly
       if (isViolationTermination) {
-        navigate(examData?.id ? `/exam/${examData.id}` : "/", { replace: true });
+        localStorage.removeItem("examStudent");
+        localStorage.removeItem("activeExamKey");
+        navigate(exitUrl, { replace: true });
       } else {
         navigate("/student_result");
       }
     } catch (err) {
       console.error("Auto submit failed:", err);
+      const targetCode = examData?.examCode || parsedStudent?.examCode || examData?.id || "";
+      const exitUrl = targetCode ? `/exam/${targetCode}` : "/";
       if (isViolationTermination) {
-        navigate(examData?.id ? `/exam/${examData.id}` : "/", { replace: true });
+        localStorage.removeItem("examStudent");
+        localStorage.removeItem("activeExamKey");
+        navigate(exitUrl, { replace: true });
       } else {
         navigate("/student_result");
       }

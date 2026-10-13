@@ -24,6 +24,7 @@ import {
   FaChartBar,
   FaFileAlt,
   FaGraduationCap,
+  FaLink,
 } from "react-icons/fa";
 
 export default function MobileExams() {
@@ -31,6 +32,7 @@ export default function MobileExams() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [copiedId, setCopiedId] = useState(null);
+  const [copiedCodeId, setCopiedCodeId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -56,9 +58,47 @@ export default function MobileExams() {
     fetchAllExams();
   }, []);
 
-  const copyToClipboard = async (examId) => {
+  const copyCodeToClipboard = async (code, examId) => {
+    if (!code) {
+      toaster.create({
+        title: "No code assigned",
+        description: "This exam does not have a unique short code yet.",
+        type: "warning",
+      });
+      return;
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(String(code));
+      } else {
+        const tmp = document.createElement("textarea");
+        tmp.value = String(code);
+        tmp.style.position = "fixed";
+        tmp.style.left = "-9999px";
+        document.body.appendChild(tmp);
+        tmp.select();
+        document.execCommand("copy");
+        document.body.removeChild(tmp);
+      }
+      setCopiedCodeId(examId);
+      setTimeout(() => setCopiedCodeId(null), 2000);
+      toaster.create({
+        title: `Copied Exam Code: ${code}`,
+        description: "Students can enter this code on the landing page to start immediately.",
+        type: "success",
+      });
+    } catch (err) {
+      toaster.create({
+        title: "Unable to copy code",
+        type: "error",
+      });
+    }
+  };
+
+  const copyToClipboard = async (exam) => {
     const origin = window.location.origin;
-    const testUrl = `${origin}/exam/${examId}`;
+    const codeOrId = exam?.examCode || exam?.id;
+    const testUrl = `${origin}/exam/${codeOrId}`;
 
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -73,7 +113,7 @@ export default function MobileExams() {
         document.execCommand("copy");
         document.body.removeChild(tmp);
       }
-      setCopiedId(examId);
+      setCopiedId(exam?.id);
       setTimeout(() => setCopiedId(null), 2000);
       toaster.create({
         title: "Copied test URL to clipboard!",
@@ -194,15 +234,32 @@ export default function MobileExams() {
               borderColor="#E2E8F0"
               boxShadow="0 2px 8px rgba(0,0,0,0.02)"
             >
-              {/* Top Row: Title & Status */}
+              {/* Top Row: Title, Exam Code & Status */}
               <Flex justify="space-between" align="flex-start" mb={2}>
-                <Box maxW="72%">
+                <Box maxW="70%">
                   <Text fontSize="15px" fontWeight="800" color="#0F172A" lineHeight="1.3">
                     {exam.title}
                   </Text>
-                  <Text fontSize="11px" color="#64748B" mt={0.5}>
-                    ID: {exam.id ? exam.id.substring(0, 8) : "N/A"}...
-                  </Text>
+                  <Flex align="center" gap={2} mt={1} wrap="wrap">
+                    {exam.examCode && (
+                      <Badge
+                        bg="purple.100"
+                        color="purple.800"
+                        border="1px solid #DDD6FE"
+                        borderRadius="md"
+                        fontSize="10px"
+                        fontWeight="800"
+                        px={2}
+                        py={0.5}
+                        letterSpacing="0.8px"
+                      >
+                        CODE: {exam.examCode}
+                      </Badge>
+                    )}
+                    <Text fontSize="11px" color="#94A3B8" fontFamily="monospace">
+                      ID: {exam.id ? exam.id.substring(0, 8) : "N/A"}...
+                    </Text>
+                  </Flex>
                 </Box>
                 <Badge
                   bg={exam.isPublished ? "green.50" : "orange.50"}
@@ -245,7 +302,7 @@ export default function MobileExams() {
                 )}
               </Flex>
 
-              {/* Action Buttons Row */}
+              {/* Action Buttons Row: Link, Structure & Copy Code */}
               <Flex gap={2} pt={3} borderTop="1px solid" borderColor="#F1F5F9">
                 <Button
                   flex={1}
@@ -255,10 +312,10 @@ export default function MobileExams() {
                   color="#334155"
                   borderRadius="lg"
                   h="34px"
-                  onClick={() => copyToClipboard(exam.id)}
-                  leftIcon={<Icon as={copiedId === exam.id ? FaCheck : FaCopy} color={copiedId === exam.id ? "green.600" : "#6A1B9A"} />}
+                  onClick={() => copyToClipboard(exam)}
+                  leftIcon={<Icon as={copiedId === exam.id ? FaCheck : FaLink} color={copiedId === exam.id ? "green.600" : "#6A1B9A"} />}
                 >
-                  {copiedId === exam.id ? "Copied!" : "Copy Link"}
+                  {copiedId === exam.id ? "Copied!" : "Link"}
                 </Button>
 
                 <Button
@@ -278,15 +335,16 @@ export default function MobileExams() {
                 <Button
                   flex={1}
                   size="xs"
-                  bg="#0F172A"
+                  bg={copiedCodeId === exam.id ? "green.600" : "linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"}
                   color="white"
+                  _hover={{ opacity: 0.95 }}
                   borderRadius="lg"
                   h="34px"
                   fontWeight="700"
-                  onClick={() => navigate(`/teacher/exam_results/${exam.id}`)}
-                  leftIcon={<Icon as={FaChartBar} />}
+                  onClick={() => copyCodeToClipboard(exam.examCode, exam.id)}
+                  leftIcon={<Icon as={copiedCodeId === exam.id ? FaCheck : FaCopy} />}
                 >
-                  Results
+                  {copiedCodeId === exam.id ? "Copied!" : (exam.examCode ? `Code: ${exam.examCode}` : "Copy Code")}
                 </Button>
               </Flex>
             </Box>

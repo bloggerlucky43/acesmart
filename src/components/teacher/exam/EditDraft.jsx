@@ -479,7 +479,7 @@ export default function EditDraft() {
                       fontWeight="bold"
                       onClick={handleSetStartNow}
                     >
-                      ⚡ Start Now (Immediate)
+                      Start Now
                     </Button>
                   </Flex>
                   <Input

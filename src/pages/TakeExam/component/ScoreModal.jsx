@@ -40,6 +40,7 @@ function ScoreModal({ onClose }) {
   const [aiInsights, setAiInsights] = useState(null);
   const [loadingAi, setLoadingAi] = useState(false);
   const [showAnomalies, setShowAnomalies] = useState(false);
+  const [countdown, setCountdown] = useState(4);
   const hasProcessedRef = useRef(false);
   const navigate = useNavigate();
 
@@ -53,6 +54,9 @@ function ScoreModal({ onClose }) {
   } catch (e) {
     parsedStudent = {};
   }
+
+  const targetCode = examData?.examCode || parsedStudent?.examCode || examData?.id || "";
+  const redirectUrl = targetCode ? `/exam/${targetCode}` : "/exam";
 
   // Load integrity & anomaly metrics recorded during exam
   let storedAnomalies = [];
@@ -97,10 +101,14 @@ function ScoreModal({ onClose }) {
         if (res?.exists) {
           setResultExists(true);
           toaster.create({
-            title: "Result already exists for this exam",
+            title: "Exam already submitted",
+            description: "You have already completed this examination. Multiple submissions are not allowed.",
             type: "warning",
           });
-          navigate(`/exam/${examData?.id}`, { replace: true });
+          localStorage.removeItem("activeExamKey");
+          localStorage.removeItem("examStudent");
+          localStorage.removeItem("lastExamAnomalies");
+          navigate(redirectUrl, { replace: true });
           onClose?.();
           return;
         } else {
@@ -119,12 +127,13 @@ function ScoreModal({ onClose }) {
 
             if (res.data) {
               toaster.create({
-                title: "Exam result saved successfully",
+                title: "Exam submitted successfully",
                 type: "success",
               });
               setSaveStatus("success");
               localStorage.removeItem("activeExamKey");
               localStorage.removeItem("examStudent");
+              localStorage.removeItem("lastExamAnomalies");
             }
           } catch (error) {
             console.error("Failed to save exam result:", error);
@@ -149,9 +158,23 @@ function ScoreModal({ onClose }) {
       setChecking(false);
       setSaveStatus("success");
     }
-  }, [student, examData?.id, navigate, onClose, retryCount, isDemo]);
+  }, [student, examData?.id, navigate, onClose, retryCount, isDemo, redirectUrl]);
 
-  // Fetch AI Weak Area Detection & Study Guidance
+  // Auto redirect countdown after successful submission (for live CBT exams)
+  useEffect(() => {
+    if (saveStatus === "success" && !isDemo) {
+      if (countdown <= 0) {
+        navigate(redirectUrl, { replace: true });
+        return;
+      }
+      const timer = setTimeout(() => {
+        setCountdown((c) => c - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [saveStatus, isDemo, countdown, navigate, redirectUrl]);
+
+  // Fetch AI Weak Area Detection & Study Guidance (demo/practice mode)
   useEffect(() => {
     const fetchAiDiagnostics = async () => {
       setLoadingAi(true);
@@ -170,14 +193,14 @@ function ScoreModal({ onClose }) {
       }
     };
 
-    if (scores && Object.keys(scores).length > 0) {
+    if (isDemo && scores && Object.keys(scores).length > 0) {
       fetchAiDiagnostics();
     }
-  }, [scores, totalMarks, examData, candidateName]);
+  }, [scores, totalMarks, examData, candidateName, isDemo]);
 
   const handleContinueButton = () => {
     if (onClose) onClose();
-    navigate("/");
+    navigate(redirectUrl, { replace: true });
   };
 
   // Loading state
@@ -270,6 +293,158 @@ function ScoreModal({ onClose }) {
           >
             <Icon as={FaRedo} mr={2} />
             Retry Submission
+          </Button>
+        </Box>
+      </Box>
+    );
+  }
+
+  // Clean examination submission screen for candidates (no answer/score disclosure during hall exams)
+  if (saveStatus === "success" && !isDemo) {
+    return (
+      <Box
+        position="fixed"
+        inset={0}
+        zIndex={2000}
+        bg="rgba(15, 23, 42, 0.9)"
+        backdropFilter="blur(10px)"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        p={4}
+      >
+        <Box
+          bg="#1E293B"
+          borderRadius="24px"
+          border="1px solid #334155"
+          p={{ base: 6, sm: 8 }}
+          textAlign="center"
+          maxW="480px"
+          w="100%"
+          boxShadow="0 25px 60px rgba(0, 0, 0, 0.6)"
+          className="animate-scale-in"
+        >
+          {/* Success Checkmark Icon */}
+          <Flex
+            w="64px"
+            h="64px"
+            borderRadius="20px"
+            bg="rgba(16, 185, 129, 0.15)"
+            color="#10B981"
+            border="1px solid rgba(16, 185, 129, 0.3)"
+            align="center"
+            justify="center"
+            mx="auto"
+            mb={4}
+          >
+            <Icon as={FaCheckCircle} boxSize={8} />
+          </Flex>
+
+          <Text
+            fontSize="22px"
+            fontWeight="800"
+            color="white"
+            fontFamily="'Outfit', sans-serif"
+            mb={1.5}
+          >
+            Examination Submitted
+          </Text>
+          <Text fontSize="13px" color="#94A3B8" mb={5} lineHeight="1.5">
+            Your responses have been securely uploaded and locked. In accordance with examination regulations, your scores will be published by your instructor.
+          </Text>
+
+          {/* Submission Info Card */}
+          <Box
+            bg="#0F172A"
+            borderRadius="16px"
+            border="1px solid #334155"
+            p={4}
+            mb={5}
+            textAlign="left"
+          >
+            <Flex justify="space-between" align="center" mb={2.5}>
+              <Text fontSize="11px" color="#64748B" fontWeight="bold" textTransform="uppercase">
+                Candidate
+              </Text>
+              <Text fontSize="13px" color="white" fontWeight="700">
+                {candidateName}
+              </Text>
+            </Flex>
+
+            <Flex justify="space-between" align="center" mb={2.5}>
+              <Text fontSize="11px" color="#64748B" fontWeight="bold" textTransform="uppercase">
+                Examination
+              </Text>
+              <Text fontSize="13px" color="white" fontWeight="600" maxW="220px" isTruncated>
+                {examData?.title || "CBT Assessment"}
+              </Text>
+            </Flex>
+
+            {targetCode && (
+              <Flex justify="space-between" align="center" mb={2.5}>
+                <Text fontSize="11px" color="#64748B" fontWeight="bold" textTransform="uppercase">
+                  Exam Access Code
+                </Text>
+                <Badge
+                  bg="purple.500"
+                  color="white"
+                  borderRadius="md"
+                  px={2}
+                  py={0.5}
+                  fontSize="12px"
+                  fontWeight="bold"
+                  letterSpacing="0.8px"
+                >
+                  {targetCode}
+                </Badge>
+              </Flex>
+            )}
+
+            <Flex justify="space-between" align="center" pt={2.5} borderTop="1px dashed #334155">
+              <Text fontSize="11px" color="#64748B" fontWeight="bold" textTransform="uppercase">
+                Session Status
+              </Text>
+              <Badge
+                bg="rgba(16, 185, 129, 0.2)"
+                color="#34D399"
+                fontSize="11px"
+                fontWeight="700"
+                px={2}
+                py={0.5}
+                borderRadius="full"
+              >
+                Logged Out & Sealed
+              </Badge>
+            </Flex>
+          </Box>
+
+          {/* Countdown indicator */}
+          <Box
+            bg="rgba(124, 58, 237, 0.1)"
+            border="1px solid rgba(124, 58, 237, 0.25)"
+            borderRadius="12px"
+            py={2.5}
+            px={3}
+            mb={4}
+          >
+            <Text fontSize="12px" color="#DDD6FE">
+              🔒 You have been logged out. Redirecting in <b>{countdown}s</b>...
+            </Text>
+          </Box>
+
+          {/* Return Action */}
+          <Button
+            w="100%"
+            h="46px"
+            bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
+            color="white"
+            borderRadius="14px"
+            fontWeight="bold"
+            fontSize="14px"
+            _hover={{ opacity: 0.95 }}
+            onClick={() => navigate(redirectUrl, { replace: true })}
+          >
+            Return to Exam Login Now
           </Button>
         </Box>
       </Box>

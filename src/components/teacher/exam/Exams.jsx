@@ -277,7 +277,7 @@ export default function Exams() {
                 </Table.Header>
                 <Table.Body>
                   {filteredExams.map((exam) => {
-                    const examUrl = `${window.location.origin}/exam/${exam.id}`;
+                    const examUrl = `${window.location.origin}/exam/${exam.examCode || exam.id}`;
                     const isCopied = copiedId === exam.id;
                     return (
                       <Table.Row

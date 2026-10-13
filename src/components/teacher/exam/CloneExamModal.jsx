@@ -11,12 +11,13 @@ import {
   Spinner,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
-import { fetchExams } from "../../../api-endpoint/exam/exams";
+import { fetchExams, getExamById } from "../../../api-endpoint/exam/exams";
 import { FaCopy, FaSearch, FaClock, FaAward, FaLayerGroup, FaCalendarAlt, FaTimes } from "react-icons/fa";
 
 export default function CloneExamModal({ isOpen, onClose, onSelectExam }) {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [cloningId, setCloningId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export default function CloneExamModal({ isOpen, onClose, onSelectExam }) {
     const loadPreviousExams = async () => {
       setLoading(true);
       try {
-        const res = await fetchExams();
+        const res = await fetchExams({ includeSections: true });
         if (res && res.data) {
           const sorted = [...res.data].sort(
             (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
@@ -41,6 +42,23 @@ export default function CloneExamModal({ isOpen, onClose, onSelectExam }) {
 
     loadPreviousExams();
   }, [isOpen]);
+
+  const handleSelectExam = async (exam) => {
+    setCloningId(exam.id);
+    try {
+      if (exam.sections && exam.sections.length > 0 && exam.sections[0]?.questions?.length > 0) {
+        onSelectExam(exam);
+      } else {
+        const fullExamRes = await getExamById(exam.id);
+        const resolved = fullExamRes?.data || fullExamRes?.exam || fullExamRes;
+        onSelectExam(resolved || exam);
+      }
+    } catch (err) {
+      onSelectExam(exam);
+    } finally {
+      setCloningId(null);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -251,7 +269,8 @@ export default function CloneExamModal({ isOpen, onClose, onSelectExam }) {
                         fontWeight="700"
                         fontSize="12px"
                         _hover={{ bg: "#6D28D9", transform: "translateY(-1px)" }}
-                        onClick={() => onSelectExam(exam)}
+                        isLoading={cloningId === exam.id}
+                        onClick={() => handleSelectExam(exam)}
                       >
                         <Icon as={FaCopy} mr={1.5} boxSize={3} />
                         Clone into Draft

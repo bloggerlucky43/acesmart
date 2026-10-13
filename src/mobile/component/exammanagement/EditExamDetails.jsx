@@ -269,7 +269,7 @@ export default function MobileEditExamDetails() {
                   fontWeight="bold"
                   onClick={handleSetStartNow}
                 >
-                  ⚡ Start Now
+                   Start Now
                 </Button>
               </Flex>
               <Input

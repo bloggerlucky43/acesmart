@@ -43,19 +43,26 @@ function StartExam() {
 
   useEffect(() => {
     const storedUser = localStorage?.getItem("examStudent");
+    let parsed = null;
+    try {
+      parsed = JSON.parse(storedUser || "{}");
+      setUserDetails(parsed || {});
+    } catch (e) {
+      parsed = {};
+    }
+
+    const targetCode = parsed?.examCode || id;
+
     if (!storedUser) {
       toaster.create({
         title: "Session expired. Please verify your credentials again.",
         type: "error",
       });
-      navigate(`/exam/${id}`, { replace: true });
+      navigate(`/exam/${targetCode}`, { replace: true });
       return;
     }
 
     try {
-      const parsed = JSON.parse(storedUser);
-      setUserDetails(parsed);
-
       // Pre-load exam metadata
       if (parsed?.studentId) {
         fetchLiveExam({
@@ -76,7 +83,7 @@ function StartExam() {
         });
       }
     } catch (e) {
-      navigate(`/exam/${id}`, { replace: true });
+      navigate(`/exam/${targetCode}`, { replace: true });
     }
   }, [id, navigate]);
 
@@ -473,7 +480,7 @@ function StartExam() {
             color="#94A3B8"
             _hover={{ bg: "#0F172A", color: "white" }}
             borderRadius="12px"
-            onClick={() => navigate(`/exam/${id}`)}
+            onClick={() => navigate(`/exam/${examMeta?.examCode || userDetails?.examCode || id}`)}
             leftIcon={<Icon as={FaArrowLeft} />}
           >
             Cancel
@@ -499,7 +506,7 @@ function StartExam() {
             }}
             onClick={handleStartExam}
             loading={isLoading}
-            loadingText="Initializing Examination Environment..."
+            loadingText="Initializing Examination..."
             rightIcon={
               <Icon
                 as={
