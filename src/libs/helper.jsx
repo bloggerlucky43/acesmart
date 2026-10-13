@@ -55,3 +55,23 @@ export const getFormattedStudentName = (student, fallback = "Student") => {
     `${student.firstName || ""} ${student.lastName || ""}`.trim();
   return formatStudentName(name) || fallback;
 };
+
+/**
+ * Convert local datetime-local string (YYYY-MM-DDTHH:mm) or Date to UTC ISO string (e.g. 2026-10-13T17:30:00.000Z).
+ */
+export const toUTCISOString = (localDateTimeStr) => {
+  if (!localDateTimeStr) return null;
+  const d = new Date(localDateTimeStr);
+  return isNaN(d.getTime()) ? localDateTimeStr : d.toISOString();
+};
+
+/**
+ * Convert an ISO string or Date into YYYY-MM-DDTHH:mm suitable for <input type="datetime-local" /> in local timezone.
+ */
+export const toDateTimeLocalValue = (dateInput) => {
+  if (!dateInput) return "";
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};

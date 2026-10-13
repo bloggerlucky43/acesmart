@@ -173,12 +173,14 @@ export const examLogin = async (payload) => {
   try {
     const studentId = payload?.studentId || payload?.examDetail?.studentId;
     const firstName = payload?.firstName || payload?.examDetail?.firstName;
-    const examId = payload?.examId || payload?.id;
+    const examId = payload?.examId || payload?.id || payload?.examCode;
+    const examCode = payload?.examCode;
 
     const response = await api.post(`/exams/login`, {
       studentId: studentId ? String(studentId).trim() : "",
       firstName: firstName ? String(firstName).trim() : "",
       examId,
+      examCode,
     });
     const data = response.data;
 
@@ -203,6 +205,19 @@ export const examLogin = async (payload) => {
     return {
       success: false,
       message: errorMessage,
+    };
+  }
+};
+
+export const lookupExam = async (identifier) => {
+  try {
+    if (!identifier) return { success: false, message: "Exam identifier required" };
+    const response = await api.get(`/exams/lookup/${encodeURIComponent(String(identifier).trim())}`);
+    return response.data;
+  } catch (error) {
+    return {
+      success: false,
+      message: error?.response?.data?.message || "Exam not found",
     };
   }
 };

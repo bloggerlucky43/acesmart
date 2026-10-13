@@ -293,9 +293,10 @@ export const deleteRemarkTemplateApi = async (id) => {
 };
 
 // Principal signature & stamp
-export const uploadPrincipalSignatureApi = async (formData) => {
-  const { data } = await api.post("/institution/principal-signature", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
+export const uploadPrincipalSignatureApi = async (payload) => {
+  const isFormData = payload instanceof FormData;
+  const { data } = await api.post("/institution/principal-signature", payload, {
+    ...(isFormData ? { headers: { "Content-Type": "multipart/form-data" } } : {}),
     withCredentials: true,
   });
   return data;
@@ -304,6 +305,21 @@ export const uploadPrincipalSignatureApi = async (formData) => {
 export const uploadPrincipalStampApi = async (formData) => {
   const { data } = await api.post("/institution/principal-stamp", formData, {
     headers: { "Content-Type": "multipart/form-data" },
+    withCredentials: true,
+  });
+  return data;
+};
+
+// Teacher signature
+export const getTeacherSignatureApi = async () => {
+  const { data } = await api.get("/sms-results/teacher-signature", { withCredentials: true });
+  return data;
+};
+
+export const uploadTeacherSignatureApi = async (payload) => {
+  const isFormData = payload instanceof FormData;
+  const { data } = await api.post("/sms-results/teacher-signature", payload, {
+    headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
     withCredentials: true,
   });
   return data;

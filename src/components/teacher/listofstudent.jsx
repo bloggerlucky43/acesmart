@@ -8,13 +8,13 @@ import {
   Icon,
   Avatar,
   Badge,
-  NativeSelect,
 } from "@chakra-ui/react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { fetchStudent } from "../../api-endpoint/student/students";
 import { getClassArmsApi } from "../../api-endpoint/sms/smsEndpoints";
 import { useQuery } from "@tanstack/react-query";
 import { TableSkeleton } from "../ui/skeletons";
+import ClassSearchSelect from "../common/ClassSearchSelect";
 import {
   FaUsers,
   FaSearch,
@@ -30,19 +30,7 @@ import autoTable from "jspdf-autotable";
 const ListOfStudent = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClassArm, setSelectedClassArm] = useState(() => {
-    return localStorage.getItem("acesmart_pref_class_arm") || "all";
-  });
-
-  const handleSelectArm = (armId) => {
-    setSelectedClassArm(armId);
-    try {
-      localStorage.setItem("acesmart_pref_class_arm", armId);
-    } catch (_) {}
-  };
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["students"],
-    queryFn: fetchStudent,
+    return localStorage.getItem("acesmart_pref_class_arm") || "";
   });
 
   const { data: classArmsData } = useQuery({
@@ -51,22 +39,44 @@ const ListOfStudent = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const students = data?.students || [];
   const classArms = classArmsData?.data || [];
 
-  // Compute student counts per class arm
-  const countsByArm = useMemo(() => {
-    const counts = { all: students.length, unassigned: 0 };
-    for (const s of students) {
-      const armId = s.classArmId || s.ClassArm?.id;
-      if (armId) {
-        counts[armId] = (counts[armId] || 0) + 1;
-      } else {
-        counts.unassigned += 1;
-      }
+  // Default to first class arm once classArms load if none selected yet
+  useEffect(() => {
+    if (classArms.length > 0 && !selectedClassArm) {
+      const stored = localStorage.getItem("acesmart_pref_class_arm");
+      const isValid =
+        stored &&
+        (stored === "all" ||
+          stored === "unassigned" ||
+          classArms.some((c) => c.id === stored));
+      const chosen = isValid ? stored : classArms[0].id;
+      setSelectedClassArm(chosen);
     }
-    return counts;
-  }, [students]);
+  }, [classArms, selectedClassArm]);
+
+  const handleSelectArm = (armId) => {
+    setSelectedClassArm(armId);
+    try {
+      localStorage.setItem("acesmart_pref_class_arm", armId);
+    } catch (_) {}
+  };
+
+  // Direct targeted query for the selected class
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["students", selectedClassArm],
+    queryFn: () => {
+      if (selectedClassArm && selectedClassArm !== "all") {
+        return fetchStudent({ classArmId: selectedClassArm });
+      }
+      return fetchStudent();
+    },
+    enabled: Boolean(
+      selectedClassArm || (classArmsData && classArms.length === 0),
+    ),
+  });
+
+  const students = data?.students || [];
 
   // Filter students based on selected class arm and search query
   const filteredStudents = useMemo(() => {
@@ -236,33 +246,18 @@ const ListOfStudent = () => {
                 </Text>
               </Flex>
 
-              {classArms.length > 3 && (
-                <Box minW="220px">
-                  <NativeSelect.Root size="sm">
-                    <NativeSelect.Field
-                      value={selectedClassArm}
-                      onChange={(e) => handleSelectArm(e.target.value)}
-                      borderRadius="xl"
-                      borderColor="purple.200"
-                      fontWeight="600"
-                      color="#334155"
-                      bg="#F8FAFC"
-                    >
-                      <option value="all">All Classes ({students.length})</option>
-                      {classArms.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.name} ({countsByArm[a.id] || 0} students)
-                        </option>
-                      ))}
-                      <option value="unassigned">
-                        Unassigned / CBT Only ({countsByArm.unassigned || 0})
-                      </option>
-                    </NativeSelect.Field>
-                  </NativeSelect.Root>
-                </Box>
-              )}
+              <Box minW={{ base: "100%", sm: "280px" }}>
+                <ClassSearchSelect
+                  classArms={classArms}
+                  value={selectedClassArm}
+                  onChange={handleSelectArm}
+                  placeholder="Select or search class..."
+                  size="sm"
+                />
+              </Box>
             </Flex>
 
+            {/* Quick Filter Pills */}
             <Flex wrap="wrap" gap={2} align="center">
               {/* All Students Tab */}
               <Button
@@ -283,21 +278,22 @@ const ListOfStudent = () => {
                 onClick={() => handleSelectArm("all")}
               >
                 All Students
-                <Badge
-                  ml={2}
-                  bg={selectedClassArm === "all" ? "whiteAlpha.300" : "purple.50"}
-                  color={selectedClassArm === "all" ? "white" : "#6A1B9A"}
-                  borderRadius="full"
-                  px={1.5}
-                  fontSize="11px"
-                >
-                  {countsByArm.all}
-                </Badge>
+                {selectedClassArm === "all" && (
+                  <Badge
+                    ml={2}
+                    bg="whiteAlpha.300"
+                    color="white"
+                    borderRadius="full"
+                    px={1.5}
+                    fontSize="11px"
+                  >
+                    {filteredStudents.length}
+                  </Badge>
+                )}
               </Button>
 
               {/* Individual Class Arms */}
               {classArms.map((arm) => {
-                const count = countsByArm[arm.id] || 0;
                 const isSelected = selectedClassArm === arm.id;
                 return (
                   <Button
@@ -319,22 +315,24 @@ const ListOfStudent = () => {
                     onClick={() => handleSelectArm(arm.id)}
                   >
                     {arm.name}
-                    <Badge
-                      ml={2}
-                      bg={isSelected ? "whiteAlpha.300" : "#F1F5F9"}
-                      color={isSelected ? "white" : "#0284C7"}
-                      borderRadius="full"
-                      px={1.5}
-                      fontSize="11px"
-                    >
-                      {count}
-                    </Badge>
+                    {isSelected && (
+                      <Badge
+                        ml={2}
+                        bg="whiteAlpha.300"
+                        color="white"
+                        borderRadius="full"
+                        px={1.5}
+                        fontSize="11px"
+                      >
+                        {filteredStudents.length}
+                      </Badge>
+                    )}
                   </Button>
                 );
               })}
 
               {/* Unassigned / CBT Mock Only Tab */}
-              {(countsByArm.unassigned > 0 || classArms.length > 0) && (
+              {classArms.length > 0 && (
                 <Button
                   size="sm"
                   variant={selectedClassArm === "unassigned" ? "solid" : "outline"}
@@ -353,16 +351,18 @@ const ListOfStudent = () => {
                   onClick={() => handleSelectArm("unassigned")}
                 >
                   Unassigned (CBT Only)
-                  <Badge
-                    ml={2}
-                    bg={selectedClassArm === "unassigned" ? "whiteAlpha.300" : "#FEF3C7"}
-                    color={selectedClassArm === "unassigned" ? "white" : "#B45309"}
-                    borderRadius="full"
-                    px={1.5}
-                    fontSize="11px"
-                  >
-                    {countsByArm.unassigned}
-                  </Badge>
+                  {selectedClassArm === "unassigned" && (
+                    <Badge
+                      ml={2}
+                      bg="whiteAlpha.300"
+                      color="white"
+                      borderRadius="full"
+                      px={1.5}
+                      fontSize="11px"
+                    >
+                      {filteredStudents.length}
+                    </Badge>
+                  )}
                 </Button>
               )}
             </Flex>

@@ -107,21 +107,21 @@ const Navbar = ({
 
         {/* Desktop Navigation Links */}
         <Flex
-          gap={7}
+          gap={{lg:3 ,xl:7}}
           align="center"
           display={{ base: "none", lg: "flex" }}
           fontWeight="600"
           fontSize="14.5px"
           color="gray.600"
         >
-          <Text
+          {/* <Text
             cursor="pointer"
             onClick={(e) => onNavClick(refs.home, e)}
             _hover={{ color: "#6A1B9A" }}
             transition="color 0.2s"
           >
             Home
-          </Text>
+          </Text> */}
           <Text
             cursor="pointer"
             onClick={(e) => onNavClick(refs.about, e)}
@@ -146,7 +146,7 @@ const Navbar = ({
           >
             Impact
           </Text>
-          <Text
+          {/* <Text
             cursor="pointer"
             onClick={() => navigate("/student")}
             _hover={{ color: "#10B981" }}
@@ -155,7 +155,7 @@ const Navbar = ({
             transition="color 0.2s"
           >
             Result Portal
-          </Text>
+          </Text> */}
           <Text
             cursor="pointer"
             onClick={() => navigate("/pricing")}

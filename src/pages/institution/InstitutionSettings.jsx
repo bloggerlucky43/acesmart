@@ -1,13 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import {
-  Box,
-  Flex,
-  Text,
-  Button,
-  Icon,
-  Input,
-  Badge,
-} from "@chakra-ui/react";
+import { Box, Flex, Text, Button, Icon, Input, Badge } from "@chakra-ui/react";
 import {
   FaGraduationCap,
   FaImage,
@@ -46,7 +38,7 @@ export default function InstitutionSettings() {
     phone: "",
     currentTerm: "First Term",
     academicSession: "2025/2026",
-    resultCheckerFee: 500,
+    resultCheckerFee: 0,
     schoolStartTime: "08:00",
     schoolClosingTime: "16:00",
     principalName: "",
@@ -73,6 +65,35 @@ export default function InstitutionSettings() {
   const [stampUploading, setStampUploading] = useState(false);
   const signatureInputRef = useRef(null);
   const stampInputRef = useRef(null);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+
+  const handleSaveDrawnSignature = async (dataUrl) => {
+    setSignatureUploading(true);
+    try {
+      const res = await uploadPrincipalSignatureApi({ signature: dataUrl });
+      if (res.success) {
+        setForm((prev) => ({
+          ...prev,
+          principalSignatureUrl: res.principalSignatureUrl || dataUrl,
+        }));
+        toaster.create({
+          title: "Principal signature saved",
+          description:
+            "Your digital signature will reflect on approved report cards.",
+          type: "success",
+        });
+        setShowSignatureModal(false);
+      }
+    } catch (err) {
+      toaster.create({
+        title: "Failed to save principal signature",
+        description: err.response?.data?.message || err.message,
+        type: "error",
+      });
+    } finally {
+      setSignatureUploading(false);
+    }
+  };
 
   const handlePrincipalAsset = async (file, kind) => {
     if (!file) return;
@@ -80,7 +101,8 @@ export default function InstitutionSettings() {
       toaster.create({ title: "Select a PNG or JPG image", type: "warning" });
       return;
     }
-    const setUploading = kind === "signature" ? setSignatureUploading : setStampUploading;
+    const setUploading =
+      kind === "signature" ? setSignatureUploading : setStampUploading;
     setUploading(true);
     try {
       const compressed = await imageCompression(file, {
@@ -90,14 +112,21 @@ export default function InstitutionSettings() {
       });
       const fd = new FormData();
       fd.append(kind, compressed);
-      const res = kind === "signature"
-        ? await uploadPrincipalSignatureApi(fd)
-        : await uploadPrincipalStampApi(fd);
+      const res =
+        kind === "signature"
+          ? await uploadPrincipalSignatureApi(fd)
+          : await uploadPrincipalStampApi(fd);
       if (res.success) {
         setForm((prev) => ({
           ...prev,
-          [kind === "signature" ? "principalSignatureUrl" : "principalStampUrl"]:
-            res[kind === "signature" ? "principalSignatureUrl" : "principalStampUrl"],
+          [kind === "signature"
+            ? "principalSignatureUrl"
+            : "principalStampUrl"]:
+            res[
+              kind === "signature"
+                ? "principalSignatureUrl"
+                : "principalStampUrl"
+            ],
         }));
         toaster.create({
           title: `Principal ${kind} saved`,
@@ -117,18 +146,22 @@ export default function InstitutionSettings() {
   };
 
   const handleRemovePrincipalAsset = async (kind) => {
-    const setUploading = kind === "signature" ? setSignatureUploading : setStampUploading;
+    const setUploading =
+      kind === "signature" ? setSignatureUploading : setStampUploading;
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("remove", "true");
-      const res = kind === "signature"
-        ? await uploadPrincipalSignatureApi(fd)
-        : await uploadPrincipalStampApi(fd);
+      const res =
+        kind === "signature"
+          ? await uploadPrincipalSignatureApi(fd)
+          : await uploadPrincipalStampApi(fd);
       if (res.success) {
         setForm((prev) => ({
           ...prev,
-          [kind === "signature" ? "principalSignatureUrl" : "principalStampUrl"]: "",
+          [kind === "signature"
+            ? "principalSignatureUrl"
+            : "principalStampUrl"]: "",
         }));
         toaster.create({ title: `Principal ${kind} removed`, type: "info" });
       }
@@ -148,7 +181,10 @@ export default function InstitutionSettings() {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      toaster.create({ title: "Please select a valid image file (PNG, JPG)", type: "warning" });
+      toaster.create({
+        title: "Please select a valid image file (PNG, JPG)",
+        type: "warning",
+      });
       return;
     }
 
@@ -167,7 +203,8 @@ export default function InstitutionSettings() {
         setForm((prev) => ({ ...prev, logoUrl: res.logoUrl }));
         toaster.create({
           title: "School crest uploaded successfully!",
-          description: "Your official school crest is now live across report cards and exam portals.",
+          description:
+            "Your official school crest is now live across report cards and exam portals.",
           type: "success",
         });
       }
@@ -285,11 +322,17 @@ export default function InstitutionSettings() {
         mx="auto"
       >
         <Box mb={8}>
-          <Text fontSize="24px" fontWeight="900" color="#0F172A" letterSpacing="-0.5px">
+          <Text
+            fontSize="24px"
+            fontWeight="900"
+            color="#0F172A"
+            letterSpacing="-0.5px"
+          >
             Institution Profile & White-Label Branding
           </Text>
           <Text fontSize="13px" color="#64748B">
-            Configure school logo, crest, contact info, and staff enrollment credentials
+            Configure school logo, crest, contact info, and staff enrollment
+            credentials
           </Text>
         </Box>
 
@@ -297,9 +340,23 @@ export default function InstitutionSettings() {
 
         <Flex direction={{ base: "column", lg: "row" }} gap={8}>
           {/* Left Form: Branding & Academic Settings */}
-          <Box flex={1} bg="white" p={6} borderRadius="2xl" border="1px solid #E2E8F0">
+          <Box
+            flex={1}
+            bg="white"
+            p={6}
+            borderRadius="2xl"
+            border="1px solid #E2E8F0"
+          >
             <Flex align="center" gap={3} mb={5}>
-              <Flex w="40px" h="40px" borderRadius="xl" bg="#EEF2FF" color="#4338CA" align="center" justify="center">
+              <Flex
+                w="40px"
+                h="40px"
+                borderRadius="xl"
+                bg="#EEF2FF"
+                color="#4338CA"
+                align="center"
+                justify="center"
+              >
                 <Icon as={FaBuilding} boxSize={5} />
               </Flex>
               <Text fontSize="16px" fontWeight="800" color="#0F172A">
@@ -319,17 +376,33 @@ export default function InstitutionSettings() {
                   _hover={{ borderColor: "#7C3AED" }}
                 >
                   <Flex justify="space-between" align="center" mb={2.5}>
-                    <Text fontSize="12px" fontWeight="800" color="#334155" letterSpacing="0.5px">
+                    <Text
+                      fontSize="12px"
+                      fontWeight="800"
+                      color="#334155"
+                      letterSpacing="0.5px"
+                    >
                       OFFICIAL SCHOOL CREST / LOGO
                     </Text>
                     {form.logoUrl && (
-                      <Badge bg="#ECFDF5" color="#059669" fontSize="10px" px={2} py={0.5} borderRadius="full">
+                      <Badge
+                        bg="#ECFDF5"
+                        color="#059669"
+                        fontSize="10px"
+                        px={2}
+                        py={0.5}
+                        borderRadius="full"
+                      >
                         <Icon as={FaCheckCircle} mr={1} /> Crest Active
                       </Badge>
                     )}
                   </Flex>
 
-                  <Flex direction={{ base: "column", sm: "row" }} gap={4} align="center">
+                  <Flex
+                    direction={{ base: "column", sm: "row" }}
+                    gap={4}
+                    align="center"
+                  >
                     {/* Crest Preview Box */}
                     <Box
                       w="80px"
@@ -349,12 +422,18 @@ export default function InstitutionSettings() {
                         <img
                           src={form.logoUrl}
                           alt="School Crest"
-                          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "contain",
+                          }}
                         />
                       ) : (
                         <Flex direction="column" align="center" color="#94A3B8">
                           <Icon as={FaImage} boxSize={6} mb={0.5} />
-                          <Text fontSize="9px" fontWeight="700">NO CREST</Text>
+                          <Text fontSize="9px" fontWeight="700">
+                            NO CREST
+                          </Text>
                         </Flex>
                       )}
                     </Box>
@@ -362,7 +441,9 @@ export default function InstitutionSettings() {
                     {/* Upload Actions */}
                     <Flex direction="column" flex={1} w="100%" gap={2}>
                       <Text fontSize="12px" color="#64748B">
-                        Upload your school's official badge or crest. It displays on student result sheets, receipts, and custom portals.
+                        Upload your school's official badge or crest. It
+                        displays on student result sheets, receipts, and custom
+                        portals.
                       </Text>
 
                       <Flex gap={2} flexWrap="wrap" align="center">
@@ -385,10 +466,15 @@ export default function InstitutionSettings() {
                           onClick={() => logoInputRef.current?.click()}
                           loading={logoUploading}
                           loadingText="Uploading Crest..."
-                          _hover={{ opacity: 0.92, transform: "translateY(-1px)" }}
+                          _hover={{
+                            opacity: 0.92,
+                            transform: "translateY(-1px)",
+                          }}
                         >
                           <Icon as={FaCloudUploadAlt} mr={1.5} boxSize={3.5} />
-                          {form.logoUrl ? "Replace Crest Image" : "Upload School Crest"}
+                          {form.logoUrl
+                            ? "Replace Crest Image"
+                            : "Upload School Crest"}
                         </Button>
 
                         {form.logoUrl && (
@@ -406,29 +492,51 @@ export default function InstitutionSettings() {
                         )}
                       </Flex>
                       <Text fontSize="10px" color="#94A3B8">
-                        Recommended: Transparent PNG or crisp high-resolution JPG (under 5MB).
+                        Recommended: Transparent PNG or crisp high-resolution
+                        JPG (under 5MB).
                       </Text>
                     </Flex>
                   </Flex>
                 </Box>
 
                 {/* Principal Signature & Stamp */}
-                <Box p={4} borderRadius="2xl" border="1.5px dashed #CBD5E1" bg="#F8FAFC">
+                <Box
+                  p={4}
+                  borderRadius="2xl"
+                  border="1.5px dashed #CBD5E1"
+                  bg="#F8FAFC"
+                >
                   <Flex align="center" gap={2} mb={3}>
                     <Icon as={FaSignature} color="#4338CA" boxSize={4} />
-                    <Text fontSize="12px" fontWeight="800" color="#334155" letterSpacing="0.5px">
+                    <Text
+                      fontSize="12px"
+                      fontWeight="800"
+                      color="#334155"
+                      letterSpacing="0.5px"
+                    >
                       PRINCIPAL SIGNATURE & SCHOOL STAMP
                     </Text>
                   </Flex>
 
-                  <Flex gap={4} direction={{ base: "column", sm: "row" }} mb={3}>
+                  <Flex
+                    gap={4}
+                    direction={{ base: "column", sm: "row" }}
+                    mb={3}
+                  >
                     <Box flex={1}>
-                      <Text fontSize="11px" fontWeight="700" color="#334155" mb={1}>
+                      <Text
+                        fontSize="11px"
+                        fontWeight="700"
+                        color="#334155"
+                        mb={1}
+                      >
                         PRINCIPAL NAME
                       </Text>
                       <Input
                         value={form.principalName}
-                        onChange={(e) => setForm({ ...form, principalName: e.target.value })}
+                        onChange={(e) =>
+                          setForm({ ...form, principalName: e.target.value })
+                        }
                         placeholder="e.g. Dr. A. O. Bakare"
                         h="40px"
                         borderRadius="xl"
@@ -436,12 +544,19 @@ export default function InstitutionSettings() {
                       />
                     </Box>
                     <Box flex={1}>
-                      <Text fontSize="11px" fontWeight="700" color="#334155" mb={1}>
+                      <Text
+                        fontSize="11px"
+                        fontWeight="700"
+                        color="#334155"
+                        mb={1}
+                      >
                         TITLE
                       </Text>
                       <Input
                         value={form.principalTitle}
-                        onChange={(e) => setForm({ ...form, principalTitle: e.target.value })}
+                        onChange={(e) =>
+                          setForm({ ...form, principalTitle: e.target.value })
+                        }
                         placeholder="Principal"
                         h="40px"
                         borderRadius="xl"
@@ -452,8 +567,19 @@ export default function InstitutionSettings() {
 
                   <Flex gap={4} direction={{ base: "column", sm: "row" }}>
                     {/* Signature */}
-                    <Box flex={1} border="1px solid #E2E8F0" borderRadius="xl" bg="white" p={3}>
-                      <Text fontSize="11px" fontWeight="800" color="#334155" mb={2}>
+                    <Box
+                      flex={1}
+                      border="1px solid #E2E8F0"
+                      borderRadius="xl"
+                      bg="white"
+                      p={3}
+                    >
+                      <Text
+                        fontSize="11px"
+                        fontWeight="800"
+                        color="#334155"
+                        mb={2}
+                      >
                         SIGNATURE IMAGE
                       </Text>
                       <Flex align="center" gap={3}>
@@ -473,10 +599,18 @@ export default function InstitutionSettings() {
                             <img
                               src={form.principalSignatureUrl}
                               alt="Principal signature"
-                              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "100%",
+                                objectFit: "contain",
+                              }}
                             />
                           ) : (
-                            <Text fontSize="10px" color="#94A3B8" fontWeight="700">
+                            <Text
+                              fontSize="10px"
+                              color="#94A3B8"
+                              fontWeight="700"
+                            >
                               NO SIGNATURE
                             </Text>
                           )}
@@ -487,19 +621,39 @@ export default function InstitutionSettings() {
                             ref={signatureInputRef}
                             accept="image/png, image/jpeg, image/webp"
                             style={{ display: "none" }}
-                            onChange={(e) => handlePrincipalAsset(e.target.files?.[0], "signature")}
+                            onChange={(e) =>
+                              handlePrincipalAsset(
+                                e.target.files?.[0],
+                                "signature",
+                              )
+                            }
                           />
-                          <Button
-                            size="xs"
-                            bg="#4338CA"
-                            color="white"
-                            borderRadius="lg"
-                            onClick={() => signatureInputRef.current?.click()}
-                            loading={signatureUploading}
-                          >
-                            <Icon as={FaCloudUploadAlt} mr={1} />
-                            {form.principalSignatureUrl ? "Replace" : "Upload"}
-                          </Button>
+                          <Flex gap={1.5} wrap="wrap">
+                            <Button
+                              size="xs"
+                              bg="#4338CA"
+                              color="white"
+                              borderRadius="lg"
+                              onClick={() => setShowSignatureModal(true)}
+                              loading={signatureUploading}
+                              flex={1}
+                            >
+                              <Icon as={FaSignature} mr={1} />
+                              Draw
+                            </Button>
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              borderColor="#CBD5E1"
+                              borderRadius="lg"
+                              onClick={() => signatureInputRef.current?.click()}
+                              loading={signatureUploading}
+                              flex={1}
+                            >
+                              <Icon as={FaCloudUploadAlt} mr={1} />
+                              Upload
+                            </Button>
+                          </Flex>
                           {form.principalSignatureUrl && (
                             <Button
                               size="xs"
@@ -507,7 +661,9 @@ export default function InstitutionSettings() {
                               color="#B91C1C"
                               borderColor="#FCA5A5"
                               borderRadius="lg"
-                              onClick={() => handleRemovePrincipalAsset("signature")}
+                              onClick={() =>
+                                handleRemovePrincipalAsset("signature")
+                              }
                             >
                               <Icon as={FaTrash} mr={1} /> Remove
                             </Button>
@@ -515,14 +671,25 @@ export default function InstitutionSettings() {
                         </Flex>
                       </Flex>
                       <Text fontSize="10px" color="#94A3B8" mt={2}>
-                        Transparent PNG works best. A signature written on paper and photographed is
-                        fine too.
+                        Transparent PNG works best. A signature written on paper
+                        and photographed is fine too.
                       </Text>
                     </Box>
 
                     {/* Stamp */}
-                    <Box flex={1} border="1px solid #E2E8F0" borderRadius="xl" bg="white" p={3}>
-                      <Text fontSize="11px" fontWeight="800" color="#334155" mb={2}>
+                    <Box
+                      flex={1}
+                      border="1px solid #E2E8F0"
+                      borderRadius="xl"
+                      bg="white"
+                      p={3}
+                    >
+                      <Text
+                        fontSize="11px"
+                        fontWeight="800"
+                        color="#334155"
+                        mb={2}
+                      >
                         SCHOOL STAMP
                       </Text>
                       <Flex align="center" gap={3}>
@@ -542,7 +709,11 @@ export default function InstitutionSettings() {
                             <img
                               src={form.principalStampUrl}
                               alt="School stamp"
-                              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "100%",
+                                objectFit: "contain",
+                              }}
                             />
                           ) : (
                             <Icon as={FaStamp} color="#CBD5E1" boxSize={6} />
@@ -554,7 +725,9 @@ export default function InstitutionSettings() {
                             ref={stampInputRef}
                             accept="image/png, image/jpeg, image/webp"
                             style={{ display: "none" }}
-                            onChange={(e) => handlePrincipalAsset(e.target.files?.[0], "stamp")}
+                            onChange={(e) =>
+                              handlePrincipalAsset(e.target.files?.[0], "stamp")
+                            }
                           />
                           <Button
                             size="xs"
@@ -574,7 +747,9 @@ export default function InstitutionSettings() {
                               color="#B91C1C"
                               borderColor="#FCA5A5"
                               borderRadius="lg"
-                              onClick={() => handleRemovePrincipalAsset("stamp")}
+                              onClick={() =>
+                                handleRemovePrincipalAsset("stamp")
+                              }
                             >
                               <Icon as={FaTrash} mr={1} /> Remove
                             </Button>
@@ -586,12 +761,22 @@ export default function InstitutionSettings() {
                 </Box>
 
                 {/* Dedicated School Domain Card */}
-                <Box p={4} borderRadius="xl" bg="#F1F5F9" border="1px solid #CBD5E1">
+                <Box
+                  p={4}
+                  borderRadius="xl"
+                  bg="#F1F5F9"
+                  border="1px solid #CBD5E1"
+                >
                   <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
                     DEDICATED SCHOOL DOMAIN
                   </Text>
                   <Flex align="center" gap={2} mb={2}>
-                    <Text fontSize="14px" fontWeight="900" color="#4338CA" fontFamily="monospace">
+                    <Text
+                      fontSize="14px"
+                      fontWeight="900"
+                      color="#4338CA"
+                      fontFamily="monospace"
+                    >
                       https://{form.subdomain || "school"}.acesmart.site
                     </Text>
                   </Flex>
@@ -602,7 +787,9 @@ export default function InstitutionSettings() {
                       onChange={(e) =>
                         setForm({
                           ...form,
-                          subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+                          subdomain: e.target.value
+                            .toLowerCase()
+                            .replace(/[^a-z0-9-]/g, ""),
                         })
                       }
                       h="38px"
@@ -618,14 +805,18 @@ export default function InstitutionSettings() {
                       onClick={() => {
                         const url = `https://${form.subdomain || "school"}.acesmart.site`;
                         navigator.clipboard.writeText(url);
-                        toaster.create({ title: "Copied school URL to clipboard!", type: "success" });
+                        toaster.create({
+                          title: "Copied school URL to clipboard!",
+                          type: "success",
+                        });
                       }}
                     >
                       Copy Link
                     </Button>
                   </Flex>
                   <Text fontSize="11px" color="#64748B" mt={1}>
-                    Parents, teachers, and students can visit this custom link directly.
+                    Parents, teachers, and students can visit this custom link
+                    directly.
                   </Text>
                 </Box>
 
@@ -650,7 +841,9 @@ export default function InstitutionSettings() {
                   </Text>
                   <Input
                     value={form.motto}
-                    onChange={(e) => setForm({ ...form, motto: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, motto: e.target.value })
+                    }
                     h="42px"
                     borderRadius="xl"
                     fontSize="13px"
@@ -663,7 +856,9 @@ export default function InstitutionSettings() {
                   </Text>
                   <Input
                     value={form.address}
-                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, address: e.target.value })
+                    }
                     h="42px"
                     borderRadius="xl"
                     fontSize="13px"
@@ -672,24 +867,38 @@ export default function InstitutionSettings() {
 
                 <Flex gap={4}>
                   <Box flex={1}>
-                    <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
+                    <Text
+                      fontSize="12px"
+                      fontWeight="700"
+                      color="#334155"
+                      mb={1}
+                    >
                       ACADEMIC SESSION
                     </Text>
                     <Input
                       value={form.academicSession}
-                      onChange={(e) => setForm({ ...form, academicSession: e.target.value })}
+                      onChange={(e) =>
+                        setForm({ ...form, academicSession: e.target.value })
+                      }
                       h="42px"
                       borderRadius="xl"
                       fontSize="13px"
                     />
                   </Box>
                   <Box flex={1}>
-                    <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
+                    <Text
+                      fontSize="12px"
+                      fontWeight="700"
+                      color="#334155"
+                      mb={1}
+                    >
                       ACTIVE TERM
                     </Text>
                     <select
                       value={form.currentTerm}
-                      onChange={(e) => setForm({ ...form, currentTerm: e.target.value })}
+                      onChange={(e) =>
+                        setForm({ ...form, currentTerm: e.target.value })
+                      }
                       style={{
                         width: "100%",
                         height: "42px",
@@ -709,26 +918,45 @@ export default function InstitutionSettings() {
                 </Flex>
 
                 {/* Staff Attendance Window */}
-                <Box p={4} borderRadius="xl" bg="#F8FAFC" border="1px solid #E2E8F0">
+                <Box
+                  p={4}
+                  borderRadius="xl"
+                  bg="#F8FAFC"
+                  border="1px solid #E2E8F0"
+                >
                   <Flex align="center" gap={2} mb={1}>
                     <Icon as={FaClock} color="#4338CA" boxSize={3.5} />
-                    <Text fontSize="12px" fontWeight="800" color="#334155" letterSpacing="0.5px">
+                    <Text
+                      fontSize="12px"
+                      fontWeight="800"
+                      color="#334155"
+                      letterSpacing="0.5px"
+                    >
                       STAFF ATTENDANCE WINDOW
                     </Text>
                   </Flex>
                   <Text fontSize="11px" color="#64748B" mb={3}>
-                    Staff clock in and clock out once per day. Arrivals after the start time are flagged Late; clock-outs are logged for every staff member.
+                    Staff clock in and clock out once per day. Arrivals after
+                    the start time are flagged Late; clock-outs are logged for
+                    every staff member.
                   </Text>
 
                   <Flex gap={4} direction={{ base: "column", sm: "row" }}>
                     <Box flex={1}>
-                      <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
+                      <Text
+                        fontSize="12px"
+                        fontWeight="700"
+                        color="#334155"
+                        mb={1}
+                      >
                         SCHOOL START TIME
                       </Text>
                       <input
                         type="time"
                         value={form.schoolStartTime || ""}
-                        onChange={(e) => setForm({ ...form, schoolStartTime: e.target.value })}
+                        onChange={(e) =>
+                          setForm({ ...form, schoolStartTime: e.target.value })
+                        }
                         style={{
                           width: "100%",
                           height: "42px",
@@ -742,13 +970,23 @@ export default function InstitutionSettings() {
                       />
                     </Box>
                     <Box flex={1}>
-                      <Text fontSize="12px" fontWeight="700" color="#334155" mb={1}>
+                      <Text
+                        fontSize="12px"
+                        fontWeight="700"
+                        color="#334155"
+                        mb={1}
+                      >
                         SCHOOL CLOSING TIME
                       </Text>
                       <input
                         type="time"
                         value={form.schoolClosingTime || ""}
-                        onChange={(e) => setForm({ ...form, schoolClosingTime: e.target.value })}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            schoolClosingTime: e.target.value,
+                          })
+                        }
                         style={{
                           width: "100%",
                           height: "42px",
@@ -765,7 +1003,8 @@ export default function InstitutionSettings() {
 
                   <Flex justify="space-between" align="center" mt={2} gap={2}>
                     <Text fontSize="11px" color="#64748B">
-                      Leave the start time blank to record arrivals without a Late flag.
+                      Leave the start time blank to record arrivals without a
+                      Late flag.
                     </Text>
                     <Button
                       size="xs"
@@ -782,7 +1021,9 @@ export default function InstitutionSettings() {
                         })
                       }
                     >
-                      {form.schoolStartTime ? "Disable Late Flag" : "Enable Late Flag"}
+                      {form.schoolStartTime
+                        ? "Disable Late Flag"
+                        : "Enable Late Flag"}
                     </Button>
                   </Flex>
                 </Box>
@@ -794,14 +1035,17 @@ export default function InstitutionSettings() {
                   <Input
                     type="number"
                     value={form.resultCheckerFee}
-                    onChange={(e) => setForm({ ...form, resultCheckerFee: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, resultCheckerFee: e.target.value })
+                    }
                     h="42px"
                     borderRadius="xl"
                     fontSize="13px"
                     fontWeight="700"
                   />
                   <Text fontSize="11px" color="#64748B" mt={1}>
-                    Standard fee charged to parents/students before viewing official report cards (Default: ₦500).
+                    Standard fee charged to parents/students before viewing
+                    official report cards (Default: ₦500).
                   </Text>
                 </Box>
 
@@ -823,9 +1067,23 @@ export default function InstitutionSettings() {
           </Box>
 
           {/* Right Form: Staff Enrollment */}
-          <Box flex={1} bg="white" p={6} borderRadius="2xl" border="1px solid #E2E8F0">
+          <Box
+            flex={1}
+            bg="white"
+            p={6}
+            borderRadius="2xl"
+            border="1px solid #E2E8F0"
+          >
             <Flex align="center" gap={3} mb={5}>
-              <Flex w="40px" h="40px" borderRadius="xl" bg="#ECFDF5" color="#10B981" align="center" justify="center">
+              <Flex
+                w="40px"
+                h="40px"
+                borderRadius="xl"
+                bg="#ECFDF5"
+                color="#10B981"
+                align="center"
+                justify="center"
+              >
                 <Icon as={FaUserPlus} boxSize={5} />
               </Flex>
               <Text fontSize="16px" fontWeight="800" color="#0F172A">
@@ -842,7 +1100,9 @@ export default function InstitutionSettings() {
                   <Input
                     placeholder="e.g. Mrs. Ngozi Adeleke"
                     value={staffForm.name}
-                    onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })}
+                    onChange={(e) =>
+                      setStaffForm({ ...staffForm, name: e.target.value })
+                    }
                     h="42px"
                     borderRadius="xl"
                     fontSize="13px"
@@ -858,7 +1118,9 @@ export default function InstitutionSettings() {
                     type="email"
                     placeholder="teacher@school.edu"
                     value={staffForm.email}
-                    onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
+                    onChange={(e) =>
+                      setStaffForm({ ...staffForm, email: e.target.value })
+                    }
                     h="42px"
                     borderRadius="xl"
                     fontSize="13px"
@@ -902,7 +1164,8 @@ export default function InstitutionSettings() {
                     </option>
                   </select>
                   <Text fontSize="11px" color="#64748B" mt={1}>
-                    Institution admins share your full portal privileges for this school.
+                    Institution admins share your full portal privileges for
+                    this school.
                   </Text>
                 </Box>
 
@@ -913,7 +1176,12 @@ export default function InstitutionSettings() {
                   <Input
                     placeholder="e.g. Mathematics Teacher / Vice Principal"
                     value={staffForm.designation}
-                    onChange={(e) => setStaffForm({ ...staffForm, designation: e.target.value })}
+                    onChange={(e) =>
+                      setStaffForm({
+                        ...staffForm,
+                        designation: e.target.value,
+                      })
+                    }
                     h="42px"
                     borderRadius="xl"
                     fontSize="13px"
@@ -928,7 +1196,9 @@ export default function InstitutionSettings() {
                     type="password"
                     placeholder="Initial password for teacher"
                     value={staffForm.password}
-                    onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
+                    onChange={(e) =>
+                      setStaffForm({ ...staffForm, password: e.target.value })
+                    }
                     h="42px"
                     borderRadius="xl"
                     fontSize="13px"
@@ -953,7 +1223,13 @@ export default function InstitutionSettings() {
             </form>
 
             {/* Enrolled Staff Count */}
-            <Box mt={6} p={4} borderRadius="xl" bg="#F8FAFC" border="1px solid #E2E8F0">
+            <Box
+              mt={6}
+              p={4}
+              borderRadius="xl"
+              bg="#F8FAFC"
+              border="1px solid #E2E8F0"
+            >
               <Text fontSize="13px" fontWeight="700" color="#0F172A">
                 Enrolled Faculty ({staffList.length})
               </Text>
@@ -964,6 +1240,210 @@ export default function InstitutionSettings() {
           </Box>
         </Flex>
       </Box>
+
+      {/* Signature Pad Modal for Principal / Institution Admin */}
+      <SignaturePadModal
+        isOpen={showSignatureModal}
+        onClose={() => setShowSignatureModal(false)}
+        onSave={handleSaveDrawnSignature}
+        saving={signatureUploading}
+        title="Principal's Digital Signature"
+      />
     </DashboardLayout>
+  );
+}
+
+function SignaturePadModal({
+  isOpen,
+  onClose,
+  onSave,
+  saving,
+  title = "Digital Signature",
+}) {
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    ctx.strokeStyle = "#0F172A";
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  }, [isOpen]);
+
+  const getCoordinates = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  };
+
+  const startDrawing = (e) => {
+    e.preventDefault();
+    setIsDrawing(true);
+    setHasDrawn(true);
+    const { x, y } = getCoordinates(e);
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+    e.preventDefault();
+    const { x, y } = getCoordinates(e);
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const clear = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasDrawn(false);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <Box
+      position="fixed"
+      top="0"
+      left="0"
+      right="0"
+      bottom="0"
+      bg="rgba(15, 23, 42, 0.65)"
+      backdropFilter="blur(4px)"
+      zIndex={9999}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      p={4}
+    >
+      <Box
+        bg="white"
+        borderRadius="24px"
+        boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+        w="100%"
+        maxW="500px"
+        overflow="hidden"
+        border="1px solid #E2E8F0"
+      >
+        <Flex
+          p={4}
+          px={5}
+          borderBottom="1px solid #F1F5F9"
+          justify="space-between"
+          align="center"
+          bg="#F8FAFC"
+        >
+          <Flex align="center" gap={2}>
+            <Icon as={FaSignature} color="#4338CA" boxSize={4.5} />
+            <Text fontSize="15px" fontWeight="800" color="#0F172A">
+              {title}
+            </Text>
+          </Flex>
+          <Button size="xs" variant="ghost" onClick={onClose}>
+            ✕
+          </Button>
+        </Flex>
+
+        <Box p={5}>
+          <Text fontSize="12px" color="#64748B" mb={3}>
+            Use your mouse, finger, or stylus to draw your official signature:
+          </Text>
+
+          <Box
+            position="relative"
+            border="2px dashed #CBD5E1"
+            borderRadius="xl"
+            bg="#FAFAFA"
+            overflow="hidden"
+            touchAction="none"
+          >
+            <canvas
+              ref={canvasRef}
+              width={460}
+              height={180}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+              style={{
+                width: "100%",
+                height: "180px",
+                display: "block",
+                cursor: "crosshair",
+              }}
+            />
+            {!hasDrawn && (
+              <Text
+                position="absolute"
+                top="50%"
+                left="50%"
+                transform="translate(-50%, -50%)"
+                fontSize="12px"
+                fontWeight="600"
+                color="#94A3B8"
+                pointerEvents="none"
+              >
+                ✍️ Sign your name here
+              </Text>
+            )}
+          </Box>
+
+          <Flex mt={4} justify="space-between" align="center">
+            <Button
+              size="sm"
+              variant="ghost"
+              color="#64748B"
+              onClick={clear}
+              disabled={!hasDrawn}
+            >
+              Clear
+            </Button>
+            <Flex gap={2}>
+              <Button size="sm" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                bg="#4338CA"
+                color="white"
+                borderRadius="xl"
+                fontWeight="700"
+                loading={saving}
+                disabled={!hasDrawn}
+                onClick={() => {
+                  if (!canvasRef.current) return;
+                  const dataUrl = canvasRef.current.toDataURL("image/png");
+                  onSave(dataUrl);
+                }}
+              >
+                Save Signature
+              </Button>
+            </Flex>
+          </Flex>
+        </Box>
+      </Box>
+    </Box>
   );
 }

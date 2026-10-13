@@ -130,6 +130,7 @@ const Home = () => {
       <ExamProvider>
         <Routes>
           {/* student take exam */}
+          <Route path="/exam" element={<ExamLoginPage />} />
           <Route path="/exam/:id" element={<ExamLoginPage />} />
           <Route path="/ex/:id" element={<StartExam />} />
           <Route path="/take_exam" element={<Dashboard />} />

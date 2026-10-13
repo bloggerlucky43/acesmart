@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toaster } from "../../../components/ui/toaster";
 import { createExam } from "../../../api-endpoint/exam/exams";
+import { toUTCISOString, toDateTimeLocalValue } from "../../../libs/helper";
 import {
   FaSlidersH,
   FaCheckCircle,
@@ -76,6 +77,20 @@ export default function MobileEditExamDetails() {
     0,
   );
 
+  const handleSetStartNow = () => {
+    const now = new Date();
+    const immediateStart = new Date(now.getTime() - 2 * 60 * 1000);
+    const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    setExamDetails((prev) => ({
+      ...prev,
+      startDate: toDateTimeLocalValue(immediateStart),
+      endDate: prev.endDate || toDateTimeLocalValue(end),
+    }));
+    toaster.info({
+      title: "Start date set to NOW! The exam will be active immediately upon publishing.",
+    });
+  };
+
   const handleSaveChanges = async (e) => {
     e.preventDefault();
     if (!examDetails.startDate) {
@@ -97,7 +112,12 @@ export default function MobileEditExamDetails() {
 
     setLoading(true);
     try {
-      const res = await createExam(examDetails);
+      const payload = {
+        ...examDetails,
+        startDate: toUTCISOString(examDetails.startDate),
+        endDate: toUTCISOString(examDetails.endDate),
+      };
+      const res = await createExam(payload);
 
       if (res.success && res.data) {
         toaster.success({ title: "Exam created and published successfully!" });
@@ -231,9 +251,27 @@ export default function MobileEditExamDetails() {
           {/* Timing Section — stacked to avoid datetime-local overflow on narrow screens */}
           <Stack spacing={3}>
             <Field.Root required>
-              <Field.Label fontSize="xs" fontWeight="semibold" color="#334155">
-                Start Date/Time <Field.RequiredIndicator />
-              </Field.Label>
+              <Flex justify="space-between" align="center" mb={1}>
+                <Field.Label fontSize="xs" fontWeight="semibold" color="#334155" mb={0}>
+                  Start Date/Time <Field.RequiredIndicator />
+                </Field.Label>
+                <Button
+                  size="2xs"
+                  variant="outline"
+                  borderColor="#DDD6FE"
+                  color="#7C3AED"
+                  bg="purple.50"
+                  _hover={{ bg: "purple.100" }}
+                  borderRadius="md"
+                  px={2}
+                  py={0.5}
+                  fontSize="10px"
+                  fontWeight="bold"
+                  onClick={handleSetStartNow}
+                >
+                  ⚡ Start Now
+                </Button>
+              </Flex>
               <Input
                 type="datetime-local"
                 size="sm"

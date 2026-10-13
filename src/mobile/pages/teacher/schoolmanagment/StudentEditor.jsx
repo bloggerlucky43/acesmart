@@ -88,7 +88,7 @@ export const MStudentEditor = () => {
         <Flex align="center" gap={2} mb={1}>
           <Icon as={FaUserEdit} color="#6A1B9A" boxSize={4.5} />
           <Text fontSize="18px" fontWeight="800" color="#0F172A" fontFamily="'Outfit', sans-serif">
-            Candidate Status Management
+            Student Status Management
           </Text>
         </Flex>
         <Text fontSize="12px" color="#64748B">

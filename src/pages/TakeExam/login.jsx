@@ -24,12 +24,13 @@ import { examLogin } from "../../api-endpoint/exam/exams";
 export { loadFaceModels } from "./component/face/CaptureImage";
 
 const ExamLoginPage = () => {
+  const { id } = useParams();
   const [examDetail, setExamDetail] = useState({
     studentId: "",
     firstName: "",
+    examCode: id || "",
   });
   const [loading, setLoading] = useState(false);
-  const { id } = useParams();
   const navigate = useNavigate();
   const [error, setError] = useState("");
 
@@ -42,6 +43,16 @@ const ExamLoginPage = () => {
         description:
           "For optimal testing experience and diagram rendering, please use a PC or laptop.",
       });
+    }
+
+    const activeExamKey = (id || examDetail.examCode || "").trim();
+
+    if (!activeExamKey) {
+      toaster.error({
+        title: "Exam Access Code is required",
+      });
+      setError("Please provide a valid 6-character Exam Code or ID.");
+      return;
     }
 
     if (!examDetail.firstName?.trim() || !examDetail.studentId?.trim()) {
@@ -57,7 +68,8 @@ const ExamLoginPage = () => {
       const res = await examLogin({
         studentId: examDetail.studentId.trim(),
         firstName: examDetail.firstName.trim(),
-        examId: id,
+        examId: activeExamKey,
+        examCode: activeExamKey,
       });
       if (res?.success) {
         toaster.create({
@@ -65,11 +77,13 @@ const ExamLoginPage = () => {
           type: "success",
         });
 
+        const resolvedExamId = res?.exam?.id || activeExamKey;
+
         localStorage.setItem(
           "examStudent",
-          JSON.stringify({ ...res.student, examId: id }),
+          JSON.stringify({ ...res.student, examId: resolvedExamId }),
         );
-        navigate(`/ex/${id}`);
+        navigate(`/ex/${resolvedExamId}`);
       } else {
         setError(
           res?.message || "Invalid candidate credentials. Please check details.",
@@ -160,6 +174,22 @@ const ExamLoginPage = () => {
               <Text>SECURE TESTING ENVIRONMENT</Text>
             </HStack>
           </Badge>
+
+          {id && (
+            <Badge
+              bg="rgba(59, 130, 246, 0.15)"
+              color="#60A5FA"
+              border="1px solid rgba(59, 130, 246, 0.3)"
+              px={3}
+              py={1}
+              borderRadius="full"
+              fontSize="11px"
+              fontWeight="bold"
+              letterSpacing="1px"
+            >
+              EXAM ACCESS CODE: {id.toUpperCase()}
+            </Badge>
+          )}
         </VStack>
 
         {/* Error Alert */}
@@ -181,6 +211,41 @@ const ExamLoginPage = () => {
         {/* Credentials Form */}
         <form onSubmit={handleSubmit} style={{ width: "100%" }}>
           <VStack spacing={4} align="stretch" w="100%">
+            {!id && (
+              <Field.Root required w="100%">
+                <Field.Label fontSize="12px" fontWeight="bold" color="#CBD5E1">
+                  Exam Access Code (6–8 Characters) <Field.RequiredIndicator />
+                </Field.Label>
+                <Input
+                  type="text"
+                  placeholder="e.g. 8K2P9X"
+                  bg="#0F172A"
+                  borderRadius="12px"
+                  h="48px"
+                  w="100%"
+                  color="white"
+                  textTransform="uppercase"
+                  letterSpacing="2px"
+                  fontWeight="bold"
+                  borderColor="#334155"
+                  _focus={{
+                    borderColor: "#3B82F6",
+                    boxShadow: "0 0 0 1px #3B82F6",
+                    bg: "#0F172A",
+                  }}
+                  _placeholder={{ color: "#64748B", textTransform: "none", letterSpacing: "normal" }}
+                  value={examDetail.examCode}
+                  onChange={(e) =>
+                    setExamDetail({
+                      ...examDetail,
+                      examCode: e.target.value.toUpperCase(),
+                    })
+                  }
+                  required
+                />
+              </Field.Root>
+            )}
+
             <Field.Root required w="100%">
               <Field.Label fontSize="12px" fontWeight="bold" color="#CBD5E1">
                 Candidate Registration Number <Field.RequiredIndicator />

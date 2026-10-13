@@ -37,12 +37,14 @@ import {
   FaGlobe,
   FaShieldAlt,
   FaExclamationTriangle,
+  FaCopy,
 } from "react-icons/fa";
 import {
   SUBJECTS_LIST,
   isTeacherQuestion,
 } from "../../../components/teacher/exam/addExam";
 import SearchableSubjectSelect from "../../../components/ui/SearchableSubjectSelect";
+import CloneExamModal from "../../../components/teacher/exam/CloneExamModal";
 
 export default function MobileAddExam() {
   const [subject, setSubject] = useState("Mathematics");
@@ -65,7 +67,58 @@ export default function MobileAddExam() {
   const [expandedSectionIdx, setExpandedSectionIdx] = useState(null);
   const [showBlueprint, setShowBlueprint] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const navigate = useNavigate();
+
+  const handleCloneExam = (exam) => {
+    if (!exam) return;
+    const clonedSections = (exam.sections || []).map((sec) => ({
+      section: sec.section || "General",
+      year: sec.year || null,
+      questions: Array.isArray(sec.questions) ? [...sec.questions] : [],
+    }));
+
+    const totalClonedQs = clonedSections.reduce(
+      (acc, s) => acc + (s.questions?.length || 0),
+      0
+    );
+
+    setExamForm({
+      examTitle: `${exam.title || "Exam"} (Copy)`,
+      duration: exam.duration || 60,
+      totalMarks: exam.totalMarks || 100,
+      negativeMarking: Boolean(exam.negativeMarking),
+      negativeMarkingPenalty: exam.negativeMarkingPenalty ?? 0.25,
+      enableBiometricCheckin: Boolean(exam.enableBiometricCheckin),
+    });
+
+    setSections(clonedSections);
+    setIsCloneModalOpen(false);
+
+    const draft = {
+      examForm: {
+        examTitle: `${exam.title || "Exam"} (Copy)`,
+        duration: exam.duration || 60,
+        totalMarks: exam.totalMarks || 100,
+        negativeMarking: Boolean(exam.negativeMarking),
+        negativeMarkingPenalty: exam.negativeMarkingPenalty ?? 0.25,
+        enableBiometricCheckin: Boolean(exam.enableBiometricCheckin),
+      },
+      sections: clonedSections,
+      subject: clonedSections[0]?.section || "Mathematics",
+      customSubject: "",
+      year: clonedSections[0]?.year || "",
+      sourceFilter: "all",
+      questions: [],
+      selectedQuestionsIds: [],
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+
+    toaster.success({
+      title: `Exam draft imported from "${exam.title}"!`,
+      description: `Loaded ${totalClonedQs} questions across ${clonedSections.length} sections.`,
+    });
+  };
 
   // Restore draft on mount
   useEffect(() => {
@@ -422,8 +475,23 @@ export default function MobileAddExam() {
           </HStack>
         </Box>
 
-        {/* Reset Draft */}
-        <Flex justify="flex-end" mb={3}>
+        {/* Top Actions: Clone Previous Exam & Reset Draft */}
+        <Flex justify="space-between" align="center" gap={2} mb={3}>
+          <Button
+            size="xs"
+            bg="purple.50"
+            color="#7C3AED"
+            border="1px solid #DDD6FE"
+            borderRadius="lg"
+            h="32px"
+            fontSize="11px"
+            fontWeight="bold"
+            leftIcon={<Icon as={FaCopy} boxSize={2.5} />}
+            onClick={() => setIsCloneModalOpen(true)}
+          >
+            Clone Previous Exam
+          </Button>
+
           <Button
             size="xs"
             variant="outline"
@@ -1522,6 +1590,13 @@ export default function MobileAddExam() {
           </Button>
         </Flex>
       </Box>
+
+      {/* Clone Previous Exam Modal */}
+      <CloneExamModal
+        isOpen={isCloneModalOpen}
+        onClose={() => setIsCloneModalOpen(false)}
+        onSelectExam={handleCloneExam}
+      />
     </Box>
   );
 }

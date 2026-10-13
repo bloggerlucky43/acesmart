@@ -18,6 +18,8 @@ import {
   FaSignature,
   FaStamp,
   FaSyncAlt,
+  FaCalendarAlt,
+  FaHistory,
 } from "react-icons/fa";
 import {
   getClassArmsApi,
@@ -56,8 +58,37 @@ export default function PrincipalApprovals() {
   const [nextTermResumption, setNextTermResumption] = useState("");
   const [working, setWorking] = useState(false);
 
-  const term = institution?.currentTerm || "First Term";
-  const session = institution?.academicSession || "2025/2026";
+  const currentTerm = institution?.currentTerm || "First Term";
+  const currentSession = institution?.academicSession || "2025/2026";
+
+  const [selectedTerm, setSelectedTerm] = useState(currentTerm);
+  const [selectedSession, setSelectedSession] = useState(currentSession);
+
+  // Sync state if institution details arrive asynchronously
+  useEffect(() => {
+    if (institution?.currentTerm && !selectedTerm) {
+      setSelectedTerm(institution.currentTerm);
+    }
+    if (institution?.academicSession && !selectedSession) {
+      setSelectedSession(institution.academicSession);
+    }
+  }, [institution?.currentTerm, institution?.academicSession]);
+
+  const availableTerms = ["First Term", "Second Term", "Third Term"];
+  const availableSessions = useMemo(() => {
+    const set = new Set();
+    if (currentSession) set.add(currentSession);
+    if (selectedSession) set.add(selectedSession);
+    const match = String(currentSession).match(/^(\d{4})\/(\d{4})$/);
+    const baseYear = match ? parseInt(match[1], 10) : new Date().getFullYear();
+    for (let y = baseYear - 4; y <= baseYear + 2; y++) {
+      set.add(`${y}/${y + 1}`);
+    }
+    return Array.from(set).sort().reverse();
+  }, [currentSession, selectedSession]);
+
+  const isPreviousPeriod =
+    selectedTerm !== currentTerm || selectedSession !== currentSession;
 
   useEffect(() => {
     const init = async () => {
@@ -85,8 +116,8 @@ export default function PrincipalApprovals() {
         classArmId: selectedClassId,
         status: statusFilter,
         search,
-        term,
-        session,
+        term: selectedTerm,
+        session: selectedSession,
       });
       if (res.success) {
         setRows(res.data.students);
@@ -111,7 +142,7 @@ export default function PrincipalApprovals() {
     } finally {
       setLoading(false);
     }
-  }, [selectedClassId, statusFilter, search, term, session]);
+  }, [selectedClassId, statusFilter, search, selectedTerm, selectedSession]);
 
   useEffect(() => {
     loadQueue();
@@ -145,8 +176,8 @@ export default function PrincipalApprovals() {
     setWorking(true);
     try {
       const res = await approveReportCardApi(row.studentId, {
-        term,
-        session,
+        term: selectedTerm,
+        session: selectedSession,
         principalRemark: remarks[row.studentId] || suggestTemplate(row.averageScore),
         nextTermResumption,
       });
@@ -169,7 +200,11 @@ export default function PrincipalApprovals() {
     if (reason === null) return;
     setWorking(true);
     try {
-      const res = await rejectReportCardApi(row.studentId, { term, session, reason });
+      const res = await rejectReportCardApi(row.studentId, {
+        term: selectedTerm,
+        session: selectedSession,
+        reason,
+      });
       if (res.success) {
         toaster.create({ title: `Returned: ${row.name}`, type: "info" });
         await loadQueue();
@@ -193,8 +228,8 @@ export default function PrincipalApprovals() {
     try {
       const res = await bulkApproveReportCardsApi({
         studentIds: selected,
-        term,
-        session,
+        term: selectedTerm,
+        session: selectedSession,
         principalRemark: bulkRemark,
         nextTermResumption,
       });
@@ -241,7 +276,7 @@ export default function PrincipalApprovals() {
               Result Approval & Principal Remarks
             </Text>
             <Text fontSize="13px" color="#64748B">
-              {institution?.name || "Institution"} • {term} • {session}
+              {institution?.name || "Institution"} • {selectedSession} • {selectedTerm}
             </Text>
           </Box>
           <Button
@@ -257,6 +292,25 @@ export default function PrincipalApprovals() {
             Refresh
           </Button>
         </Flex>
+
+        {isPreviousPeriod && (
+          <Flex
+            bg="#FFFBEB"
+            border="1px solid #FCD34D"
+            borderRadius="xl"
+            p={3.5}
+            mb={5}
+            gap={3}
+            align="center"
+          >
+            <Icon as={FaHistory} color="#D97706" boxSize={4} />
+            <Text fontSize="12.5px" color="#92400E" fontWeight="600">
+              Viewing Historical Approval Queue: You are reviewing and approving scores for{" "}
+              <strong>{selectedSession} • {selectedTerm}</strong>. (Current active school period is{" "}
+              {currentSession} • {currentTerm}).
+            </Text>
+          </Flex>
+        )}
 
         {(!meta.hasSignature || !meta.hasStamp) && (
           <Flex
@@ -289,6 +343,54 @@ export default function PrincipalApprovals() {
           align="flex-end"
           mb={5}
         >
+          <Box>
+            <Text fontSize="11px" fontWeight="700" color="#64748B" mb={1}>ACADEMIC SESSION</Text>
+            <select
+              value={selectedSession}
+              onChange={(e) => setSelectedSession(e.target.value)}
+              style={{
+                height: "40px",
+                padding: "0 12px",
+                borderRadius: "10px",
+                border: "1px solid #CBD5E1",
+                fontSize: "13px",
+                fontWeight: "700",
+                background: selectedSession !== currentSession ? "#FFFBEB" : "#F8FAFC",
+                color: selectedSession !== currentSession ? "#92400E" : "#0F172A",
+              }}
+            >
+              {availableSessions.map((sess) => (
+                <option key={sess} value={sess}>
+                  {sess} {sess === currentSession ? "(Active)" : ""}
+                </option>
+              ))}
+            </select>
+          </Box>
+
+          <Box>
+            <Text fontSize="11px" fontWeight="700" color="#64748B" mb={1}>TERM</Text>
+            <select
+              value={selectedTerm}
+              onChange={(e) => setSelectedTerm(e.target.value)}
+              style={{
+                height: "40px",
+                padding: "0 12px",
+                borderRadius: "10px",
+                border: "1px solid #CBD5E1",
+                fontSize: "13px",
+                fontWeight: "700",
+                background: selectedTerm !== currentTerm ? "#FFFBEB" : "#F8FAFC",
+                color: selectedTerm !== currentTerm ? "#92400E" : "#0F172A",
+              }}
+            >
+              {availableTerms.map((t) => (
+                <option key={t} value={t}>
+                  {t} {t === currentTerm && selectedSession === currentSession ? "(Active)" : ""}
+                </option>
+              ))}
+            </select>
+          </Box>
+
           <Box>
             <Text fontSize="11px" fontWeight="700" color="#64748B" mb={1}>CLASS ARM</Text>
             <select

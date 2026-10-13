@@ -7,6 +7,7 @@ import {
   Icon,
   Badge,
   Input,
+  HStack,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
@@ -30,6 +31,7 @@ export default function Exams() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [copiedId, setCopiedId] = useState(null);
+  const [copiedCodeId, setCopiedCodeId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,6 +59,24 @@ export default function Exams() {
 
   const handleEdit = (examId) =>
     navigate(`/teacher/exams/edit/${examId}/structure`);
+
+  const copyCodeToClipboard = async (code, examId) => {
+    if (!code) return;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(String(code));
+      }
+      setCopiedCodeId(examId);
+      setTimeout(() => setCopiedCodeId(null), 2000);
+      toaster.create({
+        title: `Copied Exam Code: ${code}`,
+        description: "Students can enter this code directly on the landing page to begin immediately.",
+        type: "success",
+      });
+    } catch (err) {
+      toaster.error({ title: "Unable to copy code" });
+    }
+  };
 
   const copyToClipboard = async (text, examId) => {
     const url = String(text);
@@ -270,9 +290,26 @@ export default function Exams() {
                             <Text fontSize="14px" fontWeight="700" color="#0F172A">
                               {exam.title}
                             </Text>
-                            <Text fontSize="11px" color="#64748B" fontFamily="monospace">
-                              ID: {exam.id}
-                            </Text>
+                            <HStack spacing={2} mt={1} wrap="wrap">
+                              {exam.examCode && (
+                                <Badge
+                                  bg="purple.100"
+                                  color="purple.800"
+                                  border="1px solid #DDD6FE"
+                                  fontSize="11px"
+                                  fontWeight="800"
+                                  px={2}
+                                  py={0.5}
+                                  borderRadius="md"
+                                  letterSpacing="0.8px"
+                                >
+                                  CODE: {exam.examCode}
+                                </Badge>
+                              )}
+                              <Text fontSize="11px" color="#94A3B8" fontFamily="monospace">
+                                ID: {exam.id ? exam.id.slice(0, 8) + "..." : ""}
+                              </Text>
+                            </HStack>
                           </Box>
                         </Table.Cell>
 
@@ -295,19 +332,42 @@ export default function Exams() {
                         </Table.Cell>
 
                         <Table.Cell py={3.5} px={5}>
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            borderColor={isCopied ? "#10B981" : "#E2E8F0"}
-                            bg={isCopied ? "green.50" : "#F8FAFC"}
-                            color={isCopied ? "#059669" : "#334155"}
-                            borderRadius="lg"
-                            px={2.5}
-                            onClick={() => copyToClipboard(examUrl, exam.id)}
-                          >
-                            <Icon as={isCopied ? FaCheck : FaCopy} mr={1.5} boxSize={2.5} />
-                            {isCopied ? "Copied!" : "Copy Test Link"}
-                          </Button>
+                          <HStack spacing={2}>
+                            {exam.examCode && (
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                borderColor={copiedCodeId === exam.id ? "#10B981" : "#DDD6FE"}
+                                bg={copiedCodeId === exam.id ? "green.50" : "purple.50"}
+                                color={copiedCodeId === exam.id ? "#059669" : "#7C3AED"}
+                                fontWeight="bold"
+                                borderRadius="lg"
+                                px={2.5}
+                                onClick={() => copyCodeToClipboard(exam.examCode, exam.id)}
+                              >
+                                <Icon
+                                  as={copiedCodeId === exam.id ? FaCheck : FaCopy}
+                                  mr={1.5}
+                                  boxSize={2.5}
+                                />
+                                {copiedCodeId === exam.id ? "Code Copied!" : `Copy Code (${exam.examCode})`}
+                              </Button>
+                            )}
+
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              borderColor={isCopied ? "#10B981" : "#E2E8F0"}
+                              bg={isCopied ? "green.50" : "#F8FAFC"}
+                              color={isCopied ? "#059669" : "#334155"}
+                              borderRadius="lg"
+                              px={2.5}
+                              onClick={() => copyToClipboard(examUrl, exam.id)}
+                            >
+                              <Icon as={isCopied ? FaCheck : FaCopy} mr={1.5} boxSize={2.5} />
+                              {isCopied ? "Copied!" : "Link"}
+                            </Button>
+                          </HStack>
                         </Table.Cell>
 
                         <Table.Cell py={3.5} px={5} textAlign="right">

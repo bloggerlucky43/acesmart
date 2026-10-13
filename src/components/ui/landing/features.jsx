@@ -211,7 +211,7 @@ const Features = ({ aboutRef }) => {
               onClick={() => setActiveTab("sms")}
               transition="all 0.2s"
             >
-              <Icon as={MdSchool} mr={2} boxSize={4.5} />
+              
               School Management (ERP)
             </Button>
 
@@ -227,7 +227,7 @@ const Features = ({ aboutRef }) => {
               onClick={() => setActiveTab("cbt")}
               transition="all 0.2s"
             >
-              <Icon as={FaLaptopCode} mr={2} boxSize={4.5} />
+              
               CBT Examination Engine
             </Button>
           </Flex>

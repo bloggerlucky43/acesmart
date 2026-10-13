@@ -374,27 +374,42 @@ export default function TermlyAttendanceSummary({
           </Flex>
 
           {/* Search & Export Action */}
-          <Flex align="center" gap={2} w={{ base: "100%", md: "auto" }}>
+          <Flex
+            align="center"
+            gap={2}
+            w={{ base: "100%", md: "auto" }}
+            justify={{ base: "space-between", md: "flex-end" }}
+          >
             <Flex
               align="center"
-              bg="#F8FAFC"
+              bg="white"
               border="1px solid #CBD5E1"
               borderRadius="10px"
               px={3}
               h="36px"
               flex="1"
-              minW={{ base: "100%", md: "240px" }}
+              maxW={{ base: "100%", md: "260px" }}
               gap={2}
+              _focusWithin={{
+                borderColor: "#4338CA",
+                boxShadow: "0 0 0 1px #4338CA",
+              }}
+              transition="all 0.15s ease"
             >
-              <Icon as={FaSearch} color="#94A3B8" boxSize={3.5} />
-              <Input
+              <Icon as={FaSearch} color="#94A3B8" boxSize={3.5} flexShrink={0} />
+              <input
                 placeholder="Search student..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                variant="unstyled"
-                fontSize="12px"
-                fontWeight="600"
-                color="#0F172A"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  width: "100%",
+                  fontSize: "12.5px",
+                  fontWeight: "600",
+                  color: "#0F172A",
+                }}
               />
               {searchQuery && (
                 <Button
@@ -404,6 +419,7 @@ export default function TermlyAttendanceSummary({
                   color="#94A3B8"
                   p={0}
                   h="auto"
+                  minW="auto"
                 >
                   <Icon as={FaTimes} boxSize={2.5} />
                 </Button>
@@ -422,6 +438,7 @@ export default function TermlyAttendanceSummary({
               _hover={{ opacity: 0.92 }}
               onClick={handleExportCsv}
               whiteSpace="nowrap"
+              flexShrink={0}
             >
               <Icon as={FaDownload} mr={1.5} boxSize={3} />
               Export CSV
@@ -558,9 +575,7 @@ export default function TermlyAttendanceSummary({
                   <Flex justify="space-between" align="flex-start" mb={2}>
                     <Box>
                       <Flex align="center" gap={1.5}>
-                        <Text fontSize="11px" fontWeight="800" color="#94A3B8">
-                          #{idx + 1}
-                        </Text>
+                      
                         <Text fontSize="14px" fontWeight="900" color="#0F172A">
                           {formatStudentName(student.name)}
                         </Text>

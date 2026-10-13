@@ -375,9 +375,11 @@ const Contact = ({ contactRef }) => {
                         opacity: 0.95,
                         transform: "translateY(-1px)",
                       }}
+                      p={{base:4,sm:0}}
                       loading={isSubmitting}
                       loadingText="Sending Request..."
                     >
+
                       <Icon as={FaPaperPlane} mr={2} boxSize={3.5} />
                       Send Demo Request
                     </Button>

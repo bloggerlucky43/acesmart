@@ -1,11 +1,4 @@
-import {
-  Box,
-  Flex,
-  Text,
-  Icon,
-  Avatar,
-  Badge,
-} from "@chakra-ui/react";
+import { Box, Flex, Text, Icon, Avatar, Badge } from "@chakra-ui/react";
 import {
   FaBrain,
   FaTachometerAlt,
@@ -56,7 +49,9 @@ const Sidebar = () => {
   };
 
   const displayName = user?.name || user?.username || "Educator";
-  const displayRole = user?.role ? user.role.toUpperCase().replace("_", " ") : "TEACHER";
+  const displayRole = user?.role
+    ? user.role.toUpperCase().replace("_", " ")
+    : "TEACHER";
   const isInstitutionAdmin =
     user?.role === "institution_admin" ||
     user?.role === "admin" ||
@@ -70,7 +65,11 @@ const Sidebar = () => {
     {
       title: "OVERVIEW",
       links: [
-        { name: "CBT Dashboard", path: "/teacher_dashboard", icon: FaTachometerAlt },
+        {
+          name: "CBT Dashboard",
+          path: "/teacher_dashboard",
+          icon: FaTachometerAlt,
+        },
       ],
     },
     // Institutional Management Section (Admin & ERP Only)
@@ -79,17 +78,61 @@ const Sidebar = () => {
           {
             title: "INSTITUTION SUITE (ADMIN)",
             links: [
-              { name: "School Overview", path: "/institution/dashboard", icon: FaUniversity },
-              { name: "Faculty Directory", path: "/institution/staff", icon: FaUsers },
-              { name: "Staff Attendance QR", path: "/institution/staff-qr", icon: FaQrcode },
-              { name: "Attendance History", path: "/institution/attendance-history", icon: FaHistory },
-              { name: "School Prefects", path: "/institution/prefects", icon: FaAward },
-              { name: "Fees & Invoicing", path: "/institution/fees", icon: FaCalculator },
-              { name: "Debtor Defaulters", path: "/institution/debtors", icon: FaMoneyBillWave },
-              { name: "Payment History", path: "/institution/payments", icon: FaReceipt },
-              { name: "Portal Content", path: "/institution/portal-content", icon: FaBullhorn },
-              { name: "Result Approvals", path: "/institution/approvals", icon: FaSignature },
-              { name: "School Settings", path: "/institution/settings", icon: FaCog },
+              {
+                name: "School Overview",
+                path: "/institution/dashboard",
+                icon: FaUniversity,
+              },
+              {
+                name: "Faculty Directory",
+                path: "/institution/staff",
+                icon: FaUsers,
+              },
+              {
+                name: "Staff Attendance QR",
+                path: "/institution/staff-qr",
+                icon: FaQrcode,
+              },
+              {
+                name: "Attendance History",
+                path: "/institution/attendance-history",
+                icon: FaHistory,
+              },
+              {
+                name: "School Prefects",
+                path: "/institution/prefects",
+                icon: FaAward,
+              },
+              {
+                name: "Fees & Invoicing",
+                path: "/institution/fees",
+                icon: FaCalculator,
+              },
+              {
+                name: "Debtor Defaulters",
+                path: "/institution/debtors",
+                icon: FaMoneyBillWave,
+              },
+              {
+                name: "Payment History",
+                path: "/institution/payments",
+                icon: FaReceipt,
+              },
+              {
+                name: "Portal Content",
+                path: "/institution/portal-content",
+                icon: FaBullhorn,
+              },
+              {
+                name: "Result Approvals",
+                path: "/institution/approvals",
+                icon: FaSignature,
+              },
+              {
+                name: "School Settings",
+                path: "/institution/settings",
+                icon: FaCog,
+              },
             ],
           },
         ]
@@ -98,24 +141,48 @@ const Sidebar = () => {
     {
       title: "CLASS & TEACHING (SMS)",
       links: [
-        { name: "My Clock-In (QR)", path: "/teacher/scan-clockin", icon: FaQrcode },
-        { name: "Class Study Materials", path: "/teacher/resources", icon: FaBook },
-        { name: "Student Attendance", path: "/teacher/attendance", icon: FaCalendarCheck },
-        { name: "Report Cards & Broadsheets", path: "/teacher/report-cards", icon: FaGraduationCap },
+        { name: "My Clock-In", path: "/teacher/scan-clockin", icon: FaQrcode },
+        {
+          name: "Class Study Materials",
+          path: "/teacher/resources",
+          icon: FaBook,
+        },
+        {
+          name: "Student Attendance",
+          path: "/teacher/attendance",
+          icon: FaCalendarCheck,
+        },
+        {
+          name: "Report Cards",
+          path: "/teacher/report-cards",
+          icon: FaGraduationCap,
+        },
       ],
     },
     {
       title: "EXAMINATIONS",
       links: [
-        { name: "Create Exam", path: "/teacher/create_exam", icon: FaPlusCircle },
+        {
+          name: "Create Exam",
+          path: "/teacher/create_exam",
+          icon: FaPlusCircle,
+        },
         { name: "All Exams", path: "/teacher/exams", icon: FaFileAlt },
-        { name: "CBT Results", path: "/teacher/exam_result", icon: FaChartLine },
+        {
+          name: "CBT Results",
+          path: "/teacher/exam_result",
+          icon: FaChartLine,
+        },
       ],
     },
     {
       title: "QUESTION BANK",
       links: [
-        { name: "Question Bank & OCR", path: "/teacher/add_questions", icon: FaQuestionCircle },
+        {
+          name: "Question Bank & OCR",
+          path: "/teacher/add_questions",
+          icon: FaQuestionCircle,
+        },
       ],
     },
     {
@@ -129,7 +196,11 @@ const Sidebar = () => {
     {
       title: "SUBSCRIPTION & BILLING",
       links: [
-        { name: "Billing & Plans", path: "/teacher/billing", icon: FaCreditCard },
+        {
+          name: "Billing & Plans",
+          path: "/teacher/billing",
+          icon: FaCreditCard,
+        },
       ],
     },
   ];
@@ -158,7 +229,13 @@ const Sidebar = () => {
           align="center"
           gap={3}
           cursor="pointer"
-          onClick={() => navigate(isInstitutionAdmin ? "/institution/dashboard" : "/teacher_dashboard")}
+          onClick={() =>
+            navigate(
+              isInstitutionAdmin
+                ? "/institution/dashboard"
+                : "/teacher_dashboard",
+            )
+          }
         >
           {schoolLogo ? (
             <Box
@@ -236,7 +313,10 @@ const Sidebar = () => {
         css={{
           "&::-webkit-scrollbar": { width: "4px" },
           "&::-webkit-scrollbar-track": { background: "transparent" },
-          "&::-webkit-scrollbar-thumb": { background: "#1E293B", borderRadius: "2px" },
+          "&::-webkit-scrollbar-thumb": {
+            background: "#1E293B",
+            borderRadius: "2px",
+          },
         }}
       >
         {navGroups.map((group, gIdx) => (
@@ -270,11 +350,21 @@ const Sidebar = () => {
                       fontSize="13px"
                       fontWeight={isActive ? "700" : "500"}
                       color={isActive ? "#FFFFFF" : "#94A3B8"}
-                      bg={isActive ? "linear-gradient(135deg, #6A1B9A 0%, #7E22CE 100%)" : "transparent"}
-                      boxShadow={isActive ? "0 4px 14px rgba(106, 27, 154, 0.35)" : "none"}
+                      bg={
+                        isActive
+                          ? "linear-gradient(135deg, #6A1B9A 0%, #7E22CE 100%)"
+                          : "transparent"
+                      }
+                      boxShadow={
+                        isActive
+                          ? "0 4px 14px rgba(106, 27, 154, 0.35)"
+                          : "none"
+                      }
                       _hover={{
                         color: "#FFFFFF",
-                        bg: isActive ? "linear-gradient(135deg, #6A1B9A 0%, #7E22CE 100%)" : "#1E293B",
+                        bg: isActive
+                          ? "linear-gradient(135deg, #6A1B9A 0%, #7E22CE 100%)"
+                          : "#1E293B",
                         transform: "translateX(2px)",
                       }}
                       transition="all 0.15s ease"
@@ -284,7 +374,9 @@ const Sidebar = () => {
                         boxSize={3.5}
                         color={isActive ? "#FFFFFF" : "#94A3B8"}
                       />
-                      <Text flex={1} isTruncated>{link.name}</Text>
+                      <Text flex={1} isTruncated>
+                        {link.name}
+                      </Text>
                       {isActive && (
                         <Box
                           w="6px"

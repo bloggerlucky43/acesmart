@@ -919,9 +919,30 @@ const StudentReportCardSheet = ({
       >
         {/* Form Teacher Endorsement Line */}
         <Box textAlign="center" minW={isUltraCompact ? "130px" : "150px"}>
-          <Box h={isUltraCompact ? "18px" : "28px"} borderBottom="1px solid #94A3B8" mb={0.5} />
+          {signature.teacherSignatureUrl ? (
+            <Box
+              h={isUltraCompact ? "24px" : "36px"}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              mb={0.5}
+            >
+              <img
+                src={signature.teacherSignatureUrl}
+                alt="Teacher signature"
+                style={{
+                  maxHeight: isUltraCompact ? "22px" : "34px",
+                  maxWidth: isUltraCompact ? "110px" : "140px",
+                  objectFit: "contain",
+                  display: "inline-block",
+                }}
+              />
+            </Box>
+          ) : (
+            <Box h={isUltraCompact ? "18px" : "28px"} borderBottom="1px solid #94A3B8" mb={0.5} />
+          )}
           <Text fontSize={isUltraCompact ? "9px" : "10.5px"} fontWeight="800" color="#0F172A">
-            Form Teacher's Signature
+            {signature.teacherName ? `${signature.teacherName}` : "Form Teacher's Signature"}
           </Text>
           <Text fontSize={isUltraCompact ? "8px" : "9px"} color="#64748B">
             Class Administration

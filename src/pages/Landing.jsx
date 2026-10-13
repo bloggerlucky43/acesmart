@@ -45,9 +45,9 @@ function Landing() {
 
   const handleLaunchExam = (e) => {
     e.preventDefault();
-    const trimmed = examCode.trim();
+    const trimmed = examCode.trim().toUpperCase();
     if (!trimmed) {
-      setExamError("Please enter a valid Exam ID or Access Code");
+      setExamError("Please enter a valid Exam Access Code or ID");
       return;
     }
     setShowExamModal(false);
@@ -155,18 +155,20 @@ function Landing() {
                   color="gray.700"
                   mb={1.5}
                 >
-                  Exam ID or Room Code
+                  Exam Access Code (6–8 Characters) or ID
                 </Text>
                 <Input
-                  placeholder="e.g. EXAM-2024-MATH or 12"
+                  placeholder="e.g. 8K2P9X or Room Code"
                   value={examCode}
                   onChange={(e) => {
-                    setExamCode(e.target.value);
+                    setExamCode(e.target.value.toUpperCase());
                     setExamError("");
                   }}
                   borderRadius="xl"
                   h="48px"
                   fontSize="15px"
+                  fontWeight="bold"
+                  letterSpacing="1.5px"
                   borderColor={examError ? "red.400" : "gray.300"}
                   _focus={{
                     borderColor: "#6A1B9A",

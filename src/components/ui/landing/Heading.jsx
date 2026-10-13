@@ -239,7 +239,7 @@ const Heading = ({ homeRef, onGetStarted, onTakeExam }) => {
                 onClick={onGetStarted}
                 transition="all 0.2s"
               >
-                <Icon as={FaSchool} mr={2} />
+                
                 Register Your School Free
                 <Icon as={FaArrowRight} ml={2} boxSize={3.5} />
               </Button>
@@ -384,7 +384,7 @@ const Heading = ({ homeRef, onGetStarted, onTakeExam }) => {
                 }}
                 onClick={() => setActivePreviewTab("sms")}
               >
-                <Icon as={MdAssignmentTurnedIn} mr={1.5} boxSize={4} />
+              
                 School ERP & Report Card
               </Button>
 
@@ -402,7 +402,7 @@ const Heading = ({ homeRef, onGetStarted, onTakeExam }) => {
                 }}
                 onClick={() => setActivePreviewTab("cbt")}
               >
-                <Icon as={FaLaptopCode} mr={1.5} boxSize={4} />
+          
                 Live CBT Exam Engine
               </Button>
             </Flex>

@@ -326,7 +326,7 @@ export default function RegisterPage() {
                 fontSize="13px"
                 onClick={() => setForm({ ...form, role: "institution" })}
               >
-                <Icon as={FaSchool} mr={2} />
+                
                 School / Institution
               </Button>
 
@@ -342,7 +342,7 @@ export default function RegisterPage() {
                 fontSize="13px"
                 onClick={() => setForm({ ...form, role: "teacher" })}
               >
-                <Icon as={FaUsers} mr={2} />
+              
                 Independent Educator
               </Button>
             </Flex>

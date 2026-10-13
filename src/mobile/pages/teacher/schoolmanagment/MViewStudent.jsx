@@ -8,12 +8,13 @@ import {
   Badge,
   VStack,
 } from "@chakra-ui/react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { fetchStudent } from "../../../../api-endpoint/student/students";
 import { getClassArmsApi } from "../../../../api-endpoint/sms/smsEndpoints";
 import { useQuery } from "@tanstack/react-query";
 import { CardGridSkeleton } from "../../../../components/ui/skeletons";
 import { useNavigate } from "react-router-dom";
+import ClassSearchSelect from "../../../../components/common/ClassSearchSelect";
 import {
   FaUsers,
   FaSearch,
@@ -29,13 +30,10 @@ import { formatStudentName, formatStudentFullName } from "../../../../libs/helpe
 
 const MListOfStudent = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedClassArm, setSelectedClassArm] = useState("all");
-  const navigate = useNavigate();
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["students"],
-    queryFn: fetchStudent,
+  const [selectedClassArm, setSelectedClassArm] = useState(() => {
+    return localStorage.getItem("acesmart_pref_class_arm") || "";
   });
+  const navigate = useNavigate();
 
   const { data: classArmsData } = useQuery({
     queryKey: ["classArms"],
@@ -43,22 +41,44 @@ const MListOfStudent = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const students = data?.students || [];
   const classArms = classArmsData?.data || [];
 
-  // Compute student counts per class arm
-  const countsByArm = useMemo(() => {
-    const counts = { all: students.length, unassigned: 0 };
-    for (const s of students) {
-      const armId = s.classArmId || s.ClassArm?.id;
-      if (armId) {
-        counts[armId] = (counts[armId] || 0) + 1;
-      } else {
-        counts.unassigned += 1;
-      }
+  // Default to first class arm once classArms load if none selected yet
+  useEffect(() => {
+    if (classArms.length > 0 && !selectedClassArm) {
+      const stored = localStorage.getItem("acesmart_pref_class_arm");
+      const isValid =
+        stored &&
+        (stored === "all" ||
+          stored === "unassigned" ||
+          classArms.some((c) => c.id === stored));
+      const chosen = isValid ? stored : classArms[0].id;
+      setSelectedClassArm(chosen);
     }
-    return counts;
-  }, [students]);
+  }, [classArms, selectedClassArm]);
+
+  const handleSelectArm = (armId) => {
+    setSelectedClassArm(armId);
+    try {
+      localStorage.setItem("acesmart_pref_class_arm", armId);
+    } catch (_) {}
+  };
+
+  // Direct fast query by selected class arm
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["students", selectedClassArm],
+    queryFn: () => {
+      if (selectedClassArm && selectedClassArm !== "all") {
+        return fetchStudent({ classArmId: selectedClassArm });
+      }
+      return fetchStudent();
+    },
+    enabled: Boolean(
+      selectedClassArm || (classArmsData && classArms.length === 0),
+    ),
+  });
+
+  const students = data?.students || [];
 
   // Filter students based on selected class arm and search query
   const filteredStudents = useMemo(() => {
@@ -162,7 +182,20 @@ const MListOfStudent = () => {
         </Flex>
       </Flex>
 
-      {/* Class Arm Horizontal Filter Chips (If institution has classes or unassigned students) */}
+      {/* Searchable Class Select Combobox */}
+      {classArms.length > 0 && (
+        <Box mb={3}>
+          <ClassSearchSelect
+            classArms={classArms}
+            value={selectedClassArm}
+            onChange={handleSelectArm}
+            placeholder="Search class (e.g. SSS 2, JSS 1)..."
+            size="sm"
+          />
+        </Box>
+      )}
+
+      {/* Class Arm Horizontal Filter Chips */}
       {classArms.length > 0 && (
         <Box mb={3} overflowX="auto" pb={1} css={{ "&::-webkit-scrollbar": { display: "none" } }}>
           <Flex gap={2} minW="max-content">
@@ -177,9 +210,9 @@ const MListOfStudent = () => {
               color={selectedClassArm === "all" ? "white" : "#475569"}
               border="1px solid"
               borderColor={selectedClassArm === "all" ? "#6A1B9A" : "#E2E8F0"}
-              onClick={() => setSelectedClassArm("all")}
+              onClick={() => handleSelectArm("all")}
             >
-              All ({countsByArm.all})
+              All {selectedClassArm === "all" ? `(${filteredStudents.length})` : ""}
             </Button>
             {classArms.map((arm) => (
               <Button
@@ -194,12 +227,12 @@ const MListOfStudent = () => {
                 color={selectedClassArm === arm.id ? "white" : "#475569"}
                 border="1px solid"
                 borderColor={selectedClassArm === arm.id ? "#0EA5E9" : "#E2E8F0"}
-                onClick={() => setSelectedClassArm(arm.id)}
+                onClick={() => handleSelectArm(arm.id)}
               >
-                {arm.name} ({countsByArm[arm.id] || 0})
+                {arm.name} {selectedClassArm === arm.id ? `(${filteredStudents.length})` : ""}
               </Button>
             ))}
-            {(countsByArm.unassigned > 0 || classArms.length > 0) && (
+            {classArms.length > 0 && (
               <Button
                 size="xs"
                 h="28px"
@@ -211,9 +244,9 @@ const MListOfStudent = () => {
                 color={selectedClassArm === "unassigned" ? "white" : "#B45309"}
                 border="1px solid"
                 borderColor={selectedClassArm === "unassigned" ? "#F59E0B" : "#FDE68A"}
-                onClick={() => setSelectedClassArm("unassigned")}
+                onClick={() => handleSelectArm("unassigned")}
               >
-                Unassigned CBT ({countsByArm.unassigned})
+                Unassigned CBT {selectedClassArm === "unassigned" ? `(${filteredStudents.length})` : ""}
               </Button>
             )}
           </Flex>

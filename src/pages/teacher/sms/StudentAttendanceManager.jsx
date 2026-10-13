@@ -420,7 +420,7 @@ export default function StudentAttendanceManager() {
                   ? "Morning & Afternoon"
                   : viewMode === "weekly"
                   ? "Monday – Friday Sheet"
-                  : "Term Cumulative & Report Cards"}
+                  : "Term Cumulative"}
               </Badge>
             </Flex>
             <Text fontSize={{ base: "12px", md: "13px" }} color="#64748B" mt={0.5}>
@@ -515,7 +515,7 @@ export default function StudentAttendanceManager() {
             onClick={() => setViewMode("termly")}
           >
             <Icon as={FaChartBar} mr={2} boxSize={3.5} />
-            Termly Summary & Report Cards
+            Termly Summary
           </Button>
         </Flex>
 
@@ -674,21 +674,31 @@ export default function StudentAttendanceManager() {
                 </Text>
                 <Flex
                   align="center"
-                  bg="#F8FAFC"
+                  bg="white"
                   border="1px solid #CBD5E1"
                   borderRadius="10px"
                   h="38px"
                   px={2.5}
+                  _focusWithin={{
+                    borderColor: "#4338CA",
+                    boxShadow: "0 0 0 1px #4338CA",
+                  }}
+                  transition="all 0.15s ease"
                 >
-                  <Icon as={FaSearch} color="#94A3B8" mr={2} boxSize={3} />
-                  <Input
+                  <Icon as={FaSearch} color="#94A3B8" mr={2} boxSize={3} flexShrink={0} />
+                  <input
                     placeholder="Search name or code..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    variant="unstyled"
-                    fontSize="12px"
-                    fontWeight="600"
-                    color="#0F172A"
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      outline: "none",
+                      width: "100%",
+                      fontSize: "12.5px",
+                      fontWeight: "600",
+                      color: "#0F172A",
+                    }}
                   />
                   {searchQuery && (
                     <Button
@@ -698,6 +708,7 @@ export default function StudentAttendanceManager() {
                       color="#94A3B8"
                       p={0}
                       h="auto"
+                      minW="auto"
                     >
                       <Icon as={FaTimes} boxSize={2.5} />
                     </Button>
@@ -875,9 +886,7 @@ export default function StudentAttendanceManager() {
                     <Flex justify="space-between" align="flex-start" mb={3}>
                       <Box>
                         <Flex align="center" gap={1.5}>
-                          <Text fontSize="11px" fontWeight="800" color="#94A3B8">
-                            #{idx + 1}
-                          </Text>
+        
                           <Text fontSize="14px" fontWeight="900" color="#0F172A">
                             {formatStudentName(student.name)}
                           </Text>
@@ -985,7 +994,7 @@ export default function StudentAttendanceManager() {
                       <Box mb={3}>
                         <Flex justify="space-between" align="center" mb={1.5}>
                           <Text fontSize="11px" fontWeight="800" color="#D97706">
-                            ☀️ MORNING (AM) STATUS
+                          MORNING (AM) STATUS
                           </Text>
                           <Badge
                             fontSize="11px"
@@ -1018,7 +1027,7 @@ export default function StudentAttendanceManager() {
                       <Box mb={3}>
                         <Flex justify="space-between" align="center" mb={1.5}>
                           <Text fontSize="11px" fontWeight="800" color="#2563EB">
-                            🌤️ AFTERNOON (PM) STATUS
+                            AFTERNOON (PM) STATUS
                           </Text>
                           <Badge
                             fontSize="11px"
@@ -1132,10 +1141,10 @@ export default function StudentAttendanceManager() {
                   {selectedSession === "both" ? (
                     <>
                       <th style={{ padding: "12px 16px", fontSize: "11px", fontWeight: "800", color: "#D97706", textAlign: "center", background: "#FFFBEB" }}>
-                        ☀️ MORNING (AM)
+                        MORNING (AM)
                       </th>
                       <th style={{ padding: "12px 16px", fontSize: "11px", fontWeight: "800", color: "#2563EB", textAlign: "center", background: "#EFF6FF" }}>
-                        🌤️ AFTERNOON (PM)
+                        AFTERNOON (PM)
                       </th>
                       <th style={{ padding: "12px 16px", fontSize: "11px", fontWeight: "800", color: "#64748B", textAlign: "center", width: "110px" }}>
                         SYNC
@@ -1143,11 +1152,11 @@ export default function StudentAttendanceManager() {
                     </>
                   ) : selectedSession === "morning" ? (
                     <th style={{ padding: "12px 16px", fontSize: "11px", fontWeight: "800", color: "#D97706", textAlign: "center", background: "#FFFBEB" }}>
-                      ☀️ MORNING (AM) STATUS
+                     MORNING (AM) STATUS
                     </th>
                   ) : (
                     <th style={{ padding: "12px 16px", fontSize: "11px", fontWeight: "800", color: "#2563EB", textAlign: "center", background: "#EFF6FF" }}>
-                      🌤️ AFTERNOON (PM) STATUS
+                     AFTERNOON (PM) STATUS
                     </th>
                   )}
 

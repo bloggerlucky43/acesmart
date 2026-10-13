@@ -19,6 +19,7 @@ import { toaster } from "../../ui/toaster";
 import { useNavigate } from "react-router-dom";
 import { STORAGE_KEY } from "../../../libs/helper";
 import SearchableSubjectSelect from "../../ui/SearchableSubjectSelect";
+import CloneExamModal from "./CloneExamModal";
 import {
   FaLayerGroup,
   FaSearch,
@@ -39,6 +40,7 @@ import {
   FaGlobe,
   FaShieldAlt,
   FaExclamationTriangle,
+  FaCopy,
 } from "react-icons/fa";
 
 export const SUBJECTS_LIST = [
@@ -84,7 +86,59 @@ export default function AddExam() {
   const [editingSectionIndex, setEditingSectionIndex] = useState(null);
   const [expandedSectionIdx, setExpandedSectionIdx] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const navigate = useNavigate();
+
+  const handleCloneExam = (exam) => {
+    if (!exam) return;
+    const clonedSections = (exam.sections || []).map((sec) => ({
+      section: sec.section || "General",
+      year: sec.year || null,
+      questions: Array.isArray(sec.questions) ? [...sec.questions] : [],
+    }));
+
+    const totalClonedQs = clonedSections.reduce(
+      (acc, s) => acc + (s.questions?.length || 0),
+      0
+    );
+
+    setExamForm({
+      examTitle: `${exam.title || "Exam"} (Copy)`,
+      duration: exam.duration || 60,
+      totalMarks: exam.totalMarks || 100,
+      negativeMarking: Boolean(exam.negativeMarking),
+      negativeMarkingPenalty: exam.negativeMarkingPenalty ?? 0.25,
+      enableBiometricCheckin: Boolean(exam.enableBiometricCheckin),
+    });
+
+    setSections(clonedSections);
+    setIsCloneModalOpen(false);
+
+    // Save immediately to local storage draft
+    const draft = {
+      examForm: {
+        examTitle: `${exam.title || "Exam"} (Copy)`,
+        duration: exam.duration || 60,
+        totalMarks: exam.totalMarks || 100,
+        negativeMarking: Boolean(exam.negativeMarking),
+        negativeMarkingPenalty: exam.negativeMarkingPenalty ?? 0.25,
+        enableBiometricCheckin: Boolean(exam.enableBiometricCheckin),
+      },
+      sections: clonedSections,
+      subject: clonedSections[0]?.section || "Mathematics",
+      customSubject: "",
+      year: clonedSections[0]?.year || "",
+      sourceFilter: "all",
+      questions: [],
+      selectedQuestionsIds: [],
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+
+    toaster.success({
+      title: `Exam draft imported from "${exam.title}"!`,
+      description: `Loaded ${totalClonedQs} questions across ${clonedSections.length} sections. You can tweak questions, edit sections, or change settings before publishing.`,
+    });
+  };
 
   // Restore draft on mount
   useEffect(() => {
@@ -457,6 +511,22 @@ export default function AddExam() {
 
         <HStack spacing={3}>
           <Button
+            h="40px"
+            px={3.5}
+            bg="purple.50"
+            color="#7C3AED"
+            border="1px solid #DDD6FE"
+            borderRadius="xl"
+            fontWeight="700"
+            fontSize="12px"
+            _hover={{ bg: "purple.100", transform: "translateY(-1px)" }}
+            onClick={() => setIsCloneModalOpen(true)}
+          >
+            <Icon as={FaCopy} mr={1.5} boxSize={3.5} />
+            Clone Previous Exam
+          </Button>
+
+          <Button
             variant="outline"
             borderColor="#CBD5E1"
             borderRadius="xl"
@@ -498,6 +568,56 @@ export default function AddExam() {
             Proceed to Publish
           </Button>
         </HStack>
+      </Flex>
+
+      {/* Quick Template Banner */}
+      <Flex
+        p={3.5}
+        mb={5}
+        borderRadius="2xl"
+        bg="linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(99, 102, 241, 0.05) 100%)"
+        border="1px solid rgba(124, 58, 237, 0.18)"
+        align="center"
+        justify="space-between"
+        gap={3}
+        wrap="wrap"
+      >
+        <HStack spacing={3}>
+          <Flex
+            w="36px"
+            h="36px"
+            borderRadius="xl"
+            bg="purple.100"
+            color="#7C3AED"
+            align="center"
+            justify="center"
+            flexShrink={0}
+          >
+            <Icon as={FaCopy} boxSize={4} />
+          </Flex>
+          <Box>
+            <Text fontSize="13px" fontWeight="800" color="#1E1B4B">
+              Want to reuse questions from a previous exam?
+            </Text>
+            <Text fontSize="12px" color="#64748B">
+              Load an existing exam's sections and questions with one click, tweak questions, and publish without re-querying!
+            </Text>
+          </Box>
+        </HStack>
+        <Button
+          size="xs"
+          bg="#7C3AED"
+          color="white"
+          borderRadius="lg"
+          px={3.5}
+          py={1.5}
+          fontWeight="bold"
+          fontSize="11px"
+          _hover={{ bg: "#6D28D9" }}
+          onClick={() => setIsCloneModalOpen(true)}
+        >
+          Select Previous Exam ➔
+        </Button>
       </Flex>
 
       {/* 2-COLUMN CBT STUDIO LAYOUT */}
@@ -1638,6 +1758,13 @@ export default function AddExam() {
           </Box>
         </Box>
       </SimpleGrid>
+
+      {/* Clone Previous Exam Modal */}
+      <CloneExamModal
+        isOpen={isCloneModalOpen}
+        onClose={() => setIsCloneModalOpen(false)}
+        onSelectExam={handleCloneExam}
+      />
     </Box>
   );
 }

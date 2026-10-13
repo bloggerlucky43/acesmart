@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toaster } from "../../ui/toaster";
 import { createExam } from "../../../api-endpoint/exam/exams";
+import { toUTCISOString, toDateTimeLocalValue } from "../../../libs/helper";
 import {
   FaSlidersH,
   FaCalendarAlt,
@@ -82,6 +83,21 @@ export default function EditPage() {
     loadExam();
   }, [examId, navigate]);
 
+  const handleSetStartNow = () => {
+    const now = new Date();
+    // 2-minute buffer in past ensures immediate candidate access without sub-minute blocking
+    const immediateStart = new Date(now.getTime() - 2 * 60 * 1000);
+    const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    setExamDetails((prev) => ({
+      ...prev,
+      startDate: toDateTimeLocalValue(immediateStart),
+      endDate: prev.endDate || toDateTimeLocalValue(end),
+    }));
+    toaster.info({
+      title: "Start date set to NOW! The exam will be active immediately upon publishing.",
+    });
+  };
+
   const handleSaveChanges = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
@@ -104,7 +120,12 @@ export default function EditPage() {
 
     setLoading(true);
     try {
-      const res = await createExam(examDetails);
+      const payload = {
+        ...examDetails,
+        startDate: toUTCISOString(examDetails.startDate),
+        endDate: toUTCISOString(examDetails.endDate),
+      };
+      const res = await createExam(payload);
 
       if (res.success && res.data) {
         toaster.success({ title: "Exam successfully published to student portal!" });
@@ -354,9 +375,27 @@ export default function EditPage() {
 
           <VStack spacing={5} align="stretch">
             <Field.Root required>
-              <Field.Label fontWeight="700" fontSize="13px" color="#334155">
-                Exam Start Date & Time <Field.RequiredIndicator />
-              </Field.Label>
+              <Flex justify="space-between" align="center" mb={1}>
+                <Field.Label fontWeight="700" fontSize="13px" color="#334155" mb={0}>
+                  Exam Start Date & Time <Field.RequiredIndicator />
+                </Field.Label>
+                <Button
+                  size="2xs"
+                  variant="outline"
+                  borderColor="#DDD6FE"
+                  color="#7C3AED"
+                  bg="purple.50"
+                  _hover={{ bg: "purple.100" }}
+                  borderRadius="md"
+                  px={2.5}
+                  py={1}
+                  fontSize="11px"
+                  fontWeight="bold"
+                  onClick={handleSetStartNow}
+                >
+                  ⚡ Start Now (Immediate)
+                </Button>
+              </Flex>
               <Input
                 type="datetime-local"
                 borderRadius="xl"

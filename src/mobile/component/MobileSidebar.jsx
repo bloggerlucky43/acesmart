@@ -73,7 +73,7 @@ const MobileSideBar = ({ onClose }) => {
         { name: "My Clock-In (QR)", path: "/teacher/scan-clockin", icon: FaQrcode },
         { name: "Class Study Materials", path: "/teacher/resources", icon: FaBook },
         { name: "Student Attendance", path: "/teacher/attendance", icon: FaCalendarCheck },
-        { name: "Report Cards & Broadsheets", path: "/teacher/report-cards", icon: FaGraduationCap },
+        { name: "Report Cards", path: "/teacher/report-cards", icon: FaGraduationCap },
       ],
     },
     {
