@@ -51,6 +51,7 @@ import StaffManager from "./institution/StaffManager";
 import PortalContentManager from "./institution/PortalContentManager";
 import PrincipalApprovals from "./institution/PrincipalApprovals";
 import PrefectManager from "./institution/PrefectManager";
+import IdCardGenerator from "./institution/IdCardGenerator";
 
 // Student & Parent Portal
 import { StudentPortalProvider } from "../libs/StudentPortalProvider";
@@ -225,6 +226,14 @@ const Home = () => {
               element={
                 <InstitutionAdminRoute>
                   <PrefectManager />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
+              path="/institution/id-cards"
+              element={
+                <InstitutionAdminRoute>
+                  <IdCardGenerator />
                 </InstitutionAdminRoute>
               }
             />

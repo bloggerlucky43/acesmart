@@ -18,6 +18,7 @@ import {
   FaFileAlt,
   FaCheckCircle,
   FaAward,
+  FaIdCard,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import {
@@ -153,6 +154,19 @@ export default function SchoolAdminDashboard() {
             </Flex>
 
             <Flex gap={3} flexWrap="wrap">
+              <Button
+                size="sm"
+                bg="rgba(255,255,255,0.15)"
+                color="white"
+                border="1px solid rgba(255,255,255,0.2)"
+                backdropFilter="blur(8px)"
+                borderRadius="xl"
+                _hover={{ bg: "rgba(255,255,255,0.25)" }}
+                onClick={() => navigate("/institution/id-cards")}
+              >
+                <Icon as={FaIdCard} mr={2} boxSize={3.5} />
+                ID Cards
+              </Button>
               <Button
                 size="sm"
                 bg="rgba(255,255,255,0.15)"

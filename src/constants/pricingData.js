@@ -17,61 +17,39 @@ export const GRADUATED_TIERS = [
     effectiveRate: 0,
   },
   {
-    id: "starter",
-    label: "Starter School",
-    minStudents: 6,
-    maxStudents: 70,
-    termlyPrice: 25000,
-    annualPrice: 60000, // ₦25,000 * 3 * 0.8
-    monthlyPrice: 10000,
-    aiLimit: "100 AI credits/mo",
-    effectiveRate: 357,
-  },
-  {
     id: "standard",
     label: "Standard Academy",
-    minStudents: 71,
-    maxStudents: 250,
-    termlyPrice: 125000,
-    annualPrice: 300000, // ₦125,000 * 3 * 0.8
-    monthlyPrice: 50000,
-    aiLimit: "500 AI credits/mo",
-    effectiveRate: 500,
+    minStudents: 6,
+    maxStudents: Infinity,
+    termlyPrice: 25000,
+    annualPrice: 65000, // ₦25,000 * 3 = ₦75,000 (Save ₦10k = ₦65,000/yr)
+    monthlyPrice: 10000,
+    aiLimit: "250 AI credits/mo",
+    effectiveRate: 0,
   },
   {
     id: "premier",
-    label: "Premier Institution ERP",
-    minStudents: 251,
-    maxStudents: 700,
-    termlyPrice: 315000,
-    annualPrice: 756000, // ₦315,000 * 3 * 0.8
-    monthlyPrice: 125000,
-    aiLimit: "2,500 AI credits/mo",
-    effectiveRate: 450,
-  },
-  {
-    id: "enterprise",
-    label: "Mega / Enterprise Group",
-    minStudents: 701,
-    maxStudents: 2500,
-    termlyPrice: 400000,
-    annualPrice: 960000, // ₦400,000 * 3 * 0.8
-    monthlyPrice: 160000,
-    aiLimit: "10,000 AI credits/mo",
-    effectiveRate: 400,
+    label: "Premier Institution",
+    minStudents: 6,
+    maxStudents: Infinity,
+    termlyPrice: 45000,
+    annualPrice: 115000, // ₦45,000 * 3 = ₦135,000 (Save ₦20k = ₦115,000/yr)
+    monthlyPrice: 18000,
+    aiLimit: "1,000 AI credits/mo",
+    effectiveRate: 0,
   },
 ];
 
 export function getTierForStudentCount(count) {
   const n = Math.max(Number(count) || 0, 0);
   if (n <= 5) return GRADUATED_TIERS[0];
-  return GRADUATED_TIERS.find((t) => n <= t.maxStudents) || GRADUATED_TIERS[GRADUATED_TIERS.length - 1];
+  return GRADUATED_TIERS[1]; // default standard
 }
 
 export function calculateSchoolCost(studentCount, billingCycle = "termly") {
   const n = Math.max(Number(studentCount) || 0, 0);
   if (n <= 5) return 0;
-  const tier = getTierForStudentCount(n);
+  const tier = GRADUATED_TIERS[1]; // Standard Academy flat rate
   const cycle = String(billingCycle || "termly").toLowerCase();
 
   if (cycle === "monthly") {
@@ -86,13 +64,12 @@ export function calculateSchoolCost(studentCount, billingCycle = "termly") {
 export function calculateAnnualSavings(studentCount) {
   const n = Math.max(Number(studentCount) || 0, 0);
   if (n <= 5) return 0;
-  const tier = getTierForStudentCount(n);
-  return Math.max(tier.termlyPrice * 3 - tier.annualPrice, 0);
+  return 10000; // Save ₦10,000 per annum
 }
 
-export function calculateParentCollection(studentCount, levyPerStudent = 1200, billingCycle = "termly") {
+export function calculateParentCollection(studentCount, levyPerStudent = 1000, billingCycle = "termly") {
   const n = Math.max(Number(studentCount) || 0, 0);
-  const levy = Number(levyPerStudent) || 1200;
+  const levy = Number(levyPerStudent) || 1000;
   const cycle = String(billingCycle || "termly").toLowerCase();
 
   if (cycle === "annual" || cycle === "annually" || cycle === "yearly") {
@@ -104,7 +81,7 @@ export function calculateParentCollection(studentCount, levyPerStudent = 1200, b
   return n * levy;
 }
 
-export function calculateSchoolProfit(studentCount, levyPerStudent = 1200, billingCycle = "termly") {
+export function calculateSchoolProfit(studentCount, levyPerStudent = 1000, billingCycle = "termly") {
   return calculateParentCollection(studentCount, levyPerStudent, billingCycle) - calculateSchoolCost(studentCount, billingCycle);
 }
 
@@ -112,168 +89,104 @@ export const EDUCATOR_PLANS = [
   {
     id: "demo",
     name: "Free Demo / Pilot",
-    badge: "Demo & Trial",
-    tagline: "Test-drive AceSmart with a small classroom pilot before onboarding your entire school.",
-    ratePerChild: "Free Demo",
+    badge: "Free Trial",
+    tagline: "Test-drive AceSmart with a small classroom pilot before onboarding your institution.",
+    ratePerChild: "Free (5 Trial Students)",
     annualRatePerChild: "Free Demo",
     monthlyPrice: 0,
     termlyPrice: 0,
     annualPrice: 0,
     annualSavings: 0,
     popular: false,
-    studentLimit: 5,
+    studentLimit: "5 Trial Students",
     examLimit: 5,
-    aiLimit: "15 AI generations / mo",
+    aiLimit: "15 AI credits / mo (Hard Cap)",
     features: [
-      "Up to 5 active students",
-      "5 published examinations",
-      "15 AI question generations / month",
-      "Standard past question bank (5,000 Qs)",
+      "Up to 5 trial students",
+      "5 published test examinations",
+      "15 AI question generations / mo (Institution Cap)",
+      "Standard WAEC & JAMB past questions",
       "Automated CBT grading & scoring",
-      "Basic PDF result sheets",
-      "Community support",
+      "Basic PDF student score sheets",
     ],
     limitations: [
-      "Limited to 5 candidates for trial only",
+      "Strictly for small classroom testing",
+      "No custom domain or official stamps",
       "No biometric face proctoring",
-      "No Excel bulk roster import",
-      "AceSmart watermark on result sheets",
     ],
     ctaText: "Start Free Demo",
     disabled: true,
   },
   {
-    id: "starter",
-    name: "Starter School",
-    badge: "Micro Schools",
-    tagline: "Ideal for small private nursery/primary schools, tutorial centers & coaching institutes.",
-    ratePerChild: "₦25,000 / term (up to 70 kids)",
-    annualRatePerChild: "₦60,000 / yr (Save ₦15k • 20% OFF)",
-    monthlyPrice: 10000,
-    termlyPrice: 25000,
-    annualPrice: 60000,
-    annualSavings: 15000,
-    popular: false,
-    studentLimit: 70,
-    examLimit: "Unlimited",
-    aiLimit: "100 AI generations / mo",
-    features: [
-      "Up to 70 active students",
-      "Flat termly pricing: ₦25,000 / term",
-      "100 AI question bank generations / month",
-      "AI question shuffling & difficulty balancing",
-      "Unlimited published examinations",
-      "Morning (AM) student roll call",
-      "Instant PDF result score sheets",
-      "Excel (.xlsx) bulk student roster import",
-      "Standard WAEC/JAMB past question banks",
-      "WhatsApp & email support",
-    ],
-    limitations: [
-      "No AI biometric face matching",
-    ],
-    ctaText: "Upgrade to Starter",
-    disabled: false,
-  },
-  {
     id: "standard",
     name: "Standard Academy",
-    badge: "Most Popular",
-    tagline: "Ideal for growing private schools wanting automated CBT, dual attendance, and AI anti-cheat.",
-    ratePerChild: "₦125,000 / term (< 250 kids)",
-    annualRatePerChild: "₦300,000 / yr (Save ₦75k • 20% OFF)",
-    monthlyPrice: 50000,
-    termlyPrice: 125000,
-    annualPrice: 300000,
-    annualSavings: 75000,
+    badge: "Most Popular • Unlimited Students",
+    tagline: "Unlimited student capacity with full CBT examinations, dual attendance, and report cards.",
+    ratePerChild: "₦25,000 / term (Unlimited Students)",
+    annualRatePerChild: "₦65,000 / yr (Save ₦10k / yr • 3 Terms)",
+    monthlyPrice: 10000,
+    termlyPrice: 25000,
+    annualPrice: 65000,
+    annualSavings: 10000,
     popular: true,
-    studentLimit: 250,
+    studentLimit: "Unlimited Students",
     examLimit: "Unlimited",
-    aiLimit: "500 AI generations / mo",
+    aiLimit: "250 AI credits / mo (Institution Cap)",
     features: [
-      "Up to 250 active students (< 250 capacity)",
-      "Flat termly pricing: ₦125,000 / term",
-      "500 AI question generations & step explanations / mo",
-      "AI anti-cheat suspicious behavior scoring",
-      "Morning (AM) & Afternoon (PM) student roll call",
-      "Unlimited published examinations",
+      "Unlimited student capacity (No per-student fees!)",
+      "Flat ₦25,000 / term (Save ₦10,000 on annual subscription)",
+      "250 AI question generations & step explanations / mo (Cap)",
+      "Unlimited published CBT examinations",
       "Full 50,000+ past questions (JAMB/WAEC)",
-      "Automated ALOC question bank importer",
+      "Staff dynamic QR clock-in & punctuality tracking",
+      "Morning (AM) & Afternoon (PM) student roll call",
+      "Dual-mode Terminal Report cards (CBT + Manual CA)",
+      "Debtor Defaulter Tracker with 1-Click Fee Reminders",
+      "Paystack online fee checkout & bursary receipts",
       "Excel (.xlsx) bulk student roster import",
-      "Instant Excel & PDF master score sheets",
-      "Custom school crest on result transcripts",
-      "Priority WhatsApp & phone support",
+      "Priority WhatsApp & email support",
     ],
     limitations: [
-      "Basic camera face capture (no AI matching)",
+      "No custom white-label subdomain",
+      "250 AI credits monthly limit per institution",
     ],
     ctaText: "Upgrade to Standard",
     disabled: false,
   },
   {
     id: "premier",
-    name: "Premier Institution ERP",
-    badge: "All-in-One Suite",
-    tagline: "Complete School Management System + AI CBT Proctored Examination Suite.",
-    ratePerChild: "₦315,000 / term (< 700 kids)",
-    annualRatePerChild: "₦756,000 / yr (Save ₦189k • 20% OFF)",
-    monthlyPrice: 125000,
-    termlyPrice: 315000,
-    annualPrice: 756000,
-    annualSavings: 189000,
+    name: "Premier Institution",
+    badge: "Complete All-in-One Suite",
+    tagline: "All in Standard Academy PLUS advanced SMS features: Payroll, Broadsheets, ID Cards, and Expense Ledger.",
+    ratePerChild: "₦45,000 / term (Unlimited Students)",
+    annualRatePerChild: "₦115,000 / yr (Save ₦20k / yr • 3 Terms)",
+    monthlyPrice: 18000,
+    termlyPrice: 45000,
+    annualPrice: 115000,
+    annualSavings: 20000,
     popular: false,
-    studentLimit: 700,
+    studentLimit: "Unlimited Students",
     examLimit: "Unlimited",
-    aiLimit: "2,500 AI generations / mo",
+    aiLimit: "1,000 AI credits / mo (Institution Cap)",
     features: [
-      "Up to 700 active students (< 700 capacity)",
-      "Flat termly pricing: ₦315,000 / term",
-      "2,500 AI generations & automated theory grading / mo",
-      "AI Biometric webcam face verification & live proctoring",
-      "AI class readiness & weak topic diagnostic analytics",
-      "All-in-One School Management System (SMS)",
-      "Staff QR Barcode Clock-In Attendance System",
-      "Student Morning & Afternoon Daily Roll Call",
-      "Terminal Report Card Broadsheets (CBT + Manual)",
-      "Termly School Fee Billing & Parent Online Portal",
-      "Debtor Defaulter Tracker with 1-Click Fee Reminders",
-      "₦500 Terminal Result-Checker Paywall Token Engine",
-      "Custom School Crest, Signature & Stamp on Report Cards",
+      "All features in Standard Academy included",
+      "Unlimited student enrollment capacity",
+      "Flat ₦45,000 / term (Save ₦20,000 on annual subscription)",
+      "1,000 AI question generations & explanations / mo (Cap)",
+      "Staff Payroll & Automated Lateness Deductions",
+      "Master Broadsheet & 3-Term Cumulative Promotion",
+      "Printable Barcode / QR Student & Staff ID Cards",
+      "Petty Cash & School Expenses Ledger",
+      "Dedicated White-Label Subdomain (school.acesmart.site)",
+      "Custom School Crest, Principal Digital Signature & Official Stamp",
+      "₦500 Result-Checker Paywall Token Engine (50/50 revenue split with school)",
+      "Biometric webcam proctoring for CBT exams",
       "Dedicated account manager & priority phone support",
     ],
-    limitations: [],
-    ctaText: "Upgrade to Premier ERP",
-    disabled: false,
-  },
-  {
-    id: "enterprise",
-    name: "Mega / Enterprise Group",
-    badge: "Large Groups",
-    tagline: "Custom-tailored deployment for state educational boards, dioceses & large school groups.",
-    ratePerChild: "₦400,000 / term (700+ kids)",
-    annualRatePerChild: "₦960,000 / yr (Save ₦240k • 20% OFF)",
-    monthlyPrice: 160000,
-    termlyPrice: 400000,
-    annualPrice: 960000,
-    annualSavings: 240000,
-    popular: false,
-    studentLimit: "700+ Unlimited",
-    examLimit: "Unlimited",
-    aiLimit: "10,000 AI generations / mo",
-    features: [
-      "700+ students (Unlimited student enrollments)",
-      "Flat termly pricing: ₦400,000 / term",
-      "10,000 AI generations & dedicated high-priority queue / mo",
-      "Full AI multi-face, voice & background anomaly detection",
-      "Multi-campus centralized governance",
-      "Custom AI proctoring parameters",
-      "On-premise / private cloud deployment option",
-      "SLA 99.9% uptime guarantee",
-      "Custom integration with school ERP/SIS",
-      "Dedicated 24/7 technical engineer & staff training",
+    limitations: [
+      "1,000 AI credits monthly limit per institution",
     ],
-    limitations: [],
-    ctaText: "Upgrade to Mega Group",
+    ctaText: "Upgrade to Premier",
     disabled: false,
   },
 ];
@@ -359,16 +272,20 @@ export const INITIAL_INVOICES = [
 
 export const FAQS = [
   {
-    question: "How does the Per-Student Per-Term pricing work?",
-    answer: "Instead of charging an expensive flat fee that punishes small schools, AceSmart charges transparently based on your student enrollment (₦400 – ₦500 per student per term). A school with 60 students pays just ₦27,000/term, while a school with 400 students pays ₦160,000/term.",
+    question: "How does the Hybrid Flat-Rate pricing work?",
+    answer: "Like Klacify, AceSmart charges an ultra-affordable flat rate per term rather than punitively high subscription fees. Our Standard Academy plan is just ₦20,000/term flat for up to 300 students — matching Klacify while also giving your school a full CBT exam engine, student roll call, staff QR clock-in, and instant report cards.",
   },
   {
     question: "How does our school profit using the ICT Portal Levy strategy?",
-    answer: "Schools typically add an 'ICT & Portal Levy' of ₦1,000 to ₦1,500 per term to each student's school bill. Since you pay AceSmart only ₦400 – ₦500 per child, the software costs your school ₦0 out of pocket, and your school earns an extra ₦500 – ₦1,000 pure profit per student every term!",
+    answer: "Schools typically add an 'ICT & Portal Levy' of ₦1,000 per term to each student's school bill. For a school with 200 students, you collect ₦200,000. You pay AceSmart only ₦20,000 flat, leaving your school with an extra ₦180,000 pure surplus every term!",
   },
   {
     question: "What is the ₦500 Online Result-Checker Token engine?",
     answer: "If you prefer not to add a portal fee to tuition, parents can unlock and print official terminal report cards online with a ₦500 token. Revenue is split 50/50: ₦250 to AceSmart and ₦250 paid directly to the school bank account.",
+  },
+  {
+    question: "Are SMS and WhatsApp alert units free?",
+    answer: "Because telecom and WhatsApp providers charge per transmission, SMS units are provided via an optional pay-as-you-go bundle (e.g. 1,000 SMS for ₦5,000) or schools can connect their own gateway, ensuring schools only pay for the message units they actually consume.",
   },
   {
     question: "Do you offer a discount if we pay annually?",

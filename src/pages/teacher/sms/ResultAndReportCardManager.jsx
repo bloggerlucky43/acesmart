@@ -190,7 +190,7 @@ function TeacherSignatureCanvas({ onSave, saving }) {
             color="#94A3B8"
             pointerEvents="none"
           >
-            ✍️ Draw your signature here
+             Draw your signature here
           </Text>
         )}
       </Box>

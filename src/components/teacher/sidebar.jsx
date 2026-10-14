@@ -25,6 +25,7 @@ import {
   FaAward,
   FaBook,
   FaCommentDots,
+  FaIdCard,
 } from "react-icons/fa";
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -102,6 +103,11 @@ const Sidebar = () => {
                 name: "School Prefects",
                 path: "/institution/prefects",
                 icon: FaAward,
+              },
+              {
+                name: "ID Card Generator",
+                path: "/institution/id-cards",
+                icon: FaIdCard,
               },
               {
                 name: "Fees & Invoicing",
