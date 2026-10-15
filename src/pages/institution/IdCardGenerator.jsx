@@ -27,7 +27,6 @@ import {
   FaCheckCircle,
   FaWifi,
   FaSlidersH,
-  FaHeartbeat,
   FaStar,
   FaAward,
 } from "react-icons/fa";
@@ -41,6 +40,7 @@ import { fetchStudent } from "../../api-endpoint/student/students";
 import { getPrefectsApi } from "../../api-endpoint/sms/prefectEndpoints";
 import { useAuth } from "../../libs/AuthProvider";
 import { toaster } from "../../components/ui/toaster";
+import { formatStudentName } from "../../libs/helper";
 
 // Preset Color Schemes for Institutional Branding
 const COLOR_THEMES = [
@@ -78,7 +78,6 @@ export default function IdCardGenerator() {
   const [showSmartChip, setShowSmartChip] = useState(true);
   const [showHologram, setShowHologram] = useState(true);
   const [showLanyardSlot, setShowLanyardSlot] = useState(true);
-  const [showBloodGroup, setShowBloodGroup] = useState(true);
 
   // QR Code Cache: Map<id, qrDataUrl>
   const [qrCache, setQrCache] = useState({});
@@ -730,9 +729,11 @@ export default function IdCardGenerator() {
                   </Text>
                 </HStack>
                 <Text fontSize="22px" fontWeight="900" color="#0F172A" mb={1}>
-                  {cardType === "student"
-                    ? `${activeInspectItem.firstName} ${activeInspectItem.lastName}`
-                    : activeInspectItem.name}
+                  {formatStudentName(
+                    cardType === "student"
+                      ? `${activeInspectItem.firstName || ""} ${activeInspectItem.lastName || ""}`
+                      : activeInspectItem.name || ""
+                  )}
                 </Text>
                 <Text fontSize="13px" color="#64748B" mb={4}>
                   ID Code: <strong>{cardType === "student" ? activeInspectItem.studentId : activeInspectItem.staffIdNumber || "N/A"}</strong> • Orientation: <strong>{orientation}</strong>
@@ -787,7 +788,6 @@ export default function IdCardGenerator() {
                   showSmartChip={showSmartChip}
                   showHologram={showHologram}
                   showLanyardSlot={showLanyardSlot}
-                  showBloodGroup={showBloodGroup}
                 />
               </Box>
             </Flex>
@@ -907,9 +907,11 @@ export default function IdCardGenerator() {
 
                         <Box overflow="hidden">
                           <Text fontSize="13px" fontWeight="800" color="#0F172A" isTruncated>
-                            {cardType === "student"
-                              ? `${item.firstName} ${item.lastName}`
-                              : item.name}
+                            {formatStudentName(
+                              cardType === "student"
+                                ? `${item.firstName || ""} ${item.lastName || ""}`
+                                : item.name || ""
+                            )}
                           </Text>
                           <Text fontSize="11px" color="#64748B" fontWeight="600">
                             {code}
@@ -983,7 +985,6 @@ export default function IdCardGenerator() {
                         showSmartChip={showSmartChip}
                         showHologram={showHologram}
                         showLanyardSlot={showLanyardSlot}
-                        showBloodGroup={showBloodGroup}
                         isPrint
                       />
                     </Box>
@@ -1004,7 +1005,6 @@ export default function IdCardGenerator() {
                         showSmartChip={showSmartChip}
                         showHologram={showHologram}
                         showLanyardSlot={showLanyardSlot}
-                        showBloodGroup={showBloodGroup}
                         isPrint
                       />
                     </Box>
@@ -1036,7 +1036,6 @@ function IdCardElement({
   showSmartChip = true,
   showHologram = true,
   showLanyardSlot = true,
-  showBloodGroup = false,
   isPrint = false,
 }) {
   const isPortrait = orientation === "portrait";
@@ -1068,10 +1067,11 @@ function IdCardElement({
   const principalStamp = school.principalStampUrl;
   const academicSession = school.academicSession || "2025/2026";
 
-  const fullName =
+  const rawFullName =
     cardType === "student"
       ? `${item.firstName || ""} ${item.lastName || ""}`
       : item.name || "Staff Member";
+  const fullName = formatStudentName(rawFullName) || (cardType === "student" ? "Student" : "Staff Member");
 
   const code = cardType === "student" ? item.studentId : item.staffIdNumber || item.id;
   const isPrefect = cardType === "student" && Boolean(item.isPrefect);
@@ -1094,8 +1094,6 @@ function IdCardElement({
       ? item.parentPhone || schoolPhone
       : item.phoneNumber || schoolPhone;
 
-  // Fake or actual blood group for security realism
-  const bloodGroup = item.bloodGroup || (cardType === "student" ? "O+" : "A+");
   const expiryYear = "2026";
 
   // Background style: Guilloche security curves pattern
@@ -1559,6 +1557,7 @@ function IdCardElement({
                 fontWeight="900"
                 color="#0F172A"
                 lineHeight="1.2"
+                textTransform="capitalize"
                 isTruncated
               >
                 {fullName}
@@ -1597,20 +1596,6 @@ function IdCardElement({
                 >
                   ID: {code}
                 </Badge>
-                {showBloodGroup && (
-                  <Badge
-                    bg="#FEE2E2"
-                    color="#DC2626"
-                    fontSize={isPrint ? "4.5pt" : "7.5px"}
-                    fontWeight="900"
-                    px={1}
-                    py={0.2}
-                    borderRadius="sm"
-                  >
-                    <Icon as={FaHeartbeat} mr={0.5} boxSize={isPrint ? "3pt" : "7px"} />
-                    {bloodGroup}
-                  </Badge>
-                )}
               </HStack>
               <Text
                 fontSize={isPrint ? "6.5pt" : "9.5px"}
@@ -1700,7 +1685,13 @@ function IdCardElement({
 
             {/* Info Columns */}
             <Box flex="1" overflow="hidden">
-              <Text fontSize={isPrint ? "9pt" : "13.5px"} fontWeight="900" color="#0F172A" isTruncated>
+              <Text
+                fontSize={isPrint ? "9pt" : "13.5px"}
+                fontWeight="900"
+                color="#0F172A"
+                textTransform="capitalize"
+                isTruncated
+              >
                 {fullName}
               </Text>
 
@@ -1727,12 +1718,6 @@ function IdCardElement({
                 <Badge bg="#0F172A" color="white" fontSize={isPrint ? "5pt" : "8px"} fontWeight="900" px={1.5}>
                   {code}
                 </Badge>
-                {showBloodGroup && (
-                  <Badge bg="#FEE2E2" color="#DC2626" fontSize={isPrint ? "4.5pt" : "7px"} fontWeight="900">
-                    <Icon as={FaHeartbeat} mr={0.5} boxSize={isPrint ? "3pt" : "6.5px"} />
-                    {bloodGroup}
-                  </Badge>
-                )}
               </HStack>
               <Text fontSize={isPrint ? "6.5pt" : "10px"} color={theme.primary} fontWeight="bold" isTruncated>
                 {subInfo}

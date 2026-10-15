@@ -39,6 +39,7 @@ import {
 } from "../../api-endpoint/sms/smsEndpoints";
 import { useAuth } from "../../libs/AuthProvider";
 import { toaster } from "../../components/ui/toaster";
+import { formatStudentName } from "../../libs/helper";
 
 export default function MasterBroadsheet() {
   const { user } = useAuth();
@@ -814,7 +815,7 @@ export default function MasterBroadsheet() {
                           <Flex align="center" gap={2.5}>
                             <Box>
                               <Text fontWeight="800" color="#0F172A">
-                                {r.student.name}
+                                {formatStudentName(r.student.name)}
                               </Text>
                               <HStack spacing={1}>
                                 <Text fontSize="10.5px" color="#64748B">
@@ -1111,7 +1112,7 @@ export default function MasterBroadsheet() {
                 <tr key={r.student.id}>
                   <td>{idx + 1}</td>
                   <td><strong>{r.annualRank}</strong></td>
-                  <td style={{ textAlign: "left", fontWeight: "bold" }}>{r.student.name}</td>
+                  <td style={{ textAlign: "left", fontWeight: "bold" }}>{formatStudentName(r.student.name)}</td>
                   <td>{r.student.studentId}</td>
                   <td>{r.term1Average > 0 ? r.term1Average : "-"}</td>
                   <td>{r.term2Average > 0 ? r.term2Average : "-"}</td>
