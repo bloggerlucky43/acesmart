@@ -373,12 +373,8 @@ export default function BillingPage() {
             border="1px solid #1E293B"
           >
          
-
-          
           </Flex>
         </Box>
-
-        {/* PLAN COMPARISON DECK */}
         <Box mb={8}>
           <Text fontSize="18px" fontWeight="800" color="#0F172A" mb={1} fontFamily="'Outfit', sans-serif">
             Available School & Educator Plans

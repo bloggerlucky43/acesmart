@@ -53,6 +53,7 @@ import { useAuth } from "../../../libs/AuthProvider";
 import { toaster } from "../../../components/ui/toaster";
 import DashboardLayout from "../../../constants/dashboardlayout";
 import StudentReportCardSheet from "../../../components/student/StudentReportCardSheet";
+import { useNavigate } from "react-router-dom";
 
 const DEFAULT_FALLBACK_SUBJECTS = [
   "Mathematics",
@@ -301,6 +302,7 @@ function TeacherSignatureUploader({ onSave, saving }) {
 
 export default function ResultAndReportCardManager() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("scores"); // "scores" | "cbt-sync" | "report-card"
   const [classes, setClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState("");
@@ -732,24 +734,42 @@ export default function ResultAndReportCardManager() {
               </Box>
             </Flex>
 
-            {/* Teacher Signature Button in Header */}
-            <Button
-              size="sm"
-              borderRadius="xl"
-              bg={teacherSignatureUrl ? "#ECFDF5" : "#EEF2FF"}
-              color={teacherSignatureUrl ? "#065F46" : "#4338CA"}
-              border="1px solid"
-              borderColor={teacherSignatureUrl ? "#A7F3D0" : "#C7D2FE"}
-              fontWeight="800"
-              fontSize="12px"
-              h="38px"
-              onClick={() => setShowSignatureModal(true)}
-              _hover={{ opacity: 0.9 }}
-              flexShrink={0}
-            >
-              <Icon as={FaSignature} mr={1.5} boxSize={3.5} />
-              {teacherSignatureUrl ? "My Signature ✓" : "Add Signature"}
-            </Button>
+            {/* Action Buttons in Header */}
+            <Flex align="center" gap={2.5} flexWrap="wrap">
+              <Button
+                size="sm"
+                borderRadius="xl"
+                bg="#16A34A"
+                color="white"
+                fontWeight="800"
+                fontSize="12px"
+                h="38px"
+                boxShadow="0 2px 8px rgba(22, 163, 74, 0.25)"
+                onClick={() => navigate("/teacher/broadsheet")}
+                _hover={{ bg: "#15803D" }}
+                flexShrink={0}
+              >
+                <Icon as={FaTable} mr={1.5} boxSize={3.5} />
+                Master Broadsheet
+              </Button>
+              <Button
+                size="sm"
+                borderRadius="xl"
+                bg={teacherSignatureUrl ? "#ECFDF5" : "#EEF2FF"}
+                color={teacherSignatureUrl ? "#065F46" : "#4338CA"}
+                border="1px solid"
+                borderColor={teacherSignatureUrl ? "#A7F3D0" : "#C7D2FE"}
+                fontWeight="800"
+                fontSize="12px"
+                h="38px"
+                onClick={() => setShowSignatureModal(true)}
+                _hover={{ opacity: 0.9 }}
+                flexShrink={0}
+              >
+                <Icon as={FaSignature} mr={1.5} boxSize={3.5} />
+                {teacherSignatureUrl ? "My Signature ✓" : "Add Signature"}
+              </Button>
+            </Flex>
           </Flex>
 
           {/* Tab Switcher */}

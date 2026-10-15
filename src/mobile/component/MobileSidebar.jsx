@@ -27,6 +27,8 @@ import {
   FaBook,
   FaBullhorn,
   FaCommentDots,
+  FaTable,
+  FaIdCard,
 } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
@@ -53,6 +55,8 @@ const MobileSideBar = ({ onClose }) => {
             title: "INSTITUTION SUITE (ADMIN)",
             links: [
               { name: "School Overview", path: "/institution/dashboard", icon: FaUniversity },
+              { name: "Master Broadsheet", path: "/institution/broadsheet", icon: FaTable, badge: "3-Term" },
+              { name: "ID Card Generator", path: "/institution/id-cards", icon: FaIdCard, badge: "PVC" },
               { name: "Faculty Directory", path: "/institution/staff", icon: FaUsers },
               { name: "Staff Attendance QR", path: "/institution/staff-qr", icon: FaQrcode },
               { name: "Attendance History", path: "/institution/attendance-history", icon: FaHistory },
@@ -70,10 +74,11 @@ const MobileSideBar = ({ onClose }) => {
     {
       title: "CLASS & TEACHING (SMS)",
       links: [
-        { name: "My Clock-In (QR)", path: "/teacher/scan-clockin", icon: FaQrcode },
-        { name: "Class Study Materials", path: "/teacher/resources", icon: FaBook },
-        { name: "Student Attendance", path: "/teacher/attendance", icon: FaCalendarCheck },
+        { name: "Master Broadsheet", path: "/teacher/broadsheet", icon: FaTable, badge: "3-Term" },
         { name: "Report Cards", path: "/teacher/report-cards", icon: FaGraduationCap },
+        { name: "Student Attendance", path: "/teacher/attendance", icon: FaCalendarCheck },
+        { name: "Class Study Materials", path: "/teacher/resources", icon: FaBook },
+        { name: "My Clock-In (QR)", path: "/teacher/scan-clockin", icon: FaQrcode },
       ],
     },
     {
@@ -199,6 +204,18 @@ const MobileSideBar = ({ onClose }) => {
                         >
                           <Icon as={link.icon} boxSize={3.5} />
                           <Text flex={1}>{link.name}</Text>
+                          {link.badge && (
+                            <Badge
+                              bg="#805AD5"
+                              color="white"
+                              fontSize="9px"
+                              px={1.5}
+                              py={0.5}
+                              borderRadius="full"
+                            >
+                              {link.badge}
+                            </Badge>
+                          )}
                         </Flex>
                       )}
                     </NavLink>

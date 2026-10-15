@@ -26,6 +26,7 @@ import {
   FaBook,
   FaCommentDots,
   FaIdCard,
+  FaTable,
 } from "react-icons/fa";
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -85,6 +86,18 @@ const Sidebar = () => {
                 icon: FaUniversity,
               },
               {
+                name: "Master Broadsheet",
+                path: "/institution/broadsheet",
+                icon: FaTable,
+                badge: "3-Term",
+              },
+              {
+                name: "ID Card Generator",
+                path: "/institution/id-cards",
+                icon: FaIdCard,
+                badge: "PVC",
+              },
+              {
                 name: "Faculty Directory",
                 path: "/institution/staff",
                 icon: FaUsers,
@@ -103,11 +116,6 @@ const Sidebar = () => {
                 name: "School Prefects",
                 path: "/institution/prefects",
                 icon: FaAward,
-              },
-              {
-                name: "ID Card Generator",
-                path: "/institution/id-cards",
-                icon: FaIdCard,
               },
               {
                 name: "Fees & Invoicing",
@@ -147,11 +155,16 @@ const Sidebar = () => {
     {
       title: "CLASS & TEACHING (SMS)",
       links: [
-        { name: "My Clock-In", path: "/teacher/scan-clockin", icon: FaQrcode },
         {
-          name: "Class Study Materials",
-          path: "/teacher/resources",
-          icon: FaBook,
+          name: "Master Broadsheet",
+          path: "/teacher/broadsheet",
+          icon: FaTable,
+          badge: "3-Term",
+        },
+        {
+          name: "Report Cards",
+          path: "/teacher/report-cards",
+          icon: FaGraduationCap,
         },
         {
           name: "Student Attendance",
@@ -159,10 +172,11 @@ const Sidebar = () => {
           icon: FaCalendarCheck,
         },
         {
-          name: "Report Cards",
-          path: "/teacher/report-cards",
-          icon: FaGraduationCap,
+          name: "Class Study Materials",
+          path: "/teacher/resources",
+          icon: FaBook,
         },
+        { name: "My Clock-In", path: "/teacher/scan-clockin", icon: FaQrcode },
       ],
     },
     {
@@ -383,6 +397,18 @@ const Sidebar = () => {
                       <Text flex={1} isTruncated>
                         {link.name}
                       </Text>
+                      {link.badge && (
+                        <Badge
+                          bg="#805AD5"
+                          color="white"
+                          fontSize="9px"
+                          px={1.5}
+                          py={0.5}
+                          borderRadius="full"
+                        >
+                          {link.badge}
+                        </Badge>
+                      )}
                       {isActive && (
                         <Box
                           w="6px"

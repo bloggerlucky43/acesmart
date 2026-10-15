@@ -15,20 +15,21 @@ import {
 import {
   FaIdCard,
   FaPrint,
-  FaDownload,
   FaUsers,
   FaGraduationCap,
-  FaQrcode,
-  FaFilter,
   FaSearch,
   FaSyncAlt,
   FaCheckSquare,
   FaSquare,
   FaShieldAlt,
   FaUndo,
-  FaPhoneAlt,
   FaMapMarkerAlt,
   FaCheckCircle,
+  FaWifi,
+  FaSlidersH,
+  FaHeartbeat,
+  FaStar,
+  FaAward,
 } from "react-icons/fa";
 import DashboardLayout from "../../constants/dashboardlayout";
 import {
@@ -37,6 +38,7 @@ import {
   getClassArmsApi,
 } from "../../api-endpoint/sms/smsEndpoints";
 import { fetchStudent } from "../../api-endpoint/student/students";
+import { getPrefectsApi } from "../../api-endpoint/sms/prefectEndpoints";
 import { useAuth } from "../../libs/AuthProvider";
 import { toaster } from "../../components/ui/toaster";
 
@@ -70,6 +72,14 @@ export default function IdCardGenerator() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [theme, setTheme] = useState(COLOR_THEMES[0]);
 
+  // Aesthetic Security Features (Customizable by Institution)
+  const [showWatermark, setShowWatermark] = useState(true);
+  const [showGuilloche, setShowGuilloche] = useState(true);
+  const [showSmartChip, setShowSmartChip] = useState(true);
+  const [showHologram, setShowHologram] = useState(true);
+  const [showLanyardSlot, setShowLanyardSlot] = useState(true);
+  const [showBloodGroup, setShowBloodGroup] = useState(true);
+
   // QR Code Cache: Map<id, qrDataUrl>
   const [qrCache, setQrCache] = useState({});
 
@@ -81,16 +91,38 @@ export default function IdCardGenerator() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [profRes, classRes, studRes, staffRes] = await Promise.all([
+      const [profRes, classRes, studRes, staffRes, prefectRes] = await Promise.all([
         getInstitutionProfileApi().catch(() => null),
         getClassArmsApi().catch(() => null),
         fetchStudent().catch(() => null),
         getStaffListApi().catch(() => null),
+        getPrefectsApi().catch(() => null),
       ]);
 
       if (profRes?.success) setProfile(profRes.data);
       if (classRes?.success) setClassArms(classRes.data || []);
-      if (studRes?.students) setStudents(studRes.students || []);
+
+      const rawStudents = studRes?.students || [];
+      const prefectList = prefectRes?.data || [];
+      const prefectMap = new Map();
+      prefectList.forEach((p) => {
+        if (p.isPrefect) {
+          prefectMap.set(p.id, p.prefectRole || "Prefect");
+        }
+      });
+
+      const mergedStudents = rawStudents.map((s) => {
+        const roleFromPrefects = prefectMap.get(s.id);
+        const isPrefect = Boolean(s.isPrefect || roleFromPrefects);
+        const prefectRole = s.prefectRole || roleFromPrefects || (isPrefect ? "Prefect" : null);
+        return {
+          ...s,
+          isPrefect,
+          prefectRole,
+        };
+      });
+
+      setStudents(mergedStudents);
       if (staffRes?.success) setStaffList(staffRes.data || []);
     } catch (err) {
       console.error("Load ID Card data error:", err);
@@ -111,14 +143,6 @@ export default function IdCardGenerator() {
   const school = profile || user?.institution || {};
   const schoolName = school.name || "Institutional Academy";
   const schoolLogo = school.logoUrl;
-  const schoolMotto = school.motto || "Excellence & Integrity";
-  const schoolAddress = school.address || "12 Campus Drive, Academic City";
-  const schoolPhone = school.phone || "+234 800 000 0000";
-  const schoolEmail = school.email || "info@school.edu.ng";
-  const principalName = school.principalName || "The Principal";
-  const principalTitle = school.principalTitle || "Principal / Director";
-  const principalSignature = school.principalSignatureUrl;
-  const principalStamp = school.principalStampUrl;
   const academicSession = school.academicSession || "2025/2026";
 
   // Filtered List based on Card Type & Filters
@@ -127,8 +151,9 @@ export default function IdCardGenerator() {
       return students.filter((s) => {
         const matchesClass =
           selectedClassArm === "all" ||
+          (selectedClassArm === "prefects" && s.isPrefect) ||
           String(s.classArmId) === String(selectedClassArm);
-        const nameStr = `${s.firstName || ""} ${s.lastName || ""} ${s.studentId || ""}`.toLowerCase();
+        const nameStr = `${s.firstName || ""} ${s.lastName || ""} ${s.studentId || ""} ${s.prefectRole || ""}`.toLowerCase();
         const matchesSearch = !searchQuery.trim() || nameStr.includes(searchQuery.toLowerCase().trim());
         return matchesClass && matchesSearch;
       });
@@ -222,7 +247,6 @@ export default function IdCardGenerator() {
               margin: 0 !important;
               padding: 0 !important;
             }
-            /* Hide all navigation, sidebars, headers, and UI controls */
             nav, header, aside, .no-print, button, input, select {
               display: none !important;
             }
@@ -232,7 +256,6 @@ export default function IdCardGenerator() {
               margin: 0 !important;
               padding: 0 !important;
             }
-            /* Precise A4 Grid Layout */
             @page {
               size: A4 portrait;
               margin: 8mm 6mm;
@@ -319,7 +342,7 @@ export default function IdCardGenerator() {
                     Institutional ID Card Generator
                   </Text>
                   <Badge bg="#10B981" color="white" fontSize="10px" px={2} py={0.5} borderRadius="full">
-                    PVC CR80 READY
+                    PVC CR80 SMART CARD
                   </Badge>
                 </HStack>
                 <Text fontSize="13px" color="#94A3B8">
@@ -371,7 +394,7 @@ export default function IdCardGenerator() {
           border="1px solid #E2E8F0"
           boxShadow="0 2px 10px rgba(0,0,0,0.03)"
         >
-          {/* Row 1: Type & Orientation Switchers */}
+          {/* Row 1: Type, Orientation & Side Switchers */}
           <Flex
             direction={{ base: "column", lg: "row" }}
             justify="space-between"
@@ -398,7 +421,7 @@ export default function IdCardGenerator() {
                 }}
               >
                 <Icon as={FaGraduationCap} mr={1.5} />
-                Student ID Cards ({students.length})
+                Student Cards ({students.length})
               </Button>
               <Button
                 size="sm"
@@ -415,7 +438,7 @@ export default function IdCardGenerator() {
                 }}
               >
                 <Icon as={FaUsers} mr={1.5} />
-                Staff Faculty Cards ({staffList.length})
+                Staff Faculty ({staffList.length})
               </Button>
             </HStack>
 
@@ -481,26 +504,106 @@ export default function IdCardGenerator() {
             </HStack>
           </Flex>
 
-          {/* Row 2: Filters, Search & Theme Selector */}
+          {/* Row 2: Security & Aesthetic Feature Toggles */}
+          <Box mb={5} pb={5} borderBottom="1px solid #F1F5F9">
+            <Flex align="center" gap={2} mb={2.5}>
+              <Icon as={FaSlidersH} color="#2563EB" boxSize={3.5} />
+              <Text fontSize="12px" fontWeight="800" color="#0F172A" textTransform="uppercase" letterSpacing="0.5px">
+                Aesthetics:
+              </Text>
+            </Flex>
+            <Flex wrap="wrap" gap={2.5}>
+              <Button
+                size="xs"
+                borderRadius="full"
+                variant={showWatermark ? "solid" : "outline"}
+                bg={showWatermark ? "#2563EB" : "transparent"}
+                color={showWatermark ? "white" : "#64748B"}
+                borderColor="#CBD5E1"
+                onClick={() => setShowWatermark(!showWatermark)}
+              >
+                <Icon as={FaShieldAlt} mr={1} boxSize={3} />
+                Faint Logo Crest Watermark 
+              </Button>
+
+              <Button
+                size="xs"
+                borderRadius="full"
+                variant={showGuilloche ? "solid" : "outline"}
+                bg={showGuilloche ? "#0F172A" : "transparent"}
+                color={showGuilloche ? "white" : "#64748B"}
+                borderColor="#384657"
+                onClick={() => setShowGuilloche(!showGuilloche)}
+              >
+                Guilloche Waves 
+              </Button>
+
+              <Button
+                size="xs"
+                borderRadius="full"
+                variant={showSmartChip ? "solid" : "outline"}
+                bg={showSmartChip ? "#D97706" : "transparent"}
+                color={showSmartChip ? "white" : "#64748B"}
+                borderColor="#CBD5E1"
+                onClick={() => setShowSmartChip(!showSmartChip)}
+              >
+                <Icon as={FaWifi} mr={1} boxSize={3} />
+                Gold Smart Chip 
+              </Button>
+
+              <Button
+                size="xs"
+                borderRadius="full"
+                variant={showHologram ? "solid" : "outline"}
+                bg={showHologram ? "#7C3AED" : "transparent"}
+                color={showHologram ? "white" : "#64748B"}
+                borderColor="#CBD5E1"
+                onClick={() => setShowHologram(!showHologram)}
+              >
+                Hologram Foil Seal
+              </Button>
+
+              <Button
+                size="xs"
+                borderRadius="full"
+                variant={showLanyardSlot ? "solid" : "outline"}
+                bg={showLanyardSlot ? "#0D9488" : "transparent"}
+                color={showLanyardSlot ? "white" : "#64748B"}
+                borderColor="#CBD5E1"
+                onClick={() => setShowLanyardSlot(!showLanyardSlot)}
+              >
+                Lanyard Hole Slot 
+              </Button>
+            </Flex>
+          </Box>
+
+          {/* Row 3: Filters, Search & Theme Selector */}
           <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap={4} alignItems="center">
-            {/* Search Input */}
+            {/* Search Input - Clean White Unified Style */}
             <Box>
               <Text fontSize="11px" fontWeight="700" color="#64748B" mb={1} textTransform="uppercase">
-                Search Name or ID:
+                Search Name, Role, or ID:
               </Text>
               <Flex
                 align="center"
-                bg="#F8FAFC"
-                border="1px solid #E2E8F0"
+                bg="#FFFFFF"
+                border="1px solid #CBD5E1"
                 borderRadius="xl"
                 px={3}
                 h="40px"
+                boxShadow="0 1px 2px rgba(0,0,0,0.03)"
+                _focusWithin={{ borderColor: "#2563EB", boxShadow: "0 0 0 2px rgba(37, 99, 235, 0.15)" }}
               >
                 <Icon as={FaSearch} color="#94A3B8" mr={2} boxSize={3.5} />
                 <Input
                   variant="unstyled"
-                  placeholder={cardType === "student" ? "Filter by name, ID code..." : "Filter staff name, ID..."}
+                  placeholder={cardType === "student" ? "Filter name, ID, or prefect role..." : "Filter staff name, ID..."}
                   fontSize="13px"
+                  bg="transparent"
+                  border="none"
+                  outline="none"
+                  _focus={{ outline: "none", boxShadow: "none" }}
+                  color="#0F172A"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -511,25 +614,27 @@ export default function IdCardGenerator() {
             {cardType === "student" ? (
               <Box>
                 <Text fontSize="11px" fontWeight="700" color="#64748B" mb={1} textTransform="uppercase">
-                  Class Arm:
+                  Class Arm / Prefects Filter:
                 </Text>
                 <select
                   style={{
                     width: "100%",
                     height: "40px",
                     borderRadius: "12px",
-                    border: "1px solid #E2E8F0",
-                    background: "#F8FAFC",
+                    border: "1px solid #CBD5E1",
+                    background: "#FFFFFF",
                     padding: "0 12px",
                     fontSize: "13px",
                     fontWeight: "600",
                     color: "#0F172A",
                     outline: "none",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
                   }}
                   value={selectedClassArm}
                   onChange={(e) => setSelectedClassArm(e.target.value)}
                 >
                   <option value="all">All Class Arms ({students.length} Total)</option>
+                  <option value="prefects">Appointed Prefects Only ({students.filter((s) => s.isPrefect).length})</option>
                   {classArms.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -618,19 +723,19 @@ export default function IdCardGenerator() {
               <Box maxW="480px">
                 <HStack spacing={2} mb={2}>
                   <Badge bg="#EEF2FF" color="#4338CA" borderRadius="md" px={2} py={0.5} fontSize="11px" fontWeight="bold">
-                    LIVE CR80 CARD INSPECTOR
+                    PREVIEW & QUALITY INSPECTOR
                   </Badge>
                   <Text fontSize="12px" color="#64748B">
                     Card {inspectIndex + 1} of {currentItems.length}
                   </Text>
                 </HStack>
-                <Text fontSize="20px" fontWeight="900" color="#0F172A" mb={1}>
+                <Text fontSize="22px" fontWeight="900" color="#0F172A" mb={1}>
                   {cardType === "student"
                     ? `${activeInspectItem.firstName} ${activeInspectItem.lastName}`
                     : activeInspectItem.name}
                 </Text>
                 <Text fontSize="13px" color="#64748B" mb={4}>
-                  Unique Code: <strong>{cardType === "student" ? activeInspectItem.studentId : activeInspectItem.staffIdNumber || "N/A"}</strong> • Orientation: <strong>{orientation}</strong>
+                  ID Code: <strong>{cardType === "student" ? activeInspectItem.studentId : activeInspectItem.staffIdNumber || "N/A"}</strong> • Orientation: <strong>{orientation}</strong>
                 </Text>
 
                 <HStack spacing={3}>
@@ -667,7 +772,7 @@ export default function IdCardGenerator() {
                 perspective="1000px"
                 cursor="pointer"
                 onClick={() => setIsFlipped(!isFlipped)}
-                title="Click to flip front/back"
+                title="Click anywhere to flip front/back"
               >
                 <IdCardElement
                   item={activeInspectItem}
@@ -677,6 +782,12 @@ export default function IdCardGenerator() {
                   theme={theme}
                   showBack={isFlipped}
                   qrDataUrl={qrCache[cardType === "student" ? activeInspectItem.studentId : activeInspectItem.staffIdNumber || activeInspectItem.id]}
+                  showWatermark={showWatermark}
+                  showGuilloche={showGuilloche}
+                  showSmartChip={showSmartChip}
+                  showHologram={showHologram}
+                  showLanyardSlot={showLanyardSlot}
+                  showBloodGroup={showBloodGroup}
                 />
               </Box>
             </Flex>
@@ -718,7 +829,6 @@ export default function IdCardGenerator() {
               {currentItems.map((item, idx) => {
                 const isSelected = selectedIds.has(item.id);
                 const code = cardType === "student" ? item.studentId : item.staffIdNumber || item.id;
-                const qrUrl = qrCache[code];
 
                 return (
                   <Box
@@ -809,6 +919,22 @@ export default function IdCardGenerator() {
                               ? item.ClassArm?.name || "No Class"
                               : item.designation || "Faculty Staff"}
                           </Text>
+                          {item.isPrefect && (
+                            <Badge
+                              mt={1}
+                              display="inline-block"
+                              fontSize="9.5px"
+                              bg="#FEF08A"
+                              color="#854D0E"
+                              border="1px solid #CA8A04"
+                              fontWeight="bold"
+                              px={1.5}
+                              py={0.2}
+                              borderRadius="md"
+                            >
+                              ★ {item.prefectRole || "School Prefect"}
+                            </Badge>
+                          )}
                         </Box>
                       </Flex>
 
@@ -852,6 +978,12 @@ export default function IdCardGenerator() {
                         theme={theme}
                         showBack={false}
                         qrDataUrl={qrUrl}
+                        showWatermark={showWatermark}
+                        showGuilloche={showGuilloche}
+                        showSmartChip={showSmartChip}
+                        showHologram={showHologram}
+                        showLanyardSlot={showLanyardSlot}
+                        showBloodGroup={showBloodGroup}
                         isPrint
                       />
                     </Box>
@@ -867,6 +999,12 @@ export default function IdCardGenerator() {
                         theme={theme}
                         showBack={true}
                         qrDataUrl={qrUrl}
+                        showWatermark={showWatermark}
+                        showGuilloche={showGuilloche}
+                        showSmartChip={showSmartChip}
+                        showHologram={showHologram}
+                        showLanyardSlot={showLanyardSlot}
+                        showBloodGroup={showBloodGroup}
                         isPrint
                       />
                     </Box>
@@ -893,28 +1031,32 @@ function IdCardElement({
   theme,
   showBack = false,
   qrDataUrl,
+  showWatermark = true,
+  showGuilloche = true,
+  showSmartChip = true,
+  showHologram = true,
+  showLanyardSlot = true,
+  showBloodGroup = false,
   isPrint = false,
 }) {
   const isPortrait = orientation === "portrait";
 
-  // Standard CR80 Card Dimensions (in mm converted to screen px or print mm)
-  // Portrait: 54mm width × 85.6mm height
-  // Landscape: 85.6mm width × 54mm height
+  // Standard CR80 Dimensions
   const cardWidth = isPrint
     ? isPortrait
       ? "54mm"
       : "85.6mm"
     : isPortrait
-    ? "260px"
-    : "380px";
+    ? "264px"
+    : "386px";
 
   const cardHeight = isPrint
     ? isPortrait
       ? "85.6mm"
       : "54mm"
     : isPortrait
-    ? "390px"
-    : "240px";
+    ? "412px"
+    : "248px";
 
   const schoolName = school.name || "Institutional Academy";
   const schoolLogo = school.logoUrl;
@@ -932,16 +1074,19 @@ function IdCardElement({
       : item.name || "Staff Member";
 
   const code = cardType === "student" ? item.studentId : item.staffIdNumber || item.id;
+  const isPrefect = cardType === "student" && Boolean(item.isPrefect);
+  const prefectRoleTitle = item.prefectRole ? item.prefectRole.toUpperCase() : "SCHOOL PREFECT";
+
   const roleLabel =
     cardType === "student"
-      ? item.isPrefect
-        ? item.prefectRole || "PREFECT"
+      ? isPrefect
+        ? prefectRoleTitle
         : "STUDENT"
       : item.designation?.toUpperCase() || "FACULTY STAFF";
 
   const subInfo =
     cardType === "student"
-      ? item.ClassArm?.name || "General Roster"
+      ? item.ClassArm?.name || "CBT Student"
       : item.email || school.email;
 
   const emergencyPhone =
@@ -949,375 +1094,830 @@ function IdCardElement({
       ? item.parentPhone || schoolPhone
       : item.phoneNumber || schoolPhone;
 
+  // Fake or actual blood group for security realism
+  const bloodGroup = item.bloodGroup || (cardType === "student" ? "O+" : "A+");
+  const expiryYear = "2026";
+
+  // Background style: Guilloche security curves pattern
+  const cardBgStyle = showGuilloche
+    ? {
+        backgroundColor: "#FFFFFF",
+        backgroundImage: `
+          repeating-linear-gradient(45deg, rgba(15, 23, 42, 0.025) 0px, rgba(15, 23, 42, 0.025) 1.5px, transparent 1.5px, transparent 9px),
+          repeating-linear-gradient(-45deg, rgba(15, 23, 42, 0.02) 0px, rgba(15, 23, 42, 0.02) 1.5px, transparent 1.5px, transparent 9px)
+        `,
+      }
+    : {
+        backgroundColor: "#FFFFFF",
+      };
+
   // ----------------------------------------------------
-  // CARD BACK
+  // CARD BACK (REVERSE SIDE)
   // ----------------------------------------------------
   if (showBack) {
     return (
       <Box
         w={cardWidth}
         h={cardHeight}
-        borderRadius={isPrint ? "3mm" : "16px"}
-        bg={theme.lightBg}
+        borderRadius={isPrint ? "3.2mm" : "18px"}
         border={`1.5px solid ${theme.primary}`}
-        p={isPrint ? "3.5mm" : "14px"}
         display="flex"
         flexDirection="column"
         justifyContent="space-between"
         position="relative"
         overflow="hidden"
-        boxShadow={isPrint ? "none" : "0 8px 24px rgba(0,0,0,0.12)"}
+        boxShadow={isPrint ? "none" : "0 10px 25px rgba(0,0,0,0.14)"}
         fontFamily="'Outfit', sans-serif"
+        style={cardBgStyle}
       >
-        {/* Subtle Top Watermark / Banner */}
+        {/* Faint School Crest Watermark in Background */}
+        {showWatermark && (
+          <Box
+            position="absolute"
+            top="52%"
+            left="50%"
+            transform="translate(-50%, -50%)"
+            w="65%"
+            h="65%"
+            opacity={0.065}
+            pointerEvents="none"
+            zIndex={1}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            {schoolLogo ? (
+              <img
+                src={schoolLogo}
+                alt="Watermark Crest"
+                style={{ width: "100%", height: "100%", objectFit: "contain", filter: "grayscale(100%)" }}
+              />
+            ) : (
+              <Icon as={FaShieldAlt} boxSize="100%" color="#0F172A" />
+            )}
+          </Box>
+        )}
+
+        {/* Top Magnetic Stripe */}
         <Box
-          position="absolute"
-          top={0}
-          left={0}
-          right={0}
-          h={isPrint ? "2.5mm" : "5px"}
-          bg={theme.primary}
+          h={isPrint ? "8.5mm" : "32px"}
+          w="100%"
+          bg="linear-gradient(180deg, #090D16 0%, #1E293B 50%, #0F172A 100%)"
+          borderBottom="1px solid #000"
+          position="relative"
+          zIndex={2}
         />
 
-        {/* Back Header */}
-        <Box textAlign="center" pt={1}>
-          <Text
-            fontSize={isPrint ? "8pt" : "11px"}
-            fontWeight="900"
-            color={theme.primary}
-            letterSpacing="0.3px"
-            textTransform="uppercase"
-            isTruncated
-          >
-            {schoolName}
-          </Text>
-          <HStack justify="center" spacing={1} mt={0.5}>
-            <Icon as={FaMapMarkerAlt} boxSize={isPrint ? "6pt" : "8px"} color="#64748B" />
-            <Text fontSize={isPrint ? "5.5pt" : "8px"} color="#64748B" isTruncated>
-              {schoolAddress}
-            </Text>
-          </HStack>
-        </Box>
+        {/* Lanyard Hole Indicator */}
+        {showLanyardSlot && (
+          <Box
+            position="absolute"
+            top={isPrint ? "1.5mm" : "6px"}
+            left="50%"
+            transform="translateX(-50%)"
+            w={isPrint ? "10mm" : "36px"}
+            h={isPrint ? "1.8mm" : "5px"}
+            borderRadius="full"
+            bg="rgba(255, 255, 255, 0.4)"
+            border="1px solid rgba(0,0,0,0.4)"
+            zIndex={3}
+          />
+        )}
 
-        {/* Official Terms & Loss Clause */}
-        <Box
-          bg="white"
-          p={isPrint ? "2mm" : "8px"}
-          borderRadius={isPrint ? "1.5mm" : "8px"}
-          border="1px solid #E2E8F0"
-        >
-          <Text
-            fontSize={isPrint ? "5pt" : "7.5px"}
-            color="#334155"
-            lineHeight="1.25"
-            textAlign="center"
-          >
-            This card is the property of <strong>{schoolName}</strong> and must be produced upon demand.
-            If lost and found, please return to the school administration or call <strong>{schoolPhone}</strong>.
-          </Text>
-        </Box>
-
-        {/* Signatures & Stamps Row */}
-        <Flex justify="space-between" align="flex-end" px={1}>
-          {/* Stamp Block */}
+        {/* Content Body */}
+        <Box p={isPrint ? "2.5mm 3.5mm" : "8px 12px"} flex="1" display="flex" flexDirection="column" justifyContent="space-between" position="relative" zIndex={2}>
+          {/* Header Info */}
           <Box textAlign="center">
-            {principalStamp ? (
-              <img
-                src={principalStamp}
-                alt="Stamp"
-                style={{
-                  height: isPrint ? "8mm" : "30px",
-                  objectFit: "contain",
-                  margin: "0 auto",
-                }}
-              />
-            ) : (
+            <Text
+              fontSize={isPrint ? "7.5pt" : "10px"}
+              fontWeight="900"
+              color={theme.primary}
+              letterSpacing="0.4px"
+              textTransform="uppercase"
+              isTruncated
+            >
+              {schoolName}
+            </Text>
+            <HStack justify="center" spacing={1} mt={0.5}>
+              <Icon as={FaMapMarkerAlt} boxSize={isPrint ? "5.5pt" : "7.5px"} color="#64748B" />
+              <Text fontSize={isPrint ? "5pt" : "7.5px"} color="#64748B" isTruncated>
+                {schoolAddress}
+              </Text>
+            </HStack>
+          </Box>
+
+          {/* Official Property & Return Disclaimer */}
+          <Box
+            bg="rgba(248, 250, 252, 0.85)"
+            p={isPrint ? "1.5mm" : "6px"}
+            borderRadius={isPrint ? "1.5mm" : "6px"}
+            border="1px solid #E2E8F0"
+          >
+            <Text
+              fontSize={isPrint ? "4.5pt" : "6.8px"}
+              color="#334155"
+              lineHeight="1.25"
+              textAlign="center"
+            >
+              This credential is the property of <strong>{schoolName}</strong> and must be produced upon authorized request. If found, please return to the school administration office or contact: <strong>{schoolPhone}</strong>.
+            </Text>
+          </Box>
+
+          {/* Realistic Authorized Signature Strip */}
+          <Box>
+            <Flex justify="space-between" align="center" mb={0.5} px={0.5}>
+              <Text fontSize={isPrint ? "4.5pt" : "6.5px"} color="#64748B" fontWeight="800" letterSpacing="0.3px">
+                AUTHORIZED SIGNATURE
+              </Text>
+              <Text fontSize={isPrint ? "4pt" : "6px"} color="#94A3B8" fontStyle="italic">
+                NOT VALID UNLESS SIGNED
+              </Text>
+            </Flex>
+            <Box
+              h={isPrint ? "6mm" : "24px"}
+              bg="#FFFFFF"
+              borderRadius="4px"
+              border="1px dashed #94A3B8"
+              position="relative"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              overflow="hidden"
+            >
               <Box
-                w={isPrint ? "8mm" : "28px"}
-                h={isPrint ? "8mm" : "28px"}
-                borderRadius="full"
-                border="1px dashed #94A3B8"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-              >
-                <Icon as={FaShieldAlt} color="#94A3B8" boxSize={isPrint ? "4pt" : "12px"} />
-              </Box>
-            )}
-            <Text fontSize={isPrint ? "5pt" : "7px"} color="#64748B" fontWeight="bold">
-              Official Stamp
-            </Text>
-          </Box>
-
-          {/* Signature Block */}
-          <Box textAlign="center">
-            {principalSignature ? (
-              <img
-                src={principalSignature}
-                alt="Signature"
-                style={{
-                  height: isPrint ? "8mm" : "30px",
-                  objectFit: "contain",
-                  margin: "0 auto",
-                }}
+                position="absolute"
+                inset={0}
+                opacity={0.06}
+                backgroundImage="repeating-linear-gradient(45deg, #000 0px, #000 1px, transparent 1px, transparent 6px)"
               />
-            ) : (
-              <Box h={isPrint ? "8mm" : "30px"} borderBottom="1px solid #94A3B8" w={isPrint ? "18mm" : "60px"} />
-            )}
-            <Text fontSize={isPrint ? "5.5pt" : "7.5px"} color="#0F172A" fontWeight="800">
-              {principalTitle}
-            </Text>
+              {principalSignature ? (
+                <img
+                  src={principalSignature}
+                  alt="Principal Signature"
+                  style={{ maxHeight: "100%", objectFit: "contain", position: "relative", zIndex: 2 }}
+                />
+              ) : (
+                <Text fontSize={isPrint ? "5.5pt" : "8px"} color="#94A3B8" fontStyle="italic">
+                  {principalTitle} Endorsement
+                </Text>
+              )}
+            </Box>
           </Box>
-        </Flex>
 
-        {/* Simulated Code128 Barcode at Bottom */}
-        <Box textAlign="center" pt={1} borderTop="1px solid #E2E8F0">
-          <BarcodeSimulation code={code} isPrint={isPrint} />
-          <Text fontSize={isPrint ? "5.5pt" : "8px"} fontWeight="900" color="#0F172A" letterSpacing="1px">
-            {code}
-          </Text>
+          {/* Stamps & Code128 Barcode Row */}
+          <Flex justify="space-between" align="center" pt={1} borderTop="1px solid #E2E8F0">
+            {/* Principal Stamp */}
+            <Box textAlign="center" flexShrink={0}>
+              {principalStamp ? (
+                <img
+                  src={principalStamp}
+                  alt="Stamp"
+                  style={{
+                    height: isPrint ? "7mm" : "24px",
+                    objectFit: "contain",
+                    margin: "0 auto",
+                  }}
+                />
+              ) : (
+                <Box
+                  w={isPrint ? "6.5mm" : "22px"}
+                  h={isPrint ? "6.5mm" : "22px"}
+                  borderRadius="full"
+                  border="1px dashed #94A3B8"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  mx="auto"
+                >
+                  <Icon as={FaShieldAlt} color="#94A3B8" boxSize={isPrint ? "3.5pt" : "10px"} />
+                </Box>
+              )}
+              <Text fontSize={isPrint ? "4.5pt" : "6px"} color="#64748B" fontWeight="bold">
+                SEAL
+              </Text>
+            </Box>
+
+            {/* Barcode Strip */}
+            <Box flex="1" textAlign="center" px={2}>
+              <BarcodeSimulation code={code} isPrint={isPrint} />
+              <Text fontSize={isPrint ? "5pt" : "7.5px"} fontWeight="900" color="#0F172A" letterSpacing="1px">
+                {code}
+              </Text>
+            </Box>
+          </Flex>
         </Box>
       </Box>
     );
   }
 
   // ----------------------------------------------------
-  // CARD FRONT
+  // CARD FRONT (PREMIUM SMART CARD DESIGN)
   // ----------------------------------------------------
   return (
     <Box
       w={cardWidth}
       h={cardHeight}
-      borderRadius={isPrint ? "3mm" : "16px"}
-      bg="white"
+      borderRadius={isPrint ? "3.2mm" : "18px"}
       border={`1.5px solid ${theme.primary}`}
       display="flex"
       flexDirection="column"
       justifyContent="space-between"
       position="relative"
       overflow="hidden"
-      boxShadow={isPrint ? "none" : "0 8px 24px rgba(0,0,0,0.12)"}
+      boxShadow={isPrint ? "none" : "0 10px 25px rgba(0,0,0,0.14)"}
       fontFamily="'Outfit', sans-serif"
+      style={cardBgStyle}
     >
-      {/* Institutional Top Header Banner */}
-      <Box bg={theme.primary} color="white" p={isPrint ? "2.5mm 3.5mm" : "10px 14px"}>
-        <Flex align="center" justify="space-between" gap={2}>
+      {/* 1. FAINT SCHOOL CREST WATERMARK IN BACKGROUND */}
+      {showWatermark && (
+        <Box
+          position="absolute"
+          top="54%"
+          left="50%"
+          transform="translate(-50%, -50%)"
+          w="68%"
+          h="68%"
+          opacity={0.075}
+          pointerEvents="none"
+          zIndex={1}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
           {schoolLogo ? (
-            <Box
-              w={isPrint ? "7mm" : "28px"}
-              h={isPrint ? "7mm" : "28px"}
-              borderRadius="md"
-              bg="white"
-              p={0.5}
-              flexShrink={0}
-            >
-              <img
-                src={schoolLogo}
-                alt="Logo"
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              />
-            </Box>
+            <img
+              src={schoolLogo}
+              alt="Watermark Crest"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                filter: "grayscale(100%)",
+              }}
+            />
           ) : (
-            <Icon as={FaGraduationCap} color="#38BDF8" boxSize={isPrint ? "8pt" : "16px"} />
+            <Icon as={FaShieldAlt} boxSize="100%" color={theme.primary} />
           )}
+        </Box>
+      )}
 
-          <Box textAlign="right" overflow="hidden">
-            <Text
-              fontSize={isPrint ? "7.5pt" : "11px"}
-              fontWeight="900"
-              color="white"
-              letterSpacing="0.2px"
-              lineHeight="1.15"
-              isTruncated
-            >
-              {schoolName}
-            </Text>
-            <Text
-              fontSize={isPrint ? "4.5pt" : "6.5px"}
-              color="#CBD5E1"
-              fontStyle="italic"
-              isTruncated
-            >
-              "{schoolMotto}"
-            </Text>
-          </Box>
+      {/* 2. LANYARD PUNCH HOLE INDICATOR (TOP CENTER) */}
+      {showLanyardSlot && (
+        <Box
+          position="absolute"
+          top={isPrint ? "1.5mm" : "5px"}
+          left="50%"
+          transform="translateX(-50%)"
+          w={isPrint ? "10mm" : "36px"}
+          h={isPrint ? "1.6mm" : "5px"}
+          borderRadius="full"
+          bg="rgba(255, 255, 255, 0.3)"
+          border="1px solid rgba(0, 0, 0, 0.3)"
+          zIndex={5}
+        />
+      )}
+
+      {/* 3. INSTITUTIONAL HEADER BANNER WITH GOLD/ACCENT ACCENT LINE */}
+      <Box position="relative" zIndex={2}>
+        <Box bg={theme.primary} color="white" p={isPrint ? "2.5mm 3.5mm" : "9px 12px"}>
+          <Flex align="center" justify="space-between" gap={2}>
+            {schoolLogo ? (
+              <Box
+                w={isPrint ? "7.5mm" : "28px"}
+                h={isPrint ? "7.5mm" : "28px"}
+                borderRadius="md"
+                bg="white"
+                p={0.5}
+                flexShrink={0}
+                boxShadow="0 2px 4px rgba(0,0,0,0.2)"
+              >
+                <img
+                  src={schoolLogo}
+                  alt="Logo"
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                />
+              </Box>
+            ) : (
+              <Flex
+                w={isPrint ? "7.5mm" : "28px"}
+                h={isPrint ? "7.5mm" : "28px"}
+                borderRadius="md"
+                bg="rgba(255,255,255,0.15)"
+                align="center"
+                justify="center"
+                color={theme.accent}
+                flexShrink={0}
+              >
+                <Icon as={FaGraduationCap} boxSize={isPrint ? "5.5pt" : "14px"} />
+              </Flex>
+            )}
+
+            <Box textAlign="right" overflow="hidden">
+              <Text
+                fontSize={isPrint ? "7.5pt" : "11px"}
+                fontWeight="900"
+                color="white"
+                letterSpacing="0.3px"
+                lineHeight="1.15"
+                isTruncated
+              >
+                {schoolName}
+              </Text>
+              <Text
+                fontSize={isPrint ? "4.5pt" : "6.5px"}
+                color={theme.accent}
+                fontWeight="600"
+                fontStyle="italic"
+                isTruncated
+              >
+                "{schoolMotto}"
+              </Text>
+            </Box>
+          </Flex>
+        </Box>
+
+        {/* Role Ribbon Strip with Gold Pinstripe */}
+        <Flex
+          bg={isPrefect ? "linear-gradient(90deg, #D97706 0%, #F59E0B 50%, #D97706 100%)" : theme.accent}
+          py={isPrint ? "0.8mm" : "2.5px"}
+          px={3}
+          justify="space-between"
+          align="center"
+          borderBottom={`1.5px solid ${theme.primary}`}
+        >
+          <Text
+            fontSize={isPrint ? "5.5pt" : "8px"}
+            fontWeight="900"
+            color={isPrefect ? "white" : "#0F172A"}
+            letterSpacing="1px"
+          >
+            {isPrefect ? `★ ${prefectRoleTitle}` : `${roleLabel} IDENTITY CARD`}
+          </Text>
+          <Text
+            fontSize={isPrint ? "4.5pt" : "7px"}
+            fontWeight="800"
+            color={isPrefect ? "#FEF08A" : "#0F172A"}
+          >
+            {academicSession}
+          </Text>
         </Flex>
       </Box>
 
-      {/* Role Ribbon Strip */}
-      <Box bg={theme.accent} py={isPrint ? "0.8mm" : "2px"} px={3} textAlign="center">
-        <Text
-          fontSize={isPrint ? "5.5pt" : "8px"}
-          fontWeight="900"
-          color="#0F172A"
-          letterSpacing="1px"
-        >
-          {roleLabel} IDENTITY CARD
-        </Text>
-      </Box>
-
-      {/* Card Body (Photo, Credentials & QR) */}
-      <Box p={isPrint ? "2mm 3.5mm" : "8px 14px"} flex="1" display="flex" flexDirection="column" justifyContent="space-around">
+      {/* 4. MAIN CARD BODY */}
+      <Box
+        p={isPrint ? "2mm 3.5mm" : "8px 12px"}
+        flex="1"
+        display="flex"
+        flexDirection="column"
+        justifyContent="space-around"
+        position="relative"
+        zIndex={2}
+      >
         {isPortrait ? (
-          /* PORTRAIT LAYOUT */
+          /* ========================================================
+             PORTRAIT VIEW
+             ======================================================== */
           <VStack spacing={isPrint ? "1.5mm" : 2} align="center" textAlign="center">
-            {/* Passport Photo */}
-            <Box
-              w={isPrint ? "16mm" : "68px"}
-              h={isPrint ? "18mm" : "78px"}
-              borderRadius={isPrint ? "2mm" : "10px"}
-              overflow="hidden"
-              border={`2px solid ${theme.primary}`}
-              boxShadow="0 2px 6px rgba(0,0,0,0.15)"
-              bg="#F1F5F9"
-            >
-              {item.faceImageUrl ? (
-                <img
-                  src={item.faceImageUrl}
-                  alt={fullName}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              ) : (
-                <Flex
-                  w="100%"
-                  h="100%"
-                  bg={theme.lightBg}
-                  color={theme.primary}
-                  align="center"
-                  justify="center"
+            {/* Passport Photo with Dual-Layer Security Frame */}
+            <Box position="relative" mt={isPrint ? "1mm" : 1}>
+              <Box
+                w={isPrint ? "17mm" : "72px"}
+                h={isPrint ? "20mm" : "84px"}
+                borderRadius={isPrint ? "2mm" : "10px"}
+                overflow="hidden"
+                border={`2px solid ${theme.primary}`}
+                outline={`1.5px solid ${theme.accent}`}
+                boxShadow="0 4px 10px rgba(0,0,0,0.18)"
+                bg="#F1F5F9"
+              >
+                {item.faceImageUrl ? (
+                  <img
+                    src={item.faceImageUrl}
+                    alt={fullName}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <Flex
+                    w="100%"
+                    h="100%"
+                    bg={theme.lightBg}
+                    color={theme.primary}
+                    align="center"
+                    justify="center"
+                    fontWeight="900"
+                    fontSize="22px"
+                  >
+                    {item.firstName?.[0] || item.name?.[0] || "U"}
+                  </Flex>
+                )}
+              </Box>
+
+              {/* Verified Mini Badge on Photo */}
+              <Box
+                position="absolute"
+                bottom="-4px"
+                right="-4px"
+                bg="#10B981"
+                color="white"
+                borderRadius="full"
+                p={0.5}
+                boxShadow="0 1px 3px rgba(0,0,0,0.3)"
+              >
+                <Icon as={FaCheckCircle} boxSize={isPrint ? "3.5pt" : "10px"} />
+              </Box>
+
+              {/* Prefect Star Pin on Photo */}
+              {isPrefect && (
+                <Box
+                  position="absolute"
+                  top="-4px"
+                  left="-4px"
+                  bg="linear-gradient(135deg, #F59E0B 0%, #D97706 100%)"
+                  color="#FFFFFF"
+                  borderRadius="full"
+                  w={isPrint ? "4mm" : "18px"}
+                  h={isPrint ? "4mm" : "18px"}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  fontSize={isPrint ? "4pt" : "9px"}
                   fontWeight="900"
-                  fontSize="20px"
+                  boxShadow="0 2px 4px rgba(0,0,0,0.3)"
+                  border="1.5px solid #FFFFFF"
+                  zIndex={4}
+                  title={`Prefect: ${prefectRoleTitle}`}
                 >
-                  {item.firstName?.[0] || item.name?.[0] || "U"}
-                </Flex>
+                  ★
+                </Box>
               )}
             </Box>
 
-            {/* Name & ID */}
-            <Box>
+            {/* Name, Identification & Class Arm */}
+            <Box maxW={isPrint ? "48mm" : "230px"}>
               <Text
-                fontSize={isPrint ? "8.5pt" : "13px"}
+                fontSize={isPrint ? "8.5pt" : "13.5px"}
                 fontWeight="900"
                 color="#0F172A"
                 lineHeight="1.2"
                 isTruncated
-                maxW={isPrint ? "46mm" : "220px"}
               >
                 {fullName}
               </Text>
+
+              {/* Prominent Prefect Role Badge under Name */}
+              {isPrefect && (
+                <Box my={0.5}>
+                  <Badge
+                    bg="linear-gradient(135deg, #FEF08A 0%, #FDE047 100%)"
+                    color="#854D0E"
+                    border="1px solid #CA8A04"
+                    fontSize={isPrint ? "5.5pt" : "8px"}
+                    fontWeight="900"
+                    px={1.5}
+                    py={0.2}
+                    borderRadius="md"
+                    letterSpacing="0.4px"
+                    boxShadow="0 1px 3px rgba(0,0,0,0.08)"
+                  >
+                    ★ {prefectRoleTitle}
+                  </Badge>
+                </Box>
+              )}
+
+              <HStack justify="center" spacing={1.5} mt={0.5}>
+                <Badge
+                  bg="#0F172A"
+                  color="#F8FAFC"
+                  fontSize={isPrint ? "5pt" : "8px"}
+                  fontWeight="900"
+                  px={1.5}
+                  py={0.2}
+                  borderRadius="sm"
+                  letterSpacing="0.8px"
+                >
+                  ID: {code}
+                </Badge>
+                {showBloodGroup && (
+                  <Badge
+                    bg="#FEE2E2"
+                    color="#DC2626"
+                    fontSize={isPrint ? "4.5pt" : "7.5px"}
+                    fontWeight="900"
+                    px={1}
+                    py={0.2}
+                    borderRadius="sm"
+                  >
+                    <Icon as={FaHeartbeat} mr={0.5} boxSize={isPrint ? "3pt" : "7px"} />
+                    {bloodGroup}
+                  </Badge>
+                )}
+              </HStack>
               <Text
-                fontSize={isPrint ? "7pt" : "10px"}
-                fontWeight="800"
+                fontSize={isPrint ? "6.5pt" : "9.5px"}
                 color={theme.primary}
-                letterSpacing="0.5px"
+                fontWeight="800"
                 mt={0.5}
+                isTruncated
               >
-                ID: {code}
-              </Text>
-              <Text fontSize={isPrint ? "6pt" : "9px"} color="#64748B" fontWeight="700">
                 {subInfo}
               </Text>
             </Box>
           </VStack>
         ) : (
-          /* LANDSCAPE LAYOUT */
+          /* ========================================================
+             LANDSCAPE VIEW
+             ======================================================== */
           <Flex align="center" justify="space-between" gap={3}>
-            {/* Photo */}
-            <Box
-              w={isPrint ? "18mm" : "74px"}
-              h={isPrint ? "22mm" : "86px"}
-              borderRadius="8px"
-              overflow="hidden"
-              border={`2px solid ${theme.primary}`}
-              flexShrink={0}
-            >
-              {item.faceImageUrl ? (
-                <img
-                  src={item.faceImageUrl}
-                  alt={fullName}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              ) : (
-                <Flex w="100%" h="100%" bg={theme.lightBg} color={theme.primary} align="center" justify="center" fontWeight="900" fontSize="22px">
-                  {item.firstName?.[0] || item.name?.[0] || "U"}
-                </Flex>
+            {/* Photo & Verified Badge */}
+            <Box position="relative" flexShrink={0}>
+              <Box
+                w={isPrint ? "19mm" : "78px"}
+                h={isPrint ? "23mm" : "92px"}
+                borderRadius="8px"
+                overflow="hidden"
+                border={`2px solid ${theme.primary}`}
+                outline={`1.5px solid ${theme.accent}`}
+                boxShadow="0 4px 10px rgba(0,0,0,0.15)"
+              >
+                {item.faceImageUrl ? (
+                  <img
+                    src={item.faceImageUrl}
+                    alt={fullName}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <Flex
+                    w="100%"
+                    h="100%"
+                    bg={theme.lightBg}
+                    color={theme.primary}
+                    align="center"
+                    justify="center"
+                    fontWeight="900"
+                    fontSize="24px"
+                  >
+                    {item.firstName?.[0] || item.name?.[0] || "U"}
+                  </Flex>
+                )}
+              </Box>
+              <Box
+                position="absolute"
+                bottom="-3px"
+                right="-3px"
+                bg="#10B981"
+                color="white"
+                borderRadius="full"
+                p={0.5}
+              >
+                <Icon as={FaCheckCircle} boxSize={isPrint ? "3.5pt" : "10px"} />
+              </Box>
+
+              {/* Prefect Star Pin on Photo (Landscape) */}
+              {isPrefect && (
+                <Box
+                  position="absolute"
+                  top="-4px"
+                  left="-4px"
+                  bg="linear-gradient(135deg, #F59E0B 0%, #D97706 100%)"
+                  color="#FFFFFF"
+                  borderRadius="full"
+                  w={isPrint ? "4mm" : "18px"}
+                  h={isPrint ? "4mm" : "18px"}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  fontSize={isPrint ? "4pt" : "9px"}
+                  fontWeight="900"
+                  boxShadow="0 2px 4px rgba(0,0,0,0.3)"
+                  border="1.5px solid #FFFFFF"
+                  zIndex={4}
+                  title={`Prefect: ${prefectRoleTitle}`}
+                >
+                  ★
+                </Box>
               )}
             </Box>
 
             {/* Info Columns */}
             <Box flex="1" overflow="hidden">
-              <Text fontSize={isPrint ? "8.5pt" : "12.5px"} fontWeight="900" color="#0F172A" isTruncated>
+              <Text fontSize={isPrint ? "9pt" : "13.5px"} fontWeight="900" color="#0F172A" isTruncated>
                 {fullName}
               </Text>
-              <Text fontSize={isPrint ? "7pt" : "10px"} fontWeight="800" color={theme.primary}>
-                ID: {code}
-              </Text>
-              <Text fontSize={isPrint ? "6pt" : "9px"} color="#64748B" fontWeight="bold">
+
+              {/* Prominent Prefect Role Badge under Name (Landscape) */}
+              {isPrefect && (
+                <Box my={0.5}>
+                  <Badge
+                    bg="linear-gradient(135deg, #FEF08A 0%, #FDE047 100%)"
+                    color="#854D0E"
+                    border="1px solid #CA8A04"
+                    fontSize={isPrint ? "5.5pt" : "8px"}
+                    fontWeight="900"
+                    px={1.5}
+                    py={0.2}
+                    borderRadius="md"
+                    letterSpacing="0.4px"
+                    boxShadow="0 1px 3px rgba(0,0,0,0.08)"
+                  >
+                    ★ {prefectRoleTitle}
+                  </Badge>
+                </Box>
+              )}
+              <HStack spacing={1.5} my={1}>
+                <Badge bg="#0F172A" color="white" fontSize={isPrint ? "5pt" : "8px"} fontWeight="900" px={1.5}>
+                  {code}
+                </Badge>
+                {showBloodGroup && (
+                  <Badge bg="#FEE2E2" color="#DC2626" fontSize={isPrint ? "4.5pt" : "7px"} fontWeight="900">
+                    <Icon as={FaHeartbeat} mr={0.5} boxSize={isPrint ? "3pt" : "6.5px"} />
+                    {bloodGroup}
+                  </Badge>
+                )}
+              </HStack>
+              <Text fontSize={isPrint ? "6.5pt" : "10px"} color={theme.primary} fontWeight="bold" isTruncated>
                 {subInfo}
               </Text>
-              <Text fontSize={isPrint ? "5.5pt" : "8px"} color="#94A3B8" mt={1}>
-                Emergency: {emergencyPhone}
+              <Text fontSize={isPrint ? "5.5pt" : "8px"} color="#64748B" mt={1}>
+                Emergency: <strong>{emergencyPhone}</strong>
               </Text>
             </Box>
 
-            {/* QR Code */}
-            {qrDataUrl && (
-              <Box w={isPrint ? "14mm" : "55px"} h={isPrint ? "14mm" : "55px"} flexShrink={0}>
-                <img src={qrDataUrl} alt="QR Code" style={{ width: "100%", height: "100%" }} />
-              </Box>
-            )}
+            {/* Right Column: Security Module (Gold Chip + Hologram) directly ABOVE QR Code */}
+            <VStack spacing={isPrint ? "0.8mm" : 1.5} align="center" flexShrink={0}>
+              {(showSmartChip || showHologram) && (
+                <HStack spacing={1} justify="center">
+                  {showSmartChip && <SmartChipEmv isPrint={isPrint} />}
+                  {showHologram && <HologramSeal isPrint={isPrint} theme={theme} />}
+                </HStack>
+              )}
+
+              {qrDataUrl && (
+                <Box
+                  w={isPrint ? "14mm" : "54px"}
+                  h={isPrint ? "14mm" : "54px"}
+                  p={0.5}
+                  border="1px solid #E2E8F0"
+                  borderRadius="md"
+                  bg="white"
+                  boxShadow="0 1px 3px rgba(0,0,0,0.08)"
+                >
+                  <img src={qrDataUrl} alt="QR Code" style={{ width: "100%", height: "100%" }} />
+                </Box>
+              )}
+            </VStack>
           </Flex>
         )}
 
-        {/* Portrait QR & Emergency Details */}
+        {/* Portrait Bottom Row: QR & Security Module directly ABOVE QR Code */}
         {isPortrait && (
-          <Flex justify="space-between" align="center" mt={isPrint ? "1.5mm" : 1} px={1}>
+          <Flex justify="space-between" align="flex-end" mt={isPrint ? "1mm" : 1} px={1}>
             <Box textAlign="left">
-              <Text fontSize={isPrint ? "5pt" : "7.5px"} color="#64748B" fontWeight="600">
-                Emergency:
+              <Text fontSize={isPrint ? "4.5pt" : "7px"} color="#64748B" fontWeight="600">
+                EMERGENCY CONTACT:
               </Text>
-              <Text fontSize={isPrint ? "5.5pt" : "8.5px"} fontWeight="800" color="#0F172A">
+              <Text fontSize={isPrint ? "5.5pt" : "8.5px"} fontWeight="900" color="#0F172A">
                 {emergencyPhone}
               </Text>
-              <Text fontSize={isPrint ? "5pt" : "7px"} color="#94A3B8">
-                Session: {academicSession}
+              <Text fontSize={isPrint ? "4.5pt" : "6.8px"} color="#94A3B8">
+                VALID THRU: 07/{expiryYear}
               </Text>
             </Box>
 
-            {qrDataUrl && (
-              <Box
-                w={isPrint ? "12mm" : "48px"}
-                h={isPrint ? "12mm" : "48px"}
-                p={0.5}
-                border="1px solid #E2E8F0"
-                borderRadius="md"
-              >
-                <img src={qrDataUrl} alt="QR" style={{ width: "100%", height: "100%" }} />
-              </Box>
-            )}
+            {/* Security Stack: Smart Chip & Hologram directly ABOVE QR Code */}
+            <VStack spacing={isPrint ? "0.6mm" : 1} align="center">
+              {(showSmartChip || showHologram) && (
+                <HStack spacing={1} justify="center">
+                  {showSmartChip && <SmartChipEmv isPrint={isPrint} />}
+                  {showHologram && <HologramSeal isPrint={isPrint} theme={theme} />}
+                </HStack>
+              )}
+
+              {qrDataUrl && (
+                <Box
+                  w={isPrint ? "12mm" : "46px"}
+                  h={isPrint ? "12mm" : "46px"}
+                  p={0.5}
+                  border="1px solid #E2E8F0"
+                  borderRadius="md"
+                  bg="white"
+                  boxShadow="0 1px 3px rgba(0,0,0,0.08)"
+                >
+                  <img src={qrDataUrl} alt="QR" style={{ width: "100%", height: "100%" }} />
+                </Box>
+              )}
+            </VStack>
           </Flex>
         )}
       </Box>
 
-      {/* Card Bottom Strip */}
+      {/* 5. METALLIC BOTTOM SECURITY FOOTER STRIP */}
       <Box
         bg={theme.primary}
         color="white"
-        py={isPrint ? "1mm" : "3px"}
+        py={isPrint ? "1mm" : "3.5px"}
         px={3}
-        textAlign="center"
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        position="relative"
+        zIndex={2}
       >
-        <Text fontSize={isPrint ? "4.5pt" : "7px"} fontWeight="bold" letterSpacing="0.5px">
-          OFFICIAL INSTITUTIONAL PASS • ACESMART
+        <Text fontSize={isPrint ? "4.5pt" : "7px"} fontWeight="900" letterSpacing="0.6px">
+          ACESMART • SECURE PVC PASS
         </Text>
+        <HStack spacing={1}>
+          <Box w={isPrint ? "1mm" : "4px"} h={isPrint ? "1mm" : "4px"} borderRadius="full" bg="#10B981" />
+          <Text fontSize={isPrint ? "4pt" : "6.5px"} color="#94A3B8" fontWeight="bold">
+            CHIP VERIFIED
+          </Text>
+        </HStack>
       </Box>
     </Box>
   );
 }
 
-// Visual Barcode Simulation Component
-function BarcodeSimulation({ isPrint = false }) {
-  // Realistic barcode line weights pattern
+// ========================================================
+// REALISTIC METALLIC GOLD EMV SMART CHIP COMPONENT
+// ========================================================
+function SmartChipEmv({ isPrint = false }) {
+  return (
+    <Box
+      w={isPrint ? "7mm" : "28px"}
+      h={isPrint ? "5.5mm" : "21px"}
+      borderRadius={isPrint ? "1mm" : "3.5px"}
+      bg="linear-gradient(135deg, #E6CA65 0%, #FFF2B2 45%, #D4AF37 75%, #AA820A 100%)"
+      border="1px solid #8A6D1C"
+      position="relative"
+      boxShadow="0 1px 2px rgba(0,0,0,0.2)"
+      overflow="hidden"
+      flexShrink={0}
+    >
+      {/* Micro-Circuit Lines */}
+      <Box
+        position="absolute"
+        top="50%"
+        left={0}
+        right={0}
+        h="0.5px"
+        bg="#8A6D1C"
+        opacity={0.7}
+      />
+      <Box
+        position="absolute"
+        left="50%"
+        top={0}
+        bottom={0}
+        w="0.5px"
+        bg="#8A6D1C"
+        opacity={0.7}
+      />
+      <Box
+        position="absolute"
+        top="25%"
+        left="20%"
+        right="20%"
+        bottom="25%"
+        borderRadius="1.5px"
+        border="0.5px solid #8A6D1C"
+        opacity={0.7}
+      />
+    </Box>
+  );
+}
+
+// ========================================================
+// HOLOGRAPHIC SECURITY SEAL COMPONENT
+// ========================================================
+function HologramSeal({ isPrint = false, theme }) {
+  return (
+    <Box
+      w={isPrint ? "6.5mm" : "24px"}
+      h={isPrint ? "6.5mm" : "24px"}
+      borderRadius="full"
+      bg="conic-gradient(from 180deg at 50% 50%, #FFD700, #FF8C00, #FF0080, #00BFFF, #00FF7F, #FFD700)"
+      p={isPrint ? "0.3mm" : "1.5px"}
+      boxShadow="0 1px 4px rgba(0,0,0,0.2)"
+      flexShrink={0}
+    >
+      <Flex
+        w="100%"
+        h="100%"
+        borderRadius="full"
+        bg="linear-gradient(135deg, #0F172A 0%, #1E293B 100%)"
+        align="center"
+        justify="center"
+        color="#FDE047"
+      >
+        <Icon as={FaShieldAlt} boxSize={isPrint ? "3.2pt" : "10px"} />
+      </Flex>
+    </Box>
+  );
+}
+
+// ========================================================
+// VISUAL BARCODE SIMULATION COMPONENT (Code 128)
+// ========================================================
+function BarcodeSimulation({ code, isPrint = false }) {
   const bars = [2, 1, 3, 1, 1, 2, 1, 3, 2, 1, 1, 3, 1, 2, 1, 1, 3, 2, 1, 1, 2, 3, 1, 2];
 
   return (
@@ -1325,14 +1925,14 @@ function BarcodeSimulation({ isPrint = false }) {
       justify="center"
       align="center"
       h={isPrint ? "5mm" : "18px"}
-      gap={isPrint ? "0.4mm" : "1.5px"}
+      gap={isPrint ? "0.35mm" : "1.2px"}
       overflow="hidden"
       my={0.5}
     >
       {bars.map((w, i) => (
         <Box
           key={i}
-          w={`${w * (isPrint ? 0.35 : 1.2)}px`}
+          w={`${w * (isPrint ? 0.35 : 1.1)}px`}
           h="100%"
           bg="#0F172A"
         />

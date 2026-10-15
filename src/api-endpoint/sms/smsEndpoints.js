@@ -333,3 +333,27 @@ export const studentCodeLoginApi = async (studentCode, lastName) => {
   });
   return data;
 };
+
+// Master Broadsheet & 3-Term Cumulative Promotion
+export const getBroadsheetDataApi = async ({ classArmId, academicSession, term }) => {
+  const { data } = await api.get("/sms-results/broadsheet", {
+    params: { classArmId, academicSession, term },
+    withCredentials: true,
+  });
+  return data;
+};
+
+export const savePromotionDecisionsApi = async (payload) => {
+  const { data } = await api.post("/sms-results/broadsheet/promotions", payload, {
+    withCredentials: true,
+  });
+  return data;
+};
+
+export const rolloverPromotedStudentsApi = async (payload) => {
+  const { data } = await api.post("/sms-results/broadsheet/rollover", payload, {
+    withCredentials: true,
+  });
+  return data;
+};
+

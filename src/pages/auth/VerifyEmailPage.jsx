@@ -133,7 +133,7 @@ export default function VerifyEmailPage() {
   };
 
   return (
-    <Flex minH="100vh" w="100%" bg="#f8fafc" align="center" justify="center" p={6}>
+    <Flex minH="100vh" w="100%" bg="#f8fafc" align="center" justify="center" p={{ base: 3, sm: 6 }}>
       <Box w="100%" maxW="440px">
         <Button
           variant="ghost"
@@ -154,7 +154,7 @@ export default function VerifyEmailPage() {
           border="1px solid"
           borderColor="gray.200"
           boxShadow="0 10px 30px rgba(46, 16, 82, 0.08)"
-          p={{ base: 6, sm: 8 }}
+          p={{ base: 4, sm: 8 }}
         >
           <Flex align="center" gap={3} mb={6}>
             <Flex
@@ -252,16 +252,20 @@ export default function VerifyEmailPage() {
                   placeholder=""
                 >
                   <PinInput.HiddenInput />
-                  <PinInput.Control w="100%" gap={2} justify="space-between">
+                  <PinInput.Control w="100%" gap={{ base: "4px", xs: "6px", sm: "8px" }} justify="space-between">
                     {Array.from({ length: OTP_LENGTH }, (_, index) => (
                       <PinInput.Input
                         key={index}
                         index={index}
-                        h="52px"
-                        w="48px"
-                        fontSize="20px"
+                        flex="1"
+                        minW="0"
+                        h={{ base: "44px", sm: "52px" }}
+                        maxW={{ base: "42px", sm: "48px" }}
+                        fontSize={{ base: "17px", sm: "20px" }}
                         fontWeight="700"
-                        borderRadius="xl"
+                        textAlign="center"
+                        p={0}
+                        borderRadius={{ base: "lg", sm: "xl" }}
                         border="1px solid"
                         borderColor="gray.300"
                         _focus={{

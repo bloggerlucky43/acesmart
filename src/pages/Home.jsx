@@ -52,6 +52,7 @@ import PortalContentManager from "./institution/PortalContentManager";
 import PrincipalApprovals from "./institution/PrincipalApprovals";
 import PrefectManager from "./institution/PrefectManager";
 import IdCardGenerator from "./institution/IdCardGenerator";
+import MasterBroadsheet from "./institution/MasterBroadsheet";
 
 // Student & Parent Portal
 import { StudentPortalProvider } from "../libs/StudentPortalProvider";
@@ -238,6 +239,14 @@ const Home = () => {
               }
             />
             <Route
+              path="/institution/broadsheet"
+              element={
+                <InstitutionAdminRoute>
+                  <MasterBroadsheet />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
               path="/institution/fees"
               element={
                 <InstitutionAdminRoute>
@@ -306,6 +315,10 @@ const Home = () => {
             <Route
               path="/teacher/report-cards"
               element={<ResultAndReportCardManager />}
+            />
+            <Route
+              path="/teacher/broadsheet"
+              element={<MasterBroadsheet />}
             />
             <Route
               path="/teacher/resources"

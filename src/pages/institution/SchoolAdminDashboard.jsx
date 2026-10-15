@@ -19,6 +19,7 @@ import {
   FaCheckCircle,
   FaAward,
   FaIdCard,
+  FaTable,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import {
@@ -154,6 +155,19 @@ export default function SchoolAdminDashboard() {
             </Flex>
 
             <Flex gap={3} flexWrap="wrap">
+              <Button
+                size="sm"
+                bg="white"
+                color="#0F172A"
+                fontWeight="800"
+                borderRadius="xl"
+                boxShadow="0 2px 8px rgba(0,0,0,0.15)"
+                _hover={{ bg: "#F8FAFC" }}
+                onClick={() => navigate("/institution/broadsheet")}
+              >
+                <Icon as={FaTable} mr={2} boxSize={3.5} color="#16A34A" />
+                Master Broadsheet
+              </Button>
               <Button
                 size="sm"
                 bg="rgba(255,255,255,0.15)"
@@ -396,6 +410,54 @@ export default function SchoolAdminDashboard() {
             </Text>
             <Text fontSize="13px" color="#64748B" mt={1}>
               Appoint student leaders, view daily attendance code, and monitor sign-in roster.
+            </Text>
+          </Box>
+
+          {/* Action 6: PVC ID Card Generator */}
+          <Box
+            flex="1"
+            minW="240px"
+            bg="white"
+            p={6}
+            borderRadius="2xl"
+            border="1px solid #E2E8F0"
+            cursor="pointer"
+            _hover={{ transform: "translateY(-3px)", boxShadow: "0 10px 24px rgba(0,0,0,0.06)" }}
+            transition="all 0.2s"
+            onClick={() => navigate("/institution/id-cards")}
+          >
+            <Flex w="48px" h="48px" borderRadius="xl" bg="#EEF2FF" color="#4F46E5" align="center" justify="center" mb={4}>
+              <Icon as={FaIdCard} boxSize={6} />
+            </Flex>
+            <Text fontSize="16px" fontWeight="800" color="#0F172A">
+              PVC ID Card Generator
+            </Text>
+            <Text fontSize="13px" color="#64748B" mt={1}>
+              Generate smart cards with QR codes, EMV chip accents, watermark crest, and batch print.
+            </Text>
+          </Box>
+
+          {/* Action 7: Master Broadsheet & 3-Term Promotion */}
+          <Box
+            flex="1"
+            minW="240px"
+            bg="white"
+            p={6}
+            borderRadius="2xl"
+            border="1px solid #E2E8F0"
+            cursor="pointer"
+            _hover={{ transform: "translateY(-3px)", boxShadow: "0 10px 24px rgba(0,0,0,0.06)" }}
+            transition="all 0.2s"
+            onClick={() => navigate("/institution/broadsheet")}
+          >
+            <Flex w="48px" h="48px" borderRadius="xl" bg="#DCFCE7" color="#16A34A" align="center" justify="center" mb={4}>
+              <Icon as={FaTable} boxSize={6} />
+            </Flex>
+            <Text fontSize="16px" fontWeight="800" color="#0F172A">
+              Master Broadsheet & Promotion
+            </Text>
+            <Text fontSize="13px" color="#64748B" mt={1}>
+              Aggregate 3-term scores, review annual rankings, and execute 1-click batch class promotion.
             </Text>
           </Box>
         </Flex>
