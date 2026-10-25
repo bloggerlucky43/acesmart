@@ -140,7 +140,7 @@ const StudentSidebar = ({ isMobile = false, onNavigate }) => {
               {group.title}
             </Text>
             <Flex direction="column" gap={1}>
-              {group.links.map((link) => (
+              {group.links.filter((link) => link.path !== "/student/notifications" || institution?.gateNotificationsEnabled !== false).map((link) => (
                 <NavLink
                   key={link.path}
                   to={link.path}

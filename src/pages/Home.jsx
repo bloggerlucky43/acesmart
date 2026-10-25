@@ -37,6 +37,7 @@ import VerifyEmailPage from "./auth/VerifyEmailPage";
 // School Management System (SMS) Components
 import TeacherScanClockIn from "./teacher/sms/TeacherScanClockIn";
 import StudentAttendanceManager from "./teacher/sms/StudentAttendanceManager";
+import StudentGateCheckIn from "./teacher/sms/StudentGateCheckIn";
 import ResultAndReportCardManager from "./teacher/sms/ResultAndReportCardManager";
 import TeacherResources from "./teacher/resources/TeacherResources";
 import SchoolAdminDashboard from "./institution/SchoolAdminDashboard";
@@ -47,6 +48,7 @@ import AdminPaymentHistory from "./institution/AdminPaymentHistory";
 import AdminTransactions from "./institution/AdminTransactions";
 import AdminFeeBillingManager from "./institution/AdminFeeBillingManager";
 import InstitutionSettings from "./institution/InstitutionSettings";
+import GateCheckInSettings from "./institution/GateCheckInSettings";
 import StaffManager from "./institution/StaffManager";
 import PortalContentManager from "./institution/PortalContentManager";
 import PrincipalApprovals from "./institution/PrincipalApprovals";
@@ -68,6 +70,7 @@ import StudentPerformance from "./student/StudentPerformance";
 import StudentTimetable from "./student/StudentTimetable";
 import StudentAttendance from "./student/StudentAttendance";
 import StudentAnnouncements from "./student/StudentAnnouncements";
+import StudentNotifications from "./student/StudentNotifications";
 import StudentResources from "./student/StudentResources";
 import StudentSettings from "./student/StudentSettings";
 import StudentSupport from "./student/StudentSupport";
@@ -178,6 +181,7 @@ const Home = () => {
               <Route path="timetable" element={<StudentTimetable />} />
               <Route path="attendance" element={<StudentAttendance />} />
               <Route path="announcements" element={<StudentAnnouncements />} />
+              <Route path="notifications" element={<StudentNotifications />} />
               <Route path="resources" element={<StudentResources />} />
               <Route path="profile" element={<StudentProfile />} />
               <Route path="settings" element={<StudentSettings />} />
@@ -287,6 +291,14 @@ const Home = () => {
               }
             />
             <Route
+              path="/institution/gate-check-in"
+              element={
+                <InstitutionAdminRoute>
+                  <GateCheckInSettings />
+                </InstitutionAdminRoute>
+              }
+            />
+            <Route
               path="/institution/portal-content"
               element={
                 <InstitutionAdminRoute>
@@ -311,6 +323,10 @@ const Home = () => {
             <Route
               path="/teacher/attendance"
               element={<StudentAttendanceManager />}
+            />
+            <Route
+              path="/teacher/gate-check-in"
+              element={<StudentGateCheckIn />}
             />
             <Route
               path="/teacher/report-cards"

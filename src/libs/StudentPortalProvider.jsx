@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -13,6 +14,7 @@ import {
 } from "../api-endpoint/sms/smsEndpoints";
 import { getStudentAcademicTermsApi } from "../api-endpoint/sms/portalEndpoints";
 import { toaster } from "../components/ui/toaster";
+import { resetGateNotificationSession } from "./gateNotifications";
 import {
   STUDENT_CODE_KEY,
   clearSavedStudentCode,
@@ -33,6 +35,9 @@ export const StudentPortalProvider = ({ children }) => {
   // The surname is the portal password, so it is kept in memory only and
   // never written to localStorage.
   const credentialsRef = useRef({ code: "", lastName: "" });
+  const activeStudentIdRef = useRef(null);
+
+  useEffect(() => () => { void resetGateNotificationSession(); }, []);
 
   const periodParams = useCallback(
     (period) => {
@@ -123,6 +128,16 @@ export const StudentPortalProvider = ({ children }) => {
         const res = await studentCodeLoginApi(trimmedCode, trimmedLastName);
         if (!res.success) return false;
 
+        if (
+          activeStudentIdRef.current !== res.data.student?.id ||
+          res.data.institution?.gateNotificationsEnabled === false
+        ) {
+          void resetGateNotificationSession({
+            unsubscribe: activeStudentIdRef.current != null
+              || res.data.institution?.gateNotificationsEnabled === false,
+          });
+          activeStudentIdRef.current = res.data.student?.id;
+        }
         credentialsRef.current = {
           code: trimmedCode,
           lastName: trimmedLastName,
@@ -166,6 +181,8 @@ export const StudentPortalProvider = ({ children }) => {
   }, [login]);
 
   const logout = useCallback(() => {
+    void resetGateNotificationSession({ unsubscribe: true });
+    activeStudentIdRef.current = null;
     credentialsRef.current = { code: "", lastName: "" };
     clearSavedStudentCode();
     setActiveData(null);

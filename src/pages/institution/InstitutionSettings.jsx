@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { Box, Flex, Text, Button, Icon, Input, Badge } from "@chakra-ui/react";
 import {
   FaGraduationCap,
@@ -334,6 +335,9 @@ export default function InstitutionSettings() {
             Configure school logo, crest, contact info, and staff enrollment
             credentials
           </Text>
+          <Button asChild mt={3} size="sm" variant="outline" borderColor="#C7D2FE" color="#4338CA" borderRadius="xl" fontWeight="700">
+            <Link to="/institution/gate-check-in">Gate Check-In Settings</Link>
+          </Button>
         </Box>
 
         <InstitutionPaymentAccountCard />

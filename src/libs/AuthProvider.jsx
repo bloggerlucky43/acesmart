@@ -10,7 +10,6 @@ export const AuthProvider = ({ children }) => {
     return storedUser ? JSON?.parse(storedUser) : null;
   });
 
-  console.log("user at authprovider", user);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
@@ -30,11 +29,15 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const res = await getSingleUser();
-      console.log("Auth provider user sync:", res);
-
       if (res?.data) {
-        setUser(res.data);
-        localStorage.setItem("USER_KEY", JSON.stringify(res.data));
+        // /auth/me revalidates identity but does not return the existing bearer.
+        const cached = JSON.parse(localStorage.getItem("USER_KEY") || "null");
+        const verifiedUser = {
+          ...res.data,
+          ...(cached?._id === res.data._id && cached?.token ? { token: cached.token } : {}),
+        };
+        setUser(verifiedUser);
+        localStorage.setItem("USER_KEY", JSON.stringify(verifiedUser));
       }
     } catch (error) {
       if (error.response?.status === 401 || error.response?.status === 403) {

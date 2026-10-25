@@ -28,11 +28,9 @@ import {
   FaIdCard,
   FaTable,
 } from "react-icons/fa";
-import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { logoutUser } from "../../api-endpoint/auth/auths";
 import { useAuth } from "../../libs/AuthProvider";
-import FeedbackModal from "../ui/FeedbackModal";
 
 const Sidebar = () => {
   const { user, setUser } = useAuth();
@@ -143,6 +141,11 @@ const Sidebar = () => {
                 icon: FaSignature,
               },
               {
+                name: "Gate Check-In Settings",
+                path: "/institution/gate-check-in",
+                icon: FaQrcode,
+              },
+              {
                 name: "School Settings",
                 path: "/institution/settings",
                 icon: FaCog,
@@ -170,6 +173,12 @@ const Sidebar = () => {
           name: "Student Attendance",
           path: "/teacher/attendance",
           icon: FaCalendarCheck,
+        },
+        {
+          name: "Student Gate Check-In",
+          path: "/teacher/gate-check-in",
+          icon: FaQrcode,
+          badge: "Optional",
         },
         {
           name: "Class Study Materials",

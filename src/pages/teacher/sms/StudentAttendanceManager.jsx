@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import {
   Box,
   Flex,
@@ -432,6 +433,10 @@ export default function StudentAttendanceManager() {
             </Text>
           </Box>
 
+          <Flex gap={3} align="center" flexWrap="wrap">
+            <Button asChild variant="outline" borderColor="#C7D2FE" color="#4338CA" borderRadius="xl" fontWeight="800" fontSize="13px">
+              <Link to="/teacher/gate-check-in">Scan Arrivals</Link>
+            </Button>
           {viewMode === "daily" && (
             <Button
               bg="linear-gradient(135deg, #10B981 0%, #059669 100%)"
@@ -450,6 +455,7 @@ export default function StudentAttendanceManager() {
               Save Attendance
             </Button>
           )}
+          </Flex>
         </Flex>
 
         {/* View Mode Segmented Switcher */}
@@ -869,7 +875,7 @@ export default function StudentAttendanceManager() {
             </Box>
           ) : filteredRoster.length ? (
             <Flex direction="column" gap={3}>
-              {filteredRoster.map((student, idx) => {
+              {filteredRoster.map((student) => {
                 const mStatus = student.morningStatus || "present";
                 const aStatus = student.afternoonStatus || "present";
 
@@ -1405,4 +1411,3 @@ export default function StudentAttendanceManager() {
     </DashboardLayout>
   );
 }
-
