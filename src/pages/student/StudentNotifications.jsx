@@ -283,13 +283,13 @@ const StudentNotificationInbox = ({ student }) => {
           <PortalCard>
             <Flex align={{ base: "flex-start", md: "center" }} justify="space-between" direction={{ base: "column", md: "row" }} gap={4}>
               <Box>
-                <Flex align="center" gap={2} mb={1}>
+                <Flex align="center" gap={2} mb={1} wrap="wrap">
                   <Text fontSize="16px" fontWeight="800" color="#0F172A">Browser Alerts</Text>
                   <Badge colorPalette={pushState.enabled && permission === "granted" ? "green" : "gray"} borderRadius="full">{pushState.enabled && permission === "granted" ? "Enabled on this device" : "Not confirmed enabled"}</Badge>
                 </Flex>
                 <Text fontSize="13px" color="#64748B" lineHeight="1.7">Permission: {permission}. Alerts are optional, device-specific, and never requested automatically.</Text>
               </Box>
-              <Flex gap={2} wrap="wrap" w={{ base: "100%", md: "auto" }}>
+              <Flex gap={2} direction={{ base: "column", sm: "row" }} wrap="wrap" w={{ base: "100%", md: "auto" }}>
                 {(!pushState.enabled || permission !== "granted") && <Button size="sm" bg="#4338CA" color="white" borderRadius="xl" loading={pushBusy} disabled={pushBusy || !capability.supported || !pushConfig?.configured || permission === "denied"} onClick={enablePush}>Enable Browser Alerts</Button>}
                 <Button size="sm" variant="outline" borderRadius="xl" disabled={pushBusy || !capability.supported} loading={pushBusy && pushState.localSubscription} onClick={disablePush}>Disable / Remove Subscription</Button>
               </Flex>

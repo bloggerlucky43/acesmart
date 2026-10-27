@@ -204,20 +204,11 @@ const StudentTopbar = ({ onOpenMobileNav }) => {
           cursor="pointer"
           _hover={{ bg: "#EEF2FF", color: "#4338CA", borderColor: "#C7D2FE" }}
           transition="all 0.15s ease"
-          onClick={() => navigate("/student/announcements")}
-          title="Announcements & Notices"
+          onClick={() => navigate(institution?.gateNotificationsEnabled === true ? "/student/notifications" : "/student/announcements")}
+          title={institution?.gateNotificationsEnabled === true ? "Gate Notifications" : "Announcements & Notices"}
+          aria-label={institution?.gateNotificationsEnabled === true ? "Open gate notifications" : "Open announcements"}
         >
           <Icon as={FaBell} boxSize={3.5} />
-          <Box
-            position="absolute"
-            top="7px"
-            right="7px"
-            w="6.5px"
-            h="6.5px"
-            borderRadius="full"
-            bg="#EF4444"
-            border="1.5px solid white"
-          />
         </Flex>
 
         {/* Student Profile Avatar Pill */}

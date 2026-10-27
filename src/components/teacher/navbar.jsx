@@ -8,7 +8,7 @@ import {
   useBreakpointValue,
 } from "@chakra-ui/react";
 import { useState } from "react";
-import { FaBell, FaPlus, FaCalendarAlt, FaBars } from "react-icons/fa";
+import { FaBell, FaPlus, FaCalendarAlt, FaBars, FaQrcode } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
 import MobileSideBar from "../../mobile/component/MobileSidebar";
@@ -54,7 +54,7 @@ const Navbar = () => {
       boxShadow="0 1px 12px rgba(0, 0, 0, 0.03)"
     >
       {/* Left Greeting & Context */}
-      <Flex align="center" gap={3}>
+       <Flex align="center" gap={3} minW={0}>
         {/* Mobile Hamburger Button */}
         <Flex
           as="button"
@@ -73,7 +73,7 @@ const Navbar = () => {
           <Icon as={FaBars} boxSize={4} color="#6A1B9A" />
         </Flex>
 
-        <Box>
+        <Box minW={0}>
           <Flex align="center" gap={2}>
             {user?.institution?.logoUrl && (
               <Box w="28px" h="28px" borderRadius="md" bg="white" p={0.5} border="1px solid #E2E8F0">
@@ -89,7 +89,7 @@ const Navbar = () => {
             fontWeight="800"
             color="#0F172A"
             fontFamily="'Outfit', sans-serif"
-            isTruncated
+             truncate
           >
             Welcome back, {firstName}
           </Text>
@@ -104,7 +104,7 @@ const Navbar = () => {
         </Flex>
         <Flex align="center" gap={1.5} color="#64748B" fontSize="12px">
           <Icon as={FaCalendarAlt} boxSize={3} />
-          <Text>
+           <Text truncate>
             {today} • {user?.institution?.name || "CBT Center Management"}
           </Text>
         </Flex>
@@ -112,7 +112,12 @@ const Navbar = () => {
     </Flex>
 
       {/* Right Controls */}
-      <Flex gap={3.5} align="center">
+       <Flex gap={3.5} align="center" flexShrink={0}>
+         {user?.institutionId && (
+           <Button size="sm" minW="44px" h="44px" px={3} bg="#EEF2FF" color="#4338CA" borderRadius="xl" aria-label="Scan student gate arrivals" title="Scan student gate arrivals" onClick={() => navigate("/teacher/gate-check-in")}>
+             <Icon as={FaQrcode} boxSize={4} /><Text display={{ base: "none", xl: "block" }}>Gate Arrivals</Text>
+           </Button>
+         )}
         {/* Quick New Exam Action */}
         <Button
           size="sm"

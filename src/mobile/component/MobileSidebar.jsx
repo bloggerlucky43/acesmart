@@ -127,7 +127,7 @@ const MobileSideBar = ({ onClose }) => {
         top={0}
         left={0}
         w={{ base: "82%", sm: "300px" }}
-        h="100vh"
+        h="100dvh"
         bg="#0F172A"
         color="white"
         p={5}
@@ -170,7 +170,7 @@ const MobileSideBar = ({ onClose }) => {
           </Flex>
 
           {/* Navigation Links */}
-          <Box maxH="calc(100vh - 160px)" overflowY="auto">
+           <Box maxH="calc(100dvh - 180px)" overflowY="auto">
             {navGroups.map((group, gIdx) => (
               <Box key={gIdx} mb={4}>
                 <Text

@@ -426,6 +426,14 @@ const StudentOverview = () => {
         QUICK ACTIONS
       </Text>
       <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+        {institution?.gateNotificationsEnabled === true && (
+          <QuickAction
+            icon={FaBell}
+            title="Gate Notifications"
+            description="Activate your private parent inbox and view school arrival updates"
+            onClick={() => navigate("/student/notifications")}
+          />
+        )}
         <QuickAction
           icon={FaMoneyBillWave}
           title="Fee Statement & Payment"

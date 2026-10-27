@@ -252,6 +252,10 @@ export default function StudentGateCheckIn() {
 
   const startCamera = () => {
     if (!enabled || guardianRef.current || cameraStatusRef.current !== "idle") return;
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      setCameraError("Camera scanning requires HTTPS (or localhost) and a browser with camera support. Open the secure school site, or enter the student code below.");
+      return;
+    }
     const generation = ++cameraGenerationRef.current;
     const valid = () => mountedRef.current && generation === cameraGenerationRef.current;
     cameraStatusRef.current = "starting";
@@ -283,6 +287,7 @@ export default function StudentGateCheckIn() {
           const video = document.getElementById(readerId)?.querySelector("video");
           if (video) {
             video.setAttribute("playsinline", "true");
+            video.muted = true;
             Object.assign(video.style, { width: "100%", height: "auto", maxHeight: "360px", objectFit: "cover" });
             video.play()?.catch(() => {});
             for (const track of video.srcObject?.getTracks?.() || []) {
@@ -300,6 +305,10 @@ export default function StudentGateCheckIn() {
           await disposeScanner(scanner);
           if (scannerRef.current === scanner) scannerRef.current = null;
           if (!valid()) return;
+          if (error?.name === "NotAllowedError" || error?.name === "SecurityError" || /permission|notallowed/i.test(String(error))) {
+            setCameraError("Camera permission is blocked. Allow camera access for this site in your browser settings, then start again. You can enter the student code below instead.");
+            break;
+          }
           if (facingMode === "user") {
             const detail = typeof error === "string" ? error : error?.message;
             setCameraError(`Could not access a camera. Allow camera permission in your browser and use HTTPS (or localhost). You can enter the student code below instead.${detail ? ` Camera: ${detail}` : ""}`);
@@ -354,13 +363,13 @@ export default function StudentGateCheckIn() {
 
   return (
     <DashboardLayout>
-      <Box p={{ base: 4, md: 8 }} pt={{ base: "84px", md: "88px" }} pl={{ base: 4, lg: "260px" }} maxW="1350px" mx="auto">
+      <Box p={{ base: 3, sm: 4, md: 8 }} pt={{ base: "84px", md: "88px" }} pl={{ base: 3, sm: 4, lg: "260px" }} maxW="1350px" mx="auto" minW={0} overflowWrap="anywhere">
         <Flex direction={{ base: "column", md: "row" }} justify="space-between" gap={4} mb={6}>
           <Box>
             <Text as="h1" fontSize={{ base: "22px", md: "24px" }} fontWeight="900" color="#0F172A">Student Gate Arrivals</Text>
             <Text fontSize="13px" color="#64748B" mt={1}>{settings?.institutionName || "Your school"} | Arrival only, no checkout</Text>
           </Box>
-          <Flex gap={2} flexWrap="wrap">
+          <Flex gap={2} direction={{ base: "column", sm: "row" }} w={{ base: "100%", md: "auto" }}>
             <Button asChild variant="outline" borderRadius="xl" color="#4338CA"><Link to="/teacher/attendance">Manual Attendance Register</Link></Button>
             {isAdmin && <Button asChild variant="ghost" borderRadius="xl" color="#4338CA"><Link to="/institution/gate-check-in">Gate Settings</Link></Button>}
           </Flex>
@@ -400,15 +409,30 @@ export default function StudentGateCheckIn() {
                   )}
                   {cameraStatus === "scanning" && <Badge position="absolute" top={3} left={3} bg="#065F46" color="white" px={3} py={1} borderRadius="full">{processing ? "Saving, hold next card" : "Ready for next student"}</Badge>}
                 </Box>
-                <Flex gap={3} mt={4}>
-                  <Button flex={1} bg="#4338CA" color="white" borderRadius="xl" disabled={cameraStatus !== "idle" || Boolean(guardian)} onClick={startCamera}>Start Camera</Button>
-                  <Button flex={1} variant="outline" color="#991B1B" borderRadius="xl" disabled={cameraStatus === "idle" || cameraStatus === "stopping"} onClick={() => { void stopCamera(); }}>Stop Camera</Button>
+                <Flex gap={3} mt={4} direction={{ base: "column", sm: "row" }}>
+                  <Button flex={1} minH="44px" bg="#4338CA" color="white" borderRadius="xl" disabled={cameraStatus !== "idle" || Boolean(guardian)} onClick={startCamera}>Start Camera</Button>
+                  <Button flex={1} minH="44px" variant="outline" color="#991B1B" borderRadius="xl" disabled={cameraStatus === "idle" || cameraStatus === "stopping"} onClick={() => { void stopCamera(); }}>Stop Camera</Button>
                 </Flex>
                 {cameraError && <Text role="alert" color="#991B1B" fontSize="13px" mt={3}>{cameraError}</Text>}
+                {feedback && (
+                  <Box role={feedback.type === "error" ? "alert" : "status"} aria-live="polite" p={4} bg={feedbackColors[0]} color={feedbackColors[1]} borderRadius="xl" mt={4}>
+                    <Text fontWeight="800">{feedback.title}</Text>
+                    {selected && (feedback.type === "success" || feedback.type === "duplicate") && (
+                      <Flex gap={3} align="center" mt={2}>
+                        <StudentPhoto key={selected.student.id} student={selected.student} size="44px" />
+                        <Box minW={0}>
+                          <Text fontWeight="800" fontSize="14px">{selected.student.fullName}</Text>
+                          <Text fontSize="12px">{selected.student.studentCode} | {arrivalTime(selected.arrival.arrivedAt)}</Text>
+                        </Box>
+                      </Flex>
+                    )}
+                    <Text fontSize="13px" mt={2}>{feedback.message}</Text>
+                  </Box>
+                )}
                 <Box as="form" onSubmit={(event) => { event.preventDefault(); void processCode(manualCode, "manual"); }} mt={5} pt={4} borderTop="1px solid #E2E8F0">
                   <Text as="label" htmlFor="gate-manual-code" fontSize="13px" fontWeight="800" color="#334155">Enter student code instead</Text>
                   <Flex gap={2} mt={2} direction={{ base: "column", sm: "row" }}>
-                    <Input id="gate-manual-code" value={manualCode} onChange={(event) => setManualCode(event.target.value)} placeholder="Student code from ID card" autoComplete="off" spellCheck={false} required disabled={processing || Boolean(guardian)} borderRadius="xl" />
+                    <Input id="gate-manual-code" value={manualCode} onChange={(event) => setManualCode(event.target.value)} placeholder="Student code from ID card" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} required disabled={processing || Boolean(guardian)} borderRadius="xl" />
                     <Button type="submit" bg="#4338CA" color="white" borderRadius="xl" loading={processing} disabled={!manualCode.trim() || Boolean(guardian)}>Record Arrival</Button>
                   </Flex>
                 </Box>
@@ -417,7 +441,6 @@ export default function StudentGateCheckIn() {
               </Box>
 
               <Box flex="1" minW={0}>
-                {feedback && <Box role={feedback.type === "error" ? "alert" : "status"} aria-live="polite" p={4} bg={feedbackColors[0]} color={feedbackColors[1]} borderRadius="xl" mb={4}><Text fontWeight="800">{feedback.title}</Text><Text fontSize="13px" mt={1}>{feedback.message}</Text></Box>}
                 {selected ? (
                   <Box p={5} bg="white" border="1px solid #E2E8F0" borderRadius="2xl">
                     <Text fontSize="12px" fontWeight="800" color="#64748B" mb={3}>SELECTED STUDENT'S SAVED ARRIVAL</Text>
@@ -433,7 +456,7 @@ export default function StudentGateCheckIn() {
                       <Text fontSize="13px" color="#475569">AM sync: {selected.attendanceSynced ? "synced when this arrival was recorded" : "not synced by this arrival; use the manual register if needed"}. Afternoon unchanged.</Text>
                       <Text fontSize="13px" color="#475569" mt={2}>Parent inbox: {selected.notificationCreated ? "in-app notice created for this arrival, not confirmation of delivered push" : "no in-app notice created by this arrival"}. No SMS.</Text>
                     </Box>
-                    <Button mt={4} variant="outline" color="#4338CA" borderRadius="xl" disabled={processing || Boolean(guardian) || !settings.gateNotificationsEnabled} onClick={openGuardian}>Private Parent Activation Code</Button>
+                    <Button mt={4} w={{ base: "100%", sm: "auto" }} h="auto" minH="44px" py={2} whiteSpace="normal" variant="outline" color="#4338CA" borderRadius="xl" disabled={processing || Boolean(guardian) || !settings.gateNotificationsEnabled} onClick={openGuardian}>Private Parent Activation Code</Button>
                     {!settings.gateNotificationsEnabled && <Text fontSize="12px" color="#64748B" mt={2}>A school administrator must enable parent notifications before generating an access code.</Text>}
                   </Box>
                 ) : <Box p={6} bg="white" border="1px solid #E2E8F0" borderRadius="2xl" color="#64748B">Scan a student or select a recent arrival to verify their photo and saved details.</Box>}
@@ -450,7 +473,7 @@ export default function StudentGateCheckIn() {
                         <Text fontSize="12px" color="#92400E" mt={2}>This code is not stored in this browser. Closing this panel removes it from the screen.</Text>
                         <Button asChild mt={3} variant="outline" borderRadius="xl"><Link to="/student/notifications" target="_blank" rel="noopener noreferrer">Parent Inbox</Link></Button>
                       </>
-                    ) : <Button mt={4} bg="#92400E" color="white" borderRadius="xl" loading={generating} onClick={generateAccess}>Confirm and Generate New Code</Button>}
+                    ) : <Button mt={4} w={{ base: "100%", sm: "auto" }} h="auto" minH="44px" py={2} whiteSpace="normal" bg="#92400E" color="white" borderRadius="xl" loading={generating} onClick={generateAccess}>Confirm and Generate New Code</Button>}
                     {guardianError && <Text role="alert" color="#991B1B" fontSize="13px" mt={3}>{guardianError}</Text>}
                     <Button mt={3} ml={2} variant="outline" borderRadius="xl" disabled={generating} onClick={closeGuardian}>{guardian.accessCode ? "Hide Private Code" : "Cancel"}</Button>
                     <Text fontSize="12px" color="#92400E" mt={3}>Camera stopped for private setup. Close this panel and start the camera again to continue scanning.</Text>
@@ -462,15 +485,15 @@ export default function StudentGateCheckIn() {
             <Box mt={6} p={{ base: 4, md: 5 }} bg="white" border="1px solid #E2E8F0" borderRadius="2xl">
               <Flex justify="space-between" direction={{ base: "column", sm: "row" }} gap={3} align={{ base: "stretch", sm: "center" }}>
                 <Box><Text fontSize="17px" fontWeight="900" color="#0F172A">Recent Arrivals</Text><Text fontSize="13px" color="#64748B">{listLoading ? "Refreshing saved arrivals..." : listError ? "Count unavailable until refresh succeeds" : totalCount !== null ? `${totalCount} arrivals on ${date}` : `${arrivals.length} recent arrivals on ${date}`} | WAT school date</Text></Box>
-                <Flex gap={2} align="center">
+                <Flex gap={2} align="center" direction={{ base: "column", sm: "row" }} w={{ base: "100%", sm: "auto" }}>
                   <Input type="date" aria-label="Arrival history date in WAT" value={date} onChange={(event) => {
                     if (!event.target.value) return;
                     listRevisionRef.current += 1;
                     setDate(event.target.value);
                     setArrivals([]);
                     setTotalCount(null);
-                  }} max={watDate()} w="170px" borderRadius="xl" />
-                  <Button variant="outline" borderRadius="xl" onClick={() => setRefresh((value) => value + 1)}>Refresh</Button>
+                  }} max={watDate()} w={{ base: "100%", sm: "170px" }} minW={0} borderRadius="xl" />
+                  <Button w={{ base: "100%", sm: "auto" }} variant="outline" borderRadius="xl" onClick={() => setRefresh((value) => value + 1)}>Refresh</Button>
                 </Flex>
               </Flex>
               {listError && <Text role="alert" color="#991B1B" fontSize="13px" mt={3}>{listError} The history may be stale; this does not undo a server-confirmed arrival.</Text>}

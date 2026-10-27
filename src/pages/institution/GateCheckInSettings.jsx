@@ -96,7 +96,7 @@ export default function GateCheckInSettings() {
 
   return (
     <DashboardLayout>
-      <Box p={{ base: 4, md: 8 }} pt={{ base: "84px", md: "88px" }} pl={{ base: 4, lg: "260px" }} maxW="1200px" mx="auto">
+      <Box p={{ base: 3, sm: 4, md: 8 }} pt={{ base: "84px", md: "88px" }} pl={{ base: 3, sm: 4, lg: "260px" }} maxW="1200px" mx="auto" minW={0} overflowWrap="anywhere">
         <Flex direction={{ base: "column", md: "row" }} justify="space-between" gap={4} mb={6}>
           <Box>
             <Text as="h1" fontSize={{ base: "22px", md: "24px" }} fontWeight="900" color="#0F172A">Gate Check-In Settings</Text>
@@ -140,7 +140,7 @@ export default function GateCheckInSettings() {
                       }}
                       style={{ width: 20, height: 20, marginTop: 3, flexShrink: 0, accentColor: "#4338CA" }}
                     />
-                    <Box>
+                    <Box minW={0}>
                       <Text fontWeight="800" fontSize="14px" color="#0F172A">{option.title}</Text>
                       <Text fontSize="13px" color="#64748B" mt={1}>{option.description}</Text>
                       {option.key !== "gateCheckInEnabled" && !form.gateCheckInEnabled && (
@@ -158,7 +158,7 @@ export default function GateCheckInSettings() {
             </Box>
             {saveError && <Text role="alert" color="#991B1B" mt={4}>{saveError}</Text>}
             {saved && <Text role="status" color="#047857" mt={4}>Gate settings saved successfully.</Text>}
-            <Flex mt={5} gap={3} flexWrap="wrap">
+            <Flex mt={5} gap={3} direction={{ base: "column", sm: "row" }} flexWrap="wrap">
               <Button type="submit" bg="#4338CA" color="white" borderRadius="xl" loading={saving} disabled={!dirty || saving}>Save Gate Settings</Button>
               <Button type="button" variant="outline" borderRadius="xl" disabled={!dirty || saving} onClick={() => {
                 setForm(Object.fromEntries(Object.keys(defaultFlags).map((key) => [key, settings[key] === true])));

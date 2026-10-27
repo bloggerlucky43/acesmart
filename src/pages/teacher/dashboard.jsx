@@ -5,7 +5,7 @@ import MCards from "../../mobile/component/cards";
 import MPerformance from "../../mobile/component/performance";
 import MobileLayout from "../../mobile/constant/mobilelayout";
 import { Box, useBreakpointValue, Flex, Text, Button, Icon } from "@chakra-ui/react";
-import { FaGraduationCap, FaPlus, FaBookOpen } from "react-icons/fa";
+import { FaGraduationCap, FaPlus, FaBookOpen, FaQrcode, FaCog, FaCalendarCheck } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
 
@@ -14,11 +14,32 @@ const Teacher = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const teacherName = user?.name || user?.username || "Educator";
+  const isInstitutionAdmin = ["institution_admin", "institution", "admin", "superadmin"].includes(user?.role);
+  const gateActions = user?.institutionId && (
+    <Box mb={5} p={4} bg="white" border="1px solid #E2E8F0" borderRadius="2xl">
+      <Text fontSize="14px" fontWeight="800" color="#0F172A" mb={1}>School Gate & Attendance</Text>
+      <Text fontSize="12px" color="#64748B" mb={3}>Optional arrival scanning. Your manual register stays available.</Text>
+      <Flex gap={2} direction={{ base: "column", lg: "row" }} wrap="wrap">
+        <Button minH="44px" h="auto" py={2} whiteSpace="normal" bg="#4338CA" color="white" borderRadius="xl" onClick={() => navigate("/teacher/gate-check-in")}>
+          <Icon as={FaQrcode} boxSize={4} />Scan Student Arrivals
+        </Button>
+        <Button minH="44px" h="auto" py={2} whiteSpace="normal" variant="outline" borderRadius="xl" onClick={() => navigate("/teacher/attendance")}>
+          <Icon as={FaCalendarCheck} boxSize={4} />Manual Attendance Register
+        </Button>
+        {isInstitutionAdmin && (
+          <Button minH="44px" h="auto" py={2} whiteSpace="normal" variant="outline" borderRadius="xl" onClick={() => navigate("/institution/gate-check-in")}>
+            <Icon as={FaCog} boxSize={4} />Gate Check-In Settings
+          </Button>
+        )}
+      </Flex>
+    </Box>
+  );
 
   return (
     <Box>
       {isMobile ? (
         <MobileLayout>
+          {gateActions}
           <MCards />
           <MPerformance />
         </MobileLayout>
@@ -134,6 +155,8 @@ const Teacher = () => {
                 </Flex>
               </Flex>
             </Box>
+
+            {gateActions}
 
             {/* Metric KPI Cards & Action Bar */}
             <Cards />

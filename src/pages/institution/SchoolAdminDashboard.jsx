@@ -154,7 +154,13 @@ export default function SchoolAdminDashboard() {
               </Box>
             </Flex>
 
-            <Flex gap={3} flexWrap="wrap">
+            <Flex gap={3} flexWrap="wrap" w={{ base: "100%", md: "auto" }}>
+              <Button minH="44px" w={{ base: "100%", sm: "auto" }} bg="#4338CA" color="white" borderRadius="xl" onClick={() => navigate("/teacher/gate-check-in")}>
+                <Icon as={FaQrcode} boxSize={4} />Scan Student Arrivals
+              </Button>
+              <Button minH="44px" w={{ base: "100%", sm: "auto" }} variant="outline" borderColor="rgba(255,255,255,0.3)" color="white" borderRadius="xl" onClick={() => navigate("/institution/gate-check-in")}>
+                <Icon as={FaCog} boxSize={4} />Gate Check-In Settings
+              </Button>
               <Button
                 size="sm"
                 bg="white"
