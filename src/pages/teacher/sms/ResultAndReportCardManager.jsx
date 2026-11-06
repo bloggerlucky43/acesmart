@@ -58,6 +58,8 @@ import { useNavigate } from "react-router-dom";
 const DEFAULT_FALLBACK_SUBJECTS = [
   "Mathematics",
   "English Language",
+  "Quantitative Reasoning",
+  "Verbal Reasoning",
   "Biology",
   "Chemistry",
   "Physics",
