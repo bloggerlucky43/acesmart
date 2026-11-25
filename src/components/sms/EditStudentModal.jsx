@@ -23,6 +23,7 @@ import { updateStudentApi } from "../../api-endpoint/student/students";
 import { getClassArmsApi } from "../../api-endpoint/sms/smsEndpoints";
 import { toaster } from "../ui/toaster";
 import imageCompression from "browser-image-compression";
+import StudentAcademicSection from "./StudentAcademicSection";
 
 const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
   const [form, setForm] = useState({
@@ -54,12 +55,13 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
   }, [student]);
 
   useEffect(() => {
+    if (!isOpen) return;
     getClassArmsApi()
       .then((res) => {
         if (res.success) setClassArms(res.data || []);
       })
       .catch(() => setClassArms([]));
-  }, []);
+  }, [isOpen]);
 
   if (!isOpen || !student) return null;
 
@@ -151,7 +153,8 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
         maxW="600px"
         borderRadius="28px"
         boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.25)"
-        overflow="hidden"
+        maxH="calc(100dvh - 32px)"
+        overflowY="auto"
         border="1px solid #E2E8F0"
         animation="fadeIn 0.2s ease"
       >
@@ -407,6 +410,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
                 />
               </Box>
             </SimpleGrid>
+            {student?.institutionId && <StudentAcademicSection key={student.id || student._id} student={student} />}
           </Box>
 
           {/* Modal Footer */}

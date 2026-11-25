@@ -549,6 +549,9 @@ export default function ResultAndReportCardManager() {
           ...(activeTab === "report-card" ? {} : { subject }),
         });
         if (res.success && !cancelled) {
+          if (activeTab !== "report-card" && res.data?.unconfiguredCount > 0) {
+            toaster.create({ title: `${res.data.unconfiguredCount} SS students need academic setup`, description: "Use Edit Student to set their department and offered subjects, then reload this class.", type: "info" });
+          }
           const students = (res.data?.roster || []).map((student) => ({ ...student, studentCode: student.studentCode || student.code || student.studentId }));
           setRoster(students);
           setRosterScope(rosterKey);
@@ -618,7 +621,7 @@ export default function ResultAndReportCardManager() {
   const handleScoreChange = (studentId, field, value) => {
     if (!canEditSubject || !scoreDataReady || saving || syncing) return;
     if (!editableRoster.some((student) => student.studentId === studentId)) return;
-    const numVal = Math.max(0, Number(value) || 0);
+    const numVal = value === "" ? "" : Math.max(0, Number(value) || 0);
     setScores((prev) => ({
       ...prev,
       [studentId]: {
@@ -651,6 +654,11 @@ export default function ResultAndReportCardManager() {
     try {
       const formattedScores = editableRoster.map((item) => {
         const s = scores[item.studentId] || {};
+        const previous = existingScores[item.studentId] || {};
+        const fields = [["ca1", "caScore1"], ["ca2", "caScore2"], ["assignment", "assignmentScore"], ["exam", "examScore"]];
+        const hasEnteredMark = fields.some(([field]) => s[field] !== undefined && s[field] !== null && s[field] !== "");
+        const changed = fields.some(([field, stored]) => (s[field] ?? "") !== (previous[stored] ?? ""));
+        if (!hasEnteredMark || !changed) return null;
         return {
           studentId: item.studentId,
           caScore1: s.ca1 || 0,
@@ -658,7 +666,11 @@ export default function ResultAndReportCardManager() {
           assignmentScore: s.assignment || 0,
           examScore: s.exam || 0,
         };
-      });
+      }).filter(Boolean);
+      if (!formattedScores.length) {
+        toaster.create({ title: "No changed marks to save", description: "Untouched or blank students are not recorded as zero.", type: "info" });
+        return;
+      }
 
       const res = await uploadSubjectScoresApi({
         subject,
@@ -671,7 +683,7 @@ export default function ResultAndReportCardManager() {
       if (res.success && savedScope === mutationScope.current) {
         toaster.create({
           title: "Scores Saved Successfully!",
-          description: `Updated scores for ${editableRoster.length} students in ${subject} (${selectedSession} • ${selectedTerm})`,
+          description: `Updated scores for ${formattedScores.length} students in ${subject} (${selectedSession} • ${selectedTerm})`,
           type: "success",
         });
         await loadExistingScores();

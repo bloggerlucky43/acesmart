@@ -18,6 +18,9 @@ import {
 } from "../../../../api-endpoint/student/students";
 import { CardGridSkeleton } from "../../../../components/ui/skeletons";
 import { toaster } from "../../../../components/ui/toaster";
+import EditStudentModal from "../../../../components/sms/EditStudentModal";
+import { getClassArmsApi } from "../../../../api-endpoint/sms/smsEndpoints";
+import { useAuth } from "../../../../libs/AuthProvider";
 import {
   FaSearch,
   FaCheck,
@@ -28,21 +31,53 @@ import {
 } from "react-icons/fa";
 
 export const MStudentEditor = () => {
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?._id || user?.id;
+  const institutionId = user?.institutionId;
+  const isSchoolAdmin = ["institution", "institution_admin", "admin"].includes(user?.role);
+  const [selectedClassArm, setSelectedClassArm] = useState("");
+  const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingStudent, setEditingStudent] = useState(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["students"],
-    queryFn: fetchStudent,
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
+  const { data: classData, isLoading: classesLoading, isError: classesError } = useQuery({
+    queryKey: ["student-editor-classes", userId, institutionId, user?.role],
+    queryFn: async () => {
+      const response = await getClassArmsApi();
+      if (!response?.success) throw new Error("Unable to load classes");
+      return response;
+    },
+    enabled: !authLoading && Boolean(userId && institutionId) && (user?.role === "teacher" || isSchoolAdmin),
+    retry: false,
+  });
+  const classArms = (classData?.data || []).filter((arm) =>
+    arm.institutionId === institutionId && (isSchoolAdmin || arm.formTeacherId === userId));
+  const canLoadStudents = !authLoading && Boolean(userId) &&
+    (institutionId ? classArms.some((arm) => arm.id === selectedClassArm) : user?.role === "teacher");
+
+  const { data, isFetching, isError } = useQuery({
+    queryKey: ["students", "editing", userId, institutionId, user?.role, selectedClassArm, searchTerm, page],
+    queryFn: async ({ signal }) => {
+      const response = await fetchStudent({
+        ...(institutionId ? { classArmId: selectedClassArm } : {}),
+        editingOnly: true, search: searchTerm, page, limit: 25,
+      });
+      if (signal.aborted) throw new DOMException("Request superseded", "AbortError");
+      if (!response?.success) throw new Error("Unable to load students");
+      return response;
+    },
+    enabled: canLoadStudents,
+    staleTime: 0,
+    gcTime: 10 * 60 * 1000,
+    retry: false,
     refetchOnWindowFocus: false,
   });
 
   const activateMutation = useMutation({
     mutationFn: activateStudent,
     onSuccess: () => {
-      queryClient.invalidateQueries(["students"]);
+      queryClient.invalidateQueries({ queryKey: ["students"] });
       toaster.create({ title: "Student profile activated", type: "success" });
     },
     onError: () => {
@@ -53,7 +88,7 @@ export const MStudentEditor = () => {
   const deactivateMutation = useMutation({
     mutationFn: deactivateStudent,
     onSuccess: () => {
-      queryClient.invalidateQueries(["students"]);
+      queryClient.invalidateQueries({ queryKey: ["students"] });
       toaster.create({ title: "Student profile deactivated", type: "info" });
     },
     onError: () => {
@@ -64,7 +99,7 @@ export const MStudentEditor = () => {
   const deleteMutation = useMutation({
     mutationFn: deleteStudent,
     onSuccess: () => {
-      queryClient.invalidateQueries(["students"]);
+      queryClient.invalidateQueries({ queryKey: ["students"] });
       toaster.create({ title: "Student removed successfully", type: "success" });
     },
     onError: () => {
@@ -72,14 +107,8 @@ export const MStudentEditor = () => {
     },
   });
 
-  const students = data?.students || [];
-
-  const filteredStudents = students.filter((s) => {
-    const term = searchTerm.toLowerCase();
-    const fullName = `${s?.firstName ?? ""} ${s?.lastName ?? ""}`.toLowerCase();
-    const studentId = String(s?.studentId ?? "").toLowerCase();
-    return fullName.includes(term) || studentId.includes(term);
-  });
+  const students = canLoadStudents && !isFetching && !isError ? data?.students || [] : [];
+  const count = canLoadStudents && !isFetching && !isError ? data?.count || 0 : 0;
 
   return (
     <Box pb={6} className="animate-scale-in">
@@ -94,10 +123,32 @@ export const MStudentEditor = () => {
         <Text fontSize="12px" color="#64748B">
           Activate, suspend, or manage student assessment access permissions
         </Text>
+        <Text fontSize="12px" color="#64748B" mt={1}>{count} Records</Text>
       </Box>
 
       {/* Search Bar */}
       <Box mb={4}>
+        {institutionId && (
+          <Box mb={3}>
+            <Text fontSize="13px" fontWeight="600" mb={1}>Class</Text>
+            <Box as="select" aria-label="Select class" value={selectedClassArm}
+              onChange={(e) => {
+                setSelectedClassArm(e.target.value);
+                setSearchTerm("");
+                setPage(1);
+                setEditingStudent(null);
+              }}
+              w="100%" minH="44px" px={3} border="1px solid #E2E8F0" borderRadius="xl" bg="white"
+              disabled={authLoading || classesLoading || classesError}>
+              <option value="">Select a class to load students</option>
+              {classArms.map((arm) => <option key={arm.id} value={arm.id}>{arm.name}</option>)}
+            </Box>
+            {classesError && <Text color="red.500" fontSize="13px">Unable to load classes. Please retry.</Text>}
+            {!classesLoading && !classesError && classArms.length === 0 && (
+              <Text fontSize="13px" color="#64748B">No authorized classes assigned.</Text>
+            )}
+          </Box>
+        )}
         <Flex
           align="center"
           gap={2.5}
@@ -113,20 +164,21 @@ export const MStudentEditor = () => {
             variant="unstyled"
             placeholder="Search student by name or ID..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); setEditingStudent(null); }}
+            disabled={!canLoadStudents}
             fontSize="13px"
           />
         </Flex>
       </Box>
 
       {/* Loading Skeleton */}
-      {isLoading ? (
+      {authLoading || (institutionId && classesLoading) || (canLoadStudents && isFetching) ? (
         <CardGridSkeleton count={4} />
-      ) : isError ? (
+      ) : canLoadStudents && isError ? (
         <Box bg="white" p={6} borderRadius="2xl" textAlign="center" color="red.500" fontSize="13px">
           Error retrieving student records. Please retry.
         </Box>
-      ) : filteredStudents.length === 0 ? (
+      ) : students.length === 0 ? (
         <Box
           bg="white"
           borderRadius="2xl"
@@ -136,16 +188,16 @@ export const MStudentEditor = () => {
         >
           <Icon as={FaUsers} boxSize={8} color="#CBD5E1" mb={2} />
           <Text fontSize="14px" fontWeight="700" color="#334155" mb={1}>
-            No matching students found
+            {institutionId && !canLoadStudents ? "Select a class to load students" : "No matching students found"}
           </Text>
           <Text fontSize="12px" color="#64748B">
-            Try a different search query or enroll new candidates.
+            {institutionId && !canLoadStudents ? "Only your authorized classes are available for editing." : "Try a different search query or enroll new candidates."}
           </Text>
         </Box>
       ) : (
         /* Mobile Card List */
         <VStack gap={3} align="stretch">
-          {filteredStudents.map((s) => {
+          {students.map((s) => {
             const fullName = `${s?.firstName ?? ""} ${s?.lastName ?? ""}`.trim() || "Candidate";
             const isActive = s?.active === true || s?.status === "active";
 
@@ -185,7 +237,18 @@ export const MStudentEditor = () => {
                 </Flex>
 
                 {/* Actions */}
-                <Flex gap={2} pt={2.5} borderTop="1px solid" borderColor="#F1F5F9">
+                <Flex gap={2} pt={2.5} borderTop="1px solid" borderColor="#F1F5F9" wrap="wrap">
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    color="#6A1B9A"
+                    borderRadius="lg"
+                    h="34px"
+                    onClick={() => setEditingStudent(s)}
+                  >
+                    <Icon as={FaUserEdit} boxSize={3} />
+                    Edit / Photo
+                  </Button>
                   {isActive ? (
                     <Button
                       flex={1}
@@ -202,7 +265,7 @@ export const MStudentEditor = () => {
                       loading={deactivateMutation.isLoading}
                       leftIcon={<Icon as={FaBan} />}
                     >
-                      Suspend Access
+                      Suspend
                     </Button>
                   ) : (
                     <Button
@@ -248,6 +311,23 @@ export const MStudentEditor = () => {
           })}
         </VStack>
       )}
+      {canLoadStudents && !isError && (
+        <Flex mt={4} gap={3} align="center" justify="space-between" wrap="wrap">
+          <Text fontSize="12px" color="#64748B">Page {page} of {Math.max(1, data?.totalPages || 0)} | {count} records</Text>
+          <Flex gap={2}>
+            <Button size="sm" variant="outline" minH="44px" disabled={isFetching || page <= 1}
+              onClick={() => { setPage(page - 1); setEditingStudent(null); }}>Previous</Button>
+            <Button size="sm" variant="outline" minH="44px" disabled={isFetching || page >= (data?.totalPages || 0)}
+              onClick={() => { setPage(page + 1); setEditingStudent(null); }}>Next</Button>
+          </Flex>
+        </Flex>
+      )}
+      <EditStudentModal
+        isOpen={Boolean(editingStudent)}
+        onClose={() => setEditingStudent(null)}
+        student={editingStudent}
+        onUpdated={() => queryClient.invalidateQueries({ queryKey: ["students"] })}
+      />
     </Box>
   );
 };

@@ -29,44 +29,71 @@ import {
   FaEdit,
 } from "react-icons/fa";
 import EditStudentModal from "../sms/EditStudentModal";
+import { getClassArmsApi } from "../../api-endpoint/sms/smsEndpoints";
+import { useAuth } from "../../libs/AuthProvider";
 
 const StudentEditor = () => {
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?._id || user?.id;
+  const institutionId = user?.institutionId;
+  const isSchoolAdmin = ["institution", "institution_admin", "admin"].includes(user?.role);
+  const [selectedClassArm, setSelectedClassArm] = useState("");
+  const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingStudent, setEditingStudent] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["students"],
-    queryFn: fetchStudent,
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
+  const { data: classData, isLoading: classesLoading, isError: classesError } = useQuery({
+    queryKey: ["student-editor-classes", userId, institutionId, user?.role],
+    queryFn: async () => {
+      const response = await getClassArmsApi();
+      if (!response?.success) throw new Error("Unable to load classes");
+      return response;
+    },
+    enabled: !authLoading && Boolean(userId && institutionId) && (user?.role === "teacher" || isSchoolAdmin),
+    retry: false,
+  });
+  const classArms = (classData?.data || []).filter((arm) =>
+    arm.institutionId === institutionId && (isSchoolAdmin || arm.formTeacherId === userId));
+  const canLoadStudents = !authLoading && Boolean(userId) &&
+    (institutionId ? classArms.some((arm) => arm.id === selectedClassArm) : user?.role === "teacher");
+
+  const { data, isFetching, isError } = useQuery({
+    queryKey: ["students", "editing", userId, institutionId, user?.role, selectedClassArm, searchTerm, page],
+    queryFn: async ({ signal }) => {
+      const response = await fetchStudent({
+        ...(institutionId ? { classArmId: selectedClassArm } : {}),
+        editingOnly: true, search: searchTerm, page, limit: 25,
+      });
+      if (signal.aborted) throw new DOMException("Request superseded", "AbortError");
+      if (!response?.success) throw new Error("Unable to load students");
+      return response;
+    },
+    enabled: canLoadStudents,
+    staleTime: 0,
+    gcTime: 10 * 60 * 1000,
+    retry: false,
     refetchOnWindowFocus: false,
   });
 
   const activateMutation = useMutation({
     mutationFn: activateStudent,
-    onSuccess: () => queryClient.invalidateQueries(["students"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["students"] }),
   });
 
   const deactivateMutation = useMutation({
     mutationFn: deactivateStudent,
-    onSuccess: () => queryClient.invalidateQueries(["students"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["students"] }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteStudent,
-    onSuccess: () => queryClient.invalidateQueries(["students"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["students"] }),
   });
 
-  const students = data?.students || [];
-
-  const filteredStudents = students.filter((s) => {
-    const term = searchTerm.toLowerCase();
-    const fullName = `${s?.firstName ?? ""} ${s?.lastName ?? ""}`.toLowerCase();
-    const studentId = String(s?.studentId ?? "").toLowerCase();
-    return fullName.includes(term) || studentId.includes(term);
-  });
+  const students = canLoadStudents && !isFetching && !isError ? data?.students || [] : [];
+  const count = canLoadStudents && !isFetching && !isError ? data?.count || 0 : 0;
 
   return (
     <Box
@@ -80,7 +107,7 @@ const StudentEditor = () => {
       <Box maxW="1200px" mx="auto">
         {/* Page Header */}
         <Box mb={6}>
-          <Flex align="center" gap={2.5} mb={1}>
+          <Flex align="center" gap={2.5} mb={1} wrap="wrap">
             <Flex
               w="38px"
               h="38px"
@@ -110,7 +137,7 @@ const StudentEditor = () => {
               fontSize="12px"
               fontWeight="700"
             >
-              {students.length} Records
+              {count} Records
             </Badge>
           </Flex>
           <Text fontSize="14px" color="#64748B">
@@ -129,6 +156,29 @@ const StudentEditor = () => {
         >
           {/* Search bar */}
           <Box p={4} borderBottom="1px solid" borderColor="#F1F5F9">
+            {institutionId && (
+              <Box mb={3}>
+                <Text fontSize="13px" fontWeight="600" mb={1}>Class</Text>
+                <Box as="select" aria-label="Select class" value={selectedClassArm}
+                  onChange={(e) => {
+                    setSelectedClassArm(e.target.value);
+                    setSearchTerm("");
+                    setPage(1);
+                    setEditingStudent(null);
+                    setIsEditModalOpen(false);
+                  }}
+                  w={{ base: "100%", md: "380px" }} minH="44px" px={3}
+                  border="1px solid #E2E8F0" borderRadius="xl" bg="white"
+                  disabled={authLoading || classesLoading || classesError}>
+                  <option value="">Select a class to load students</option>
+                  {classArms.map((arm) => <option key={arm.id} value={arm.id}>{arm.name}</option>)}
+                </Box>
+                {classesError && <Text color="red.500" fontSize="13px">Unable to load classes. Please retry.</Text>}
+                {!classesLoading && !classesError && classArms.length === 0 && (
+                  <Text fontSize="13px" color="#64748B">No authorized classes assigned.</Text>
+                )}
+              </Box>
+            )}
             <Flex
               align="center"
               gap={3}
@@ -144,25 +194,31 @@ const StudentEditor = () => {
                 variant="unstyled"
                 placeholder="Search candidate name or ID..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                  setEditingStudent(null);
+                  setIsEditModalOpen(false);
+                }}
+                disabled={!canLoadStudents}
                 fontSize="13px"
               />
             </Flex>
           </Box>
 
-          {isLoading ? (
+          {authLoading || (institutionId && classesLoading) || (canLoadStudents && isFetching) ? (
             <Box p={4}>
               <TableSkeleton rows={5} columns={4} />
             </Box>
-          ) : isError ? (
+          ) : canLoadStudents && isError ? (
             <Flex h="200px" justify="center" align="center" color="red.500">
               <Text>Error fetching student list. Please retry.</Text>
             </Flex>
-          ) : filteredStudents.length === 0 ? (
+          ) : students.length === 0 ? (
             <Flex h="220px" direction="column" justify="center" align="center" color="#64748B">
               <Icon as={FaUsers} boxSize={7} color="#CBD5E1" mb={2} />
               <Text fontSize="14px" fontWeight="600">
-                No matching students found
+                {institutionId && !canLoadStudents ? "Select a class to load students" : "No matching students found"}
               </Text>
             </Flex>
           ) : (
@@ -191,7 +247,7 @@ const StudentEditor = () => {
                   </Table.Row>
                 </Table.Header>
                 <Table.Body>
-                  {filteredStudents.map((l) => {
+                  {students.map((l) => {
                     const isActive = l?.active === true;
                     return (
                       <Table.Row
@@ -356,6 +412,17 @@ const StudentEditor = () => {
               </Table.Root>
             </Table.ScrollArea>
           )}
+          {canLoadStudents && !isError && (
+            <Flex p={4} gap={3} align="center" justify="space-between" wrap="wrap">
+              <Text fontSize="13px" color="#64748B">Page {page} of {Math.max(1, data?.totalPages || 0)} | {count} records</Text>
+              <Flex gap={2}>
+                <Button size="sm" variant="outline" disabled={isFetching || page <= 1}
+                  onClick={() => { setPage(page - 1); setEditingStudent(null); setIsEditModalOpen(false); }}>Previous</Button>
+                <Button size="sm" variant="outline" disabled={isFetching || page >= (data?.totalPages || 0)}
+                  onClick={() => { setPage(page + 1); setEditingStudent(null); setIsEditModalOpen(false); }}>Next</Button>
+              </Flex>
+            </Flex>
+          )}
         </Box>
       </Box>
 
@@ -364,7 +431,7 @@ const StudentEditor = () => {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         student={editingStudent}
-        onUpdated={() => queryClient.invalidateQueries(["students"])}
+        onUpdated={() => queryClient.invalidateQueries({ queryKey: ["students"] })}
       />
     </Box>
   );
