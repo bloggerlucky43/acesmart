@@ -228,8 +228,9 @@ const StudentTopbar = ({ onOpenMobileNav }) => {
           onClick={() => setProfileMenuOpen(!profileMenuOpen)}
           title="Account Menu"
         >
-          <Avatar.Root size="xs" bg="#4338CA" color="white">
+          <Avatar.Root key={`${student?.id}:${student?.faceImageUrl || ""}`} size="xs" bg="#4338CA" color="white" flexShrink={0}>
             <Avatar.Fallback name={studentName} />
+            <Avatar.Image src={student?.faceImageUrl || undefined} alt={`${studentName}'s profile photo`} objectFit="cover" />
           </Avatar.Root>
           <Text
             fontSize="12.5px"

@@ -55,8 +55,9 @@ const StudentProfile = () => {
           p={{ base: 6, md: 7 }}
           textAlign="center"
         >
-          <Avatar.Root size="2xl" bg="#4338CA" color="white" mx="auto">
+          <Avatar.Root key={`${student?.id}:${student?.faceImageUrl || ""}`} size="2xl" bg="#4338CA" color="white" mx="auto">
             <Avatar.Fallback name={studentName} />
+            <Avatar.Image src={student?.faceImageUrl || undefined} alt={`${studentName}'s profile photo`} objectFit="cover" />
           </Avatar.Root>
           <Text fontSize="18px" fontWeight="900" color="#0F172A" mt={4}>
             {studentName}

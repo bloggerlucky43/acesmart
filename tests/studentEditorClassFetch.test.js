@@ -7,6 +7,7 @@ import { Linter } from "eslint";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import * as cache from "../src/libs/studentEditorCache.js";
 
 const { transformSync } = createRequire(import.meta.url)("esbuild");
 const pages = [
@@ -38,13 +39,22 @@ function harness(source, name, user = { _id: "owner", role: "teacher", instituti
   let cursor = 0;
   let rendered;
   let dirty = true;
+  let effects = [];
   const context = {
+    ...cache,
     jsx: (type, props, ...children) => ({ type, props: { ...props, children } }),
     useAuth: () => ({ user: state.user, loading: state.loading }),
     useState(initial) {
       const index = cursor++;
       if (!hooks[index]) hooks[index] = { value: initial };
       return [hooks[index].value, (next) => { hooks[index].value = typeof next === "function" ? next(hooks[index].value) : next; dirty = true; }];
+    },
+    useEffect(callback, deps) {
+      const index = cursor++;
+      if (!hooks[index]?.deps || deps.some((value, i) => !Object.is(value, hooks[index].deps[i]))) {
+        hooks[index] = { deps };
+        effects.push(callback);
+      }
     },
     useQuery(options) {
       const index = cursor++;
@@ -55,7 +65,10 @@ function harness(source, name, user = { _id: "owner", role: "teacher", instituti
       return hooks[index].observer.getOptimisticResult(options);
     },
     useQueryClient: () => client,
-    useMutation: () => ({ mutate() {}, isPending: false, isLoading: false }),
+    useMutation: (options) => ({
+      mutate(id) { void Promise.resolve(options.onMutate?.()).then((scope) => options.onSuccess?.({ success: true }, id, scope)); },
+      isPending: false, isLoading: false,
+    }),
     getClassArmsApi: async () => {
       calls.classes++;
       if (state.classError) throw new Error("fixture class error");
@@ -75,7 +88,7 @@ function harness(source, name, user = { _id: "owner", role: "teacher", instituti
   }
   context.Table = { ScrollArea: "ScrollArea", Root: "Root", Header: "Header", Row: "Row", ColumnHeader: "ColumnHeader", Body: "Body", Cell: "Cell" };
   const Component = new Function(...Object.keys(context), `${compiled}\nreturn ${name};`)(...Object.values(context));
-  const render = () => { cursor = 0; dirty = false; rendered = Component(); };
+  const render = () => { cursor = 0; dirty = false; rendered = Component(); const pending = effects; effects = []; pending.forEach((effect) => effect()); };
   return {
     state, calls, client,
     render,
@@ -196,5 +209,50 @@ for (const [label, path, name] of pages) {
     h.render(); await h.flush();
     assert.doesNotMatch(h.text(), /Student a/);
     assert.equal(h.calls.students.length, 1);
+  });
+
+  test(`${label}: revisiting class, search and page serves the same scope instantly for two minutes`, async (t) => {
+    const h = harness(source, name); t.after(() => h.close());
+    await h.flush(); h.select("a"); await h.flush();
+    h.select("b"); await h.flush();
+    h.select("a"); h.render();
+    assert.match(h.text(), /Student a/);
+    await h.flush();
+    assert.equal(h.calls.students.length, 2);
+    h.search("alice"); await h.flush();
+    h.search(""); h.render();
+    assert.match(h.text(), /Student a/);
+    await h.flush();
+    assert.equal(h.calls.students.length, 3);
+    h.find((node) => node.type === "Button" && text(node) === "Next").props.onClick(); await h.flush();
+    h.find((node) => node.type === "Button" && text(node) === "Previous").props.onClick(); await h.flush();
+    assert.equal(h.calls.students.length, 4);
+    assert.equal(h.calls.classes, 1);
+    const key = ["students", "editing", "owner", "school", "teacher", "a", "", 1, 25, true];
+    const query = h.client.getQueryCache().find({ queryKey: key, exact: true });
+    assert.equal(query.options.staleTime, 120000);
+    assert.equal(query.options.gcTime, 120000);
+    query.setState({ dataUpdatedAt: Date.now() - 120001 });
+    h.select("b"); await h.flush(); h.select("a"); await h.flush();
+    assert.equal(h.calls.students.length, 5, "expired scope refetches");
+  });
+
+  test(`${label}: returned photo patches instantly without a roster reload; status invalidates other scopes`, async (t) => {
+    const h = harness(source, name); t.after(() => h.close());
+    await h.flush(); h.select("b"); await h.flush(); h.select("a"); await h.flush();
+    h.find((node) => node.type === "EditStudentModal").props.onUpdated({ id: "a", faceImageUrl: "fixture-new-photo" });
+    await h.flush();
+    const key = ["students", "editing", "owner", "school", "teacher", "a", "", 1, 25, true];
+    assert.equal(h.client.getQueryData(key).students[0].faceImageUrl, "fixture-new-photo");
+    assert.equal(h.client.getQueryData(key).count, 30);
+    assert.equal(h.calls.students.length, 2);
+    h.find((node) => node.type === "Button" && ["Deactivate", "Suspend"].includes(text(node))).props.onClick();
+    await h.flush();
+    assert.equal(h.client.getQueryData(key).students[0].active, false);
+    const other = h.client.getQueryCache().find({ queryKey: [...key.slice(0, 5), "b", "", 1, 25, true], exact: true });
+    assert.equal(other.state.isInvalidated, true);
+    assert.equal(h.calls.students.length, 2);
+    h.select("b"); await h.flush();
+    assert.equal(h.calls.students.length, 3);
   });
 }

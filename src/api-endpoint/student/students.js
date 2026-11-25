@@ -1,10 +1,11 @@
 import api from "../../libs/axios";
 import { toaster } from "../../components/ui/toaster";
 
-export const fetchStudent = async (params = {}) => {
+export const fetchStudent = async (params = {}, { signal } = {}) => {
   try {
     const response = await api.get("/student", {
       params,
+      signal,
       withCredentials: true,
     });
 
@@ -18,6 +19,7 @@ export const fetchStudent = async (params = {}) => {
 
     return data;
   } catch (error) {
+    if (signal?.aborted) throw error;
     console.error("Fetch student failed", error);
   }
 };
@@ -73,18 +75,22 @@ export const deleteStudent = async (studentId) => {
   return data;
 };
 
-export const updateStudentApi = async (studentId, formData) => {
+export const updateStudentApi = async (studentId, formData, { onUploadProgress, signal } = {}) => {
   const { data } = await api.put(`/student/${studentId}`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
     withCredentials: true,
+    onUploadProgress,
+    signal,
   });
   return data;
 };
 
-export const uploadStudentFaceApi = async (studentId, formData) => {
+export const uploadStudentFaceApi = async (studentId, formData, { onUploadProgress, signal } = {}) => {
   const { data } = await api.post(`/student/${studentId}/face`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
     withCredentials: true,
+    onUploadProgress,
+    signal,
   });
   return data;
 };

@@ -241,8 +241,9 @@ const StudentSidebar = ({ isMobile = false, onNavigate }) => {
           bg="#1E293B"
         >
           <Flex align="center" gap={2.5} minW={0}>
-            <Avatar.Root size="sm" bg="#4338CA" color="white">
+            <Avatar.Root key={`${student?.id}:${student?.faceImageUrl || ""}`} size="sm" bg="#4338CA" color="white" flexShrink={0}>
               <Avatar.Fallback name={studentName} />
+              <Avatar.Image src={student?.faceImageUrl || undefined} alt={`${studentName}'s profile photo`} objectFit="cover" />
             </Avatar.Root>
             <Box minW={0}>
               <Text

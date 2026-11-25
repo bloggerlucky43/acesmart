@@ -8,7 +8,7 @@ import {
   Badge,
   Input,
 } from "@chakra-ui/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TableSkeleton } from "../ui/skeletons";
 import {
@@ -31,6 +31,7 @@ import {
 import EditStudentModal from "../sms/EditStudentModal";
 import { getClassArmsApi } from "../../api-endpoint/sms/smsEndpoints";
 import { useAuth } from "../../libs/AuthProvider";
+import { STUDENT_EDITOR_CACHE_MS, STUDENT_EDITOR_PAGE_SIZE, trimStudentEditorCache, updateStudentEditorCache } from "../../libs/studentEditorCache";
 
 const StudentEditor = () => {
   const { user, loading: authLoading } = useAuth();
@@ -43,6 +44,8 @@ const StudentEditor = () => {
   const [editingStudent, setEditingStudent] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const queryClient = useQueryClient();
+  const cachePrefix = ["students", "editing", userId, institutionId || null, user?.role];
+  const studentQueryKey = [...cachePrefix, selectedClassArm || null, searchTerm, page, STUDENT_EDITOR_PAGE_SIZE, true];
 
   const { data: classData, isLoading: classesLoading, isError: classesError } = useQuery({
     queryKey: ["student-editor-classes", userId, institutionId, user?.role],
@@ -52,6 +55,8 @@ const StudentEditor = () => {
       return response;
     },
     enabled: !authLoading && Boolean(userId && institutionId) && (user?.role === "teacher" || isSchoolAdmin),
+    staleTime: STUDENT_EDITOR_CACHE_MS,
+    gcTime: STUDENT_EDITOR_CACHE_MS,
     retry: false,
   });
   const classArms = (classData?.data || []).filter((arm) =>
@@ -60,40 +65,50 @@ const StudentEditor = () => {
     (institutionId ? classArms.some((arm) => arm.id === selectedClassArm) : user?.role === "teacher");
 
   const { data, isFetching, isError } = useQuery({
-    queryKey: ["students", "editing", userId, institutionId, user?.role, selectedClassArm, searchTerm, page],
+    queryKey: studentQueryKey,
     queryFn: async ({ signal }) => {
       const response = await fetchStudent({
         ...(institutionId ? { classArmId: selectedClassArm } : {}),
-        editingOnly: true, search: searchTerm, page, limit: 25,
-      });
+        editingOnly: true, search: searchTerm, page, limit: STUDENT_EDITOR_PAGE_SIZE,
+      }, { signal });
       if (signal.aborted) throw new DOMException("Request superseded", "AbortError");
       if (!response?.success) throw new Error("Unable to load students");
       return response;
     },
     enabled: canLoadStudents,
-    staleTime: 0,
-    gcTime: 10 * 60 * 1000,
+    staleTime: STUDENT_EDITOR_CACHE_MS,
+    gcTime: STUDENT_EDITOR_CACHE_MS,
     retry: false,
     refetchOnWindowFocus: false,
   });
 
+  useEffect(() => { trimStudentEditorCache(queryClient); }, [queryClient, data, classData]);
+
+  const updateCachedStudent = (student, deleted = false, scope = { prefix: cachePrefix, key: studentQueryKey }) => {
+    const nextPage = updateStudentEditorCache(queryClient, scope.prefix, scope.key, student, deleted);
+    if (nextPage && JSON.stringify(scope.key) === JSON.stringify(studentQueryKey)) setPage(nextPage);
+  };
+
   const activateMutation = useMutation({
     mutationFn: activateStudent,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["students"] }),
+    onMutate: () => ({ prefix: cachePrefix, key: studentQueryKey }),
+    onSuccess: (_response, id, scope) => updateCachedStudent({ id, active: true }, false, scope),
   });
 
   const deactivateMutation = useMutation({
     mutationFn: deactivateStudent,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["students"] }),
+    onMutate: () => ({ prefix: cachePrefix, key: studentQueryKey }),
+    onSuccess: (_response, id, scope) => updateCachedStudent({ id, active: false }, false, scope),
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteStudent,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["students"] }),
+    onMutate: () => ({ prefix: cachePrefix, key: studentQueryKey }),
+    onSuccess: (_response, id, scope) => updateCachedStudent({ id }, true, scope),
   });
 
-  const students = canLoadStudents && !isFetching && !isError ? data?.students || [] : [];
-  const count = canLoadStudents && !isFetching && !isError ? data?.count || 0 : 0;
+  const students = canLoadStudents && !isError ? data?.students || [] : [];
+  const count = canLoadStudents && !isError ? data?.count || 0 : 0;
 
   return (
     <Box
@@ -206,7 +221,7 @@ const StudentEditor = () => {
             </Flex>
           </Box>
 
-          {authLoading || (institutionId && classesLoading) || (canLoadStudents && isFetching) ? (
+          {authLoading || (institutionId && classesLoading) || (canLoadStudents && isFetching && !data) ? (
             <Box p={4}>
               <TableSkeleton rows={5} columns={4} />
             </Box>
@@ -431,7 +446,7 @@ const StudentEditor = () => {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         student={editingStudent}
-        onUpdated={() => queryClient.invalidateQueries({ queryKey: ["students"] })}
+        onUpdated={(student) => updateCachedStudent(student)}
       />
     </Box>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useId } from "react";
 import {
   Box,
   Flex,
@@ -9,6 +9,7 @@ import {
   Badge,
   SimpleGrid,
   Spinner,
+  Portal,
 } from "@chakra-ui/react";
 import {
   FaUserEdit,
@@ -24,6 +25,9 @@ import { getClassArmsApi } from "../../api-endpoint/sms/smsEndpoints";
 import { toaster } from "../ui/toaster";
 import imageCompression from "browser-image-compression";
 import StudentAcademicSection from "./StudentAcademicSection";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "../../libs/AuthProvider";
+import { STUDENT_EDITOR_CACHE_MS } from "../../libs/studentEditorCache";
 
 const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
   const [form, setForm] = useState({
@@ -34,14 +38,51 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
     parentPhone: "",
   });
 
-  const [classArms, setClassArms] = useState([]);
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?._id || user?.id;
+  const institutionId = user?.institutionId;
+  const isSchoolAdmin = ["institution", "institution_admin", "admin"].includes(user?.role);
   const [preview, setPreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
   const fileInputRef = useRef(null);
+  const objectUrlRef = useRef(null);
+  const processingRef = useRef(null);
+  const savingRef = useRef(null);
+  const operationRef = useRef(0);
+  const dialogRef = useRef(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  const titleId = useId();
+  const modalOpen = Boolean(isOpen && student);
+
+  const { data: classData } = useQuery({
+    queryKey: ["student-editor-classes", userId, institutionId, user?.role],
+    queryFn: async () => {
+      const response = await getClassArmsApi();
+      if (!response?.success) throw new Error("Unable to load classes");
+      return response;
+    },
+    enabled: isOpen && !authLoading && Boolean(userId && institutionId) && (user?.role === "teacher" || isSchoolAdmin),
+    staleTime: STUDENT_EDITOR_CACHE_MS,
+    gcTime: STUDENT_EDITOR_CACHE_MS,
+    retry: false,
+  });
+  const classArms = (classData?.data || []).filter((arm) =>
+    arm.institutionId === institutionId && (isSchoolAdmin || arm.formTeacherId === userId));
 
   useEffect(() => {
-    if (student) {
+    const operations = operationRef;
+    operations.current++;
+    processingRef.current = null;
+    savingRef.current = null;
+    setIsProcessing(false);
+    setLoading(false);
+    setUploadProgress(null);
+    setSelectedFile(null);
+    if (isOpen && student) {
       setForm({
         firstName: student.firstName || "",
         lastName: student.lastName || "",
@@ -50,47 +91,130 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
         parentPhone: student.parentPhone || "",
       });
       setPreview(student.faceImageUrl || null);
-      setSelectedFile(null);
     }
-  }, [student]);
+    return () => {
+      operations.current++;
+      processingRef.current?.abort();
+      savingRef.current?.abort();
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    };
+  }, [isOpen, student, userId, institutionId, user?.role]);
 
   useEffect(() => {
-    if (!isOpen) return;
-    getClassArmsApi()
-      .then((res) => {
-        if (res.success) setClassArms(res.data || []);
-      })
-      .catch(() => setClassArms([]));
-  }, [isOpen]);
+    if (!modalOpen) return;
+    const body = document.body;
+    const root = document.documentElement;
+    const previousFocus = document.activeElement;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const previousStyle = {
+      position: body.style.position, top: body.style.top, left: body.style.left,
+      width: body.style.width, overflow: body.style.overflow, paddingRight: body.style.paddingRight,
+    };
+    const previousScrollBehavior = root.style.scrollBehavior;
+    const scrollbarWidth = Math.max(0, window.innerWidth - root.clientWidth);
+    const paddingRight = Number.parseFloat(window.getComputedStyle(body).paddingRight) || 0;
+    // Fixed body preserves the visible page position, including on mobile Safari.
+    Object.assign(body.style, {
+      position: "fixed", top: `-${scrollY}px`, left: `-${scrollX}px`, width: "100%",
+      overflow: "hidden", paddingRight: `${paddingRight + scrollbarWidth}px`,
+    });
+    root.style.scrollBehavior = "auto";
+    dialogRef.current?.focus({ preventScroll: true });
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (!savingRef.current) closeRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter((element) => element.getClientRects().length > 0);
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first) { event.preventDefault(); dialog.focus({ preventScroll: true }); return; }
+      if (event.shiftKey ? document.activeElement === first || !focusable.includes(document.activeElement)
+        : document.activeElement === last || !focusable.includes(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus({ preventScroll: true });
+      }
+    };
+    const handleFocus = (event) => {
+      if (dialogRef.current && !dialogRef.current.contains(event.target)) {
+        dialogRef.current.focus({ preventScroll: true });
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown, true);
+    document.addEventListener("focusin", handleFocus);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+      document.removeEventListener("focusin", handleFocus);
+      Object.assign(body.style, previousStyle);
+      window.scrollTo(scrollX, scrollY);
+      root.style.scrollBehavior = previousScrollBehavior;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, [modalOpen]);
 
   if (!isOpen || !student) return null;
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    e.target.value = "";
+    if (!file || savingRef.current) return;
 
-    if (!file.type.startsWith("image/")) {
+    if (!["image/jpeg", "image/jpg", "image/png"].includes(file.type)) {
       toaster.create({ title: "Please select an image file (JPG or PNG)", type: "warning" });
       return;
     }
 
+    processingRef.current?.abort();
+    const controller = new AbortController();
+    processingRef.current = controller;
+    const operation = ++operationRef.current;
+    setIsProcessing(true);
+    setSelectedFile(null);
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    objectUrlRef.current = null;
+    setPreview(student.faceImageUrl || null);
     try {
       const compressed = await imageCompression(file, {
-        maxSizeMB: 0.4,
-        maxWidthOrHeight: 800,
+        maxSizeMB: 0.25,
+        maxWidthOrHeight: 600,
+        initialQuality: 0.85,
+        fileType: "image/jpeg",
         useWebWorker: true,
+        signal: controller.signal,
       });
-
-      setSelectedFile(compressed);
-      setPreview(URL.createObjectURL(compressed));
-    } catch (err) {
-      toaster.create({ title: "Image processing failed", type: "error" });
+      if (operation !== operationRef.current || controller.signal.aborted) return;
+      const photo = new File([compressed], `${file.name.replace(/\.[^.]+$/, "") || "student-face"}.jpg`, { type: "image/jpeg" });
+      setSelectedFile(photo);
+      objectUrlRef.current = URL.createObjectURL(photo);
+      setPreview(objectUrlRef.current);
+    } catch {
+      if (operation === operationRef.current && !controller.signal.aborted) {
+        toaster.create({ title: "Image processing failed", type: "error" });
+      }
+    } finally {
+      if (operation === operationRef.current) {
+        processingRef.current = null;
+        setIsProcessing(false);
+      }
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (processingRef.current || savingRef.current) return;
+    const controller = new AbortController();
+    savingRef.current = controller;
+    const operation = operationRef.current;
     setLoading(true);
+    setUploadProgress(null);
 
     try {
       const formData = new FormData();
@@ -104,7 +228,16 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
         formData.append("face", selectedFile);
       }
 
-      const res = await updateStudentApi(student.id, formData);
+      const res = await updateStudentApi(student.id, formData, {
+        signal: controller.signal,
+        onUploadProgress: ({ loaded, total }) => {
+          if (operation === operationRef.current && total > 0) {
+            setUploadProgress(Math.min(100, Math.floor(loaded / total * 100)));
+          }
+        },
+      });
+      if (operation !== operationRef.current || controller.signal.aborted) return;
+      if (!res?.success) throw new Error(res?.message || "Failed to update student");
 
       if (res.success) {
         toaster.create({
@@ -121,24 +254,31 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
         onClose();
       }
     } catch (error) {
-      toaster.create({
-        title: error.response?.data?.message || "Failed to update student",
-        type: "error",
-      });
+      if (operation === operationRef.current && !controller.signal.aborted) {
+        toaster.create({
+          title: error.response?.data?.message || error.message || "Failed to update student",
+          type: "error",
+        });
+      }
     } finally {
-      setLoading(false);
+      if (operation === operationRef.current) {
+        savingRef.current = null;
+        setLoading(false);
+      }
     }
   };
 
   const hasFace = Boolean(preview || student.faceImageUrl);
 
   return (
+    <Portal>
     <Box
       position="fixed"
       top={0}
       left={0}
       w="100vw"
-      h="100vh"
+      h="100dvh"
+      maxH="100dvh"
       bg="rgba(15, 23, 42, 0.65)"
       backdropFilter="blur(6px)"
       zIndex={1400}
@@ -146,15 +286,27 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
       alignItems="center"
       justifyContent="center"
       p={4}
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !savingRef.current) onClose();
+      }}
     >
       <Box
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         bg="white"
         w="100%"
         maxW="600px"
         borderRadius="28px"
         boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.25)"
         maxH="calc(100dvh - 32px)"
-        overflowY="auto"
+        display="flex"
+        flexDirection="column"
+        minH={0}
+        overflow="hidden"
+        outline="none"
         border="1px solid #E2E8F0"
         animation="fadeIn 0.2s ease"
       >
@@ -166,6 +318,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
           py={5}
           borderBottom="1px solid #F1F5F9"
           bg="#FAF5FF"
+          flexShrink={0}
         >
           <Flex align="center" gap={3}>
             <Flex
@@ -180,7 +333,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
               <Icon as={FaUserEdit} boxSize={5} />
             </Flex>
             <Box>
-              <Text fontSize="16px" fontWeight="800" color="#0F172A">
+              <Text id={titleId} fontSize="16px" fontWeight="800" color="#0F172A">
                 Edit Candidate Profile
               </Text>
               <Text fontSize="12px" color="#6B21A8" fontWeight="700">
@@ -197,6 +350,8 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
             h="34px"
             p={0}
             onClick={onClose}
+            disabled={loading}
+            aria-label="Close student editor"
             _hover={{ bg: "#F3E8FF" }}
           >
             <Icon as={FaTimes} color="#64748B" />
@@ -204,8 +359,8 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
         </Flex>
 
         {/* Modal Body Form */}
-        <form onSubmit={handleSubmit}>
-          <Box p={6} maxH="75vh" overflowY="auto">
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}>
+          <Box p={{ base: 4, sm: 6 }} flex="1" minH={0} overflowY="auto" overscrollBehavior="contain">
             {/* Biometric Photo Upload Section */}
             <Box
               p={4}
@@ -246,7 +401,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
                   overflow="hidden"
                   position="relative"
                   cursor="pointer"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => { if (!savingRef.current) fileInputRef.current?.click(); }}
                   _hover={{ opacity: 0.9 }}
                 >
                   {preview ? (
@@ -286,6 +441,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
                     accept="image/png, image/jpeg, image/jpg"
                     style={{ display: "none" }}
                     onChange={handleFileChange}
+                    disabled={loading}
                   />
 
                   <Flex gap={2} align="center">
@@ -298,6 +454,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
                       fontWeight="700"
                       px={3.5}
                       onClick={() => fileInputRef.current?.click()}
+                      disabled={loading}
                       _hover={{ opacity: 0.92 }}
                     >
                       <Icon as={FaCamera} mr={1.5} boxSize={3.5} />
@@ -310,6 +467,13 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
                       </Badge>
                     )}
                   </Flex>
+                  {isProcessing && <Text role="status" fontSize="12px" mt={2}>Preparing photo...</Text>}
+                  {loading && selectedFile && (
+                    <Text role="status" fontSize="12px" mt={2}>
+                      {uploadProgress === 100 ? "Upload sent. Saving changes..." : uploadProgress === null
+                        ? "Uploading photo..." : `Uploading photo: ${uploadProgress}%`}
+                    </Text>
+                  )}
                 </Box>
               </Flex>
             </Box>
@@ -414,7 +578,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
           </Box>
 
           {/* Modal Footer */}
-          <Flex justify="flex-end" gap={3} px={6} py={4} borderTop="1px solid #F1F5F9" bg="#F8FAFC">
+          <Flex justify="flex-end" gap={3} px={{ base: 4, sm: 6 }} py={4} borderTop="1px solid #F1F5F9" bg="#F8FAFC" flexShrink={0} wrap="wrap">
             <Button
               size="sm"
               variant="outline"
@@ -434,8 +598,9 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
               borderRadius="xl"
               px={5}
               fontWeight="700"
-              loading={loading}
-              loadingText="Saving Changes..."
+              disabled={isProcessing || loading}
+              loading={loading || isProcessing}
+              loadingText={isProcessing ? "Preparing photo..." : selectedFile && uploadProgress !== 100 ? "Uploading photo..." : "Saving Changes..."}
               _hover={{ opacity: 0.95 }}
             >
               Save Changes
@@ -444,6 +609,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
         </form>
       </Box>
     </Box>
+    </Portal>
   );
 };
 

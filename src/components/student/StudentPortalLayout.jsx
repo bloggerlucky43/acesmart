@@ -1,14 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Box } from "@chakra-ui/react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useStudentPortal } from "../../libs/StudentPortalProvider";
 import StudentLoginCard from "./StudentLoginCard";
 import StudentSidebar from "./StudentSidebar";
 import StudentTopbar from "./StudentTopbar";
 
 const StudentPortalLayout = () => {
-  const { isAuthenticated } = useStudentPortal();
+  const { isAuthenticated, student, refresh } = useStudentPortal();
+  const { pathname } = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) void refresh();
+  }, [isAuthenticated, student?.id, pathname, refresh]);
 
   if (!isAuthenticated) {
     return <StudentLoginCard />;

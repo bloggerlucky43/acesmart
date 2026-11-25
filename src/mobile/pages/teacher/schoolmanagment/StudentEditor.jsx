@@ -8,7 +8,7 @@ import {
   Input,
   VStack,
 } from "@chakra-ui/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   activateStudent,
@@ -21,6 +21,7 @@ import { toaster } from "../../../../components/ui/toaster";
 import EditStudentModal from "../../../../components/sms/EditStudentModal";
 import { getClassArmsApi } from "../../../../api-endpoint/sms/smsEndpoints";
 import { useAuth } from "../../../../libs/AuthProvider";
+import { STUDENT_EDITOR_CACHE_MS, STUDENT_EDITOR_PAGE_SIZE, trimStudentEditorCache, updateStudentEditorCache } from "../../../../libs/studentEditorCache";
 import {
   FaSearch,
   FaCheck,
@@ -40,6 +41,8 @@ export const MStudentEditor = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingStudent, setEditingStudent] = useState(null);
   const queryClient = useQueryClient();
+  const cachePrefix = ["students", "editing", userId, institutionId || null, user?.role];
+  const studentQueryKey = [...cachePrefix, selectedClassArm || null, searchTerm, page, STUDENT_EDITOR_PAGE_SIZE, true];
 
   const { data: classData, isLoading: classesLoading, isError: classesError } = useQuery({
     queryKey: ["student-editor-classes", userId, institutionId, user?.role],
@@ -49,6 +52,8 @@ export const MStudentEditor = () => {
       return response;
     },
     enabled: !authLoading && Boolean(userId && institutionId) && (user?.role === "teacher" || isSchoolAdmin),
+    staleTime: STUDENT_EDITOR_CACHE_MS,
+    gcTime: STUDENT_EDITOR_CACHE_MS,
     retry: false,
   });
   const classArms = (classData?.data || []).filter((arm) =>
@@ -57,27 +62,35 @@ export const MStudentEditor = () => {
     (institutionId ? classArms.some((arm) => arm.id === selectedClassArm) : user?.role === "teacher");
 
   const { data, isFetching, isError } = useQuery({
-    queryKey: ["students", "editing", userId, institutionId, user?.role, selectedClassArm, searchTerm, page],
+    queryKey: studentQueryKey,
     queryFn: async ({ signal }) => {
       const response = await fetchStudent({
         ...(institutionId ? { classArmId: selectedClassArm } : {}),
-        editingOnly: true, search: searchTerm, page, limit: 25,
-      });
+        editingOnly: true, search: searchTerm, page, limit: STUDENT_EDITOR_PAGE_SIZE,
+      }, { signal });
       if (signal.aborted) throw new DOMException("Request superseded", "AbortError");
       if (!response?.success) throw new Error("Unable to load students");
       return response;
     },
     enabled: canLoadStudents,
-    staleTime: 0,
-    gcTime: 10 * 60 * 1000,
+    staleTime: STUDENT_EDITOR_CACHE_MS,
+    gcTime: STUDENT_EDITOR_CACHE_MS,
     retry: false,
     refetchOnWindowFocus: false,
   });
 
+  useEffect(() => { trimStudentEditorCache(queryClient); }, [queryClient, data, classData]);
+
+  const updateCachedStudent = (student, deleted = false, scope = { prefix: cachePrefix, key: studentQueryKey }) => {
+    const nextPage = updateStudentEditorCache(queryClient, scope.prefix, scope.key, student, deleted);
+    if (nextPage && JSON.stringify(scope.key) === JSON.stringify(studentQueryKey)) setPage(nextPage);
+  };
+
   const activateMutation = useMutation({
     mutationFn: activateStudent,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["students"] });
+    onMutate: () => ({ prefix: cachePrefix, key: studentQueryKey }),
+    onSuccess: (_response, id, scope) => {
+      updateCachedStudent({ id, active: true }, false, scope);
       toaster.create({ title: "Student profile activated", type: "success" });
     },
     onError: () => {
@@ -87,8 +100,9 @@ export const MStudentEditor = () => {
 
   const deactivateMutation = useMutation({
     mutationFn: deactivateStudent,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["students"] });
+    onMutate: () => ({ prefix: cachePrefix, key: studentQueryKey }),
+    onSuccess: (_response, id, scope) => {
+      updateCachedStudent({ id, active: false }, false, scope);
       toaster.create({ title: "Student profile deactivated", type: "info" });
     },
     onError: () => {
@@ -98,8 +112,9 @@ export const MStudentEditor = () => {
 
   const deleteMutation = useMutation({
     mutationFn: deleteStudent,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["students"] });
+    onMutate: () => ({ prefix: cachePrefix, key: studentQueryKey }),
+    onSuccess: (_response, id, scope) => {
+      updateCachedStudent({ id }, true, scope);
       toaster.create({ title: "Student removed successfully", type: "success" });
     },
     onError: () => {
@@ -107,8 +122,8 @@ export const MStudentEditor = () => {
     },
   });
 
-  const students = canLoadStudents && !isFetching && !isError ? data?.students || [] : [];
-  const count = canLoadStudents && !isFetching && !isError ? data?.count || 0 : 0;
+  const students = canLoadStudents && !isError ? data?.students || [] : [];
+  const count = canLoadStudents && !isError ? data?.count || 0 : 0;
 
   return (
     <Box pb={6} className="animate-scale-in">
@@ -172,7 +187,7 @@ export const MStudentEditor = () => {
       </Box>
 
       {/* Loading Skeleton */}
-      {authLoading || (institutionId && classesLoading) || (canLoadStudents && isFetching) ? (
+      {authLoading || (institutionId && classesLoading) || (canLoadStudents && isFetching && !data) ? (
         <CardGridSkeleton count={4} />
       ) : canLoadStudents && isError ? (
         <Box bg="white" p={6} borderRadius="2xl" textAlign="center" color="red.500" fontSize="13px">
@@ -326,7 +341,7 @@ export const MStudentEditor = () => {
         isOpen={Boolean(editingStudent)}
         onClose={() => setEditingStudent(null)}
         student={editingStudent}
-        onUpdated={() => queryClient.invalidateQueries({ queryKey: ["students"] })}
+        onUpdated={(student) => updateCachedStudent(student)}
       />
     </Box>
   );

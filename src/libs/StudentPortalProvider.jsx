@@ -12,7 +12,7 @@ import {
   checkResultTokenStatusApi,
   getStudentReportCardApi,
 } from "../api-endpoint/sms/smsEndpoints";
-import { getStudentAcademicTermsApi } from "../api-endpoint/sms/portalEndpoints";
+import { getStudentAcademicTermsApi, getStudentPortalOverviewApi } from "../api-endpoint/sms/portalEndpoints";
 import { toaster } from "../components/ui/toaster";
 import { resetGateNotificationSession } from "./gateNotifications";
 import { setStudentPortalToken } from "./studentPortalSession";
@@ -33,12 +33,12 @@ export const StudentPortalProvider = ({ children }) => {
   const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [loadingTerms, setLoadingTerms] = useState(false);
 
-  // The surname is the portal password, so it is kept in memory only and
-  // never written to localStorage.
-  const credentialsRef = useRef({ code: "", lastName: "" });
   const activeStudentIdRef = useRef(null);
+  const sessionVersionRef = useRef(0);
 
   useEffect(() => () => {
+    sessionVersionRef.current += 1;
+    activeStudentIdRef.current = null;
     setStudentPortalToken("");
     void resetGateNotificationSession();
   }, []);
@@ -57,16 +57,18 @@ export const StudentPortalProvider = ({ children }) => {
   const checkUnlockStatus = useCallback(
     async (studentId, period) => {
       if (!studentId) return false;
+      const sessionVersion = sessionVersionRef.current;
       try {
         const tokenRes = await checkResultTokenStatusApi(
           studentId,
           periodParams(period),
         );
+        if (activeStudentIdRef.current !== studentId || sessionVersionRef.current !== sessionVersion) return false;
         const unlocked = Boolean(tokenRes.success && tokenRes.isUnlocked);
         setIsUnlocked(unlocked);
         return unlocked;
       } catch {
-        setIsUnlocked(false);
+        if (activeStudentIdRef.current === studentId && sessionVersionRef.current === sessionVersion) setIsUnlocked(false);
         return false;
       }
     },
@@ -127,9 +129,11 @@ export const StudentPortalProvider = ({ children }) => {
       const trimmedLastName = lastName?.trim();
       if (!trimmedCode || !trimmedLastName) return false;
 
+      const sessionVersion = ++sessionVersionRef.current;
       setLoading(true);
       try {
         const res = await studentCodeLoginApi(trimmedCode, trimmedLastName);
+        if (sessionVersionRef.current !== sessionVersion) return false;
         if (!res.success) return false;
         setStudentPortalToken(res.data.portalToken);
 
@@ -143,10 +147,6 @@ export const StudentPortalProvider = ({ children }) => {
           });
           activeStudentIdRef.current = res.data.student?.id;
         }
-        credentialsRef.current = {
-          code: trimmedCode,
-          lastName: trimmedLastName,
-        };
         setActiveData(res.data);
         setReportCardData(null);
         setApprovalPending(false);
@@ -180,16 +180,36 @@ export const StudentPortalProvider = ({ children }) => {
   );
 
   const refresh = useCallback(async () => {
-    const { code, lastName } = credentialsRef.current;
-    if (!code || !lastName) return false;
-    return login(code, lastName, { silent: true });
-  }, [login]);
+    const studentId = activeStudentIdRef.current;
+    const sessionVersion = sessionVersionRef.current;
+    if (!studentId) return false;
+    try {
+      const res = await getStudentPortalOverviewApi(studentId);
+      if (!res?.success || res.data?.student?.id !== studentId ||
+          activeStudentIdRef.current !== studentId ||
+          sessionVersionRef.current !== sessionVersion) return false;
+      setActiveData((prev) => {
+        if (prev?.student?.id !== studentId || sessionVersionRef.current !== sessionVersion) return prev;
+        return {
+          ...prev,
+          student: { ...prev.student, ...res.data.student, faceImageUrl: res.data.student.faceImageUrl || null },
+          institution: res.data.institution ? { ...prev.institution, ...res.data.institution } : prev.institution,
+          invoice: res.data.fees?.latestInvoice ?? null,
+          feeInvoice: res.data.fees?.latestInvoice ?? null,
+        };
+      });
+      await checkUnlockStatus(studentId);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [checkUnlockStatus]);
 
   const logout = useCallback(() => {
+    sessionVersionRef.current += 1;
     setStudentPortalToken("");
     void resetGateNotificationSession({ unsubscribe: true });
     activeStudentIdRef.current = null;
-    credentialsRef.current = { code: "", lastName: "" };
     clearSavedStudentCode();
     setActiveData(null);
     setReportCardData(null);
