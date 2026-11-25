@@ -277,7 +277,7 @@ export const MStudentEditor = () => {
                       fontSize="11px"
                       fontWeight="700"
                       onClick={() => deactivateMutation.mutate(s.id)}
-                      loading={deactivateMutation.isLoading}
+                      loading={deactivateMutation.isPending}
                       leftIcon={<Icon as={FaBan} />}
                     >
                       Suspend
@@ -295,7 +295,7 @@ export const MStudentEditor = () => {
                       fontSize="11px"
                       fontWeight="700"
                       onClick={() => activateMutation.mutate(s.id)}
-                      loading={activateMutation.isLoading}
+                      loading={activateMutation.isPending}
                       leftIcon={<Icon as={FaCheck} />}
                     >
                       Activate
@@ -315,7 +315,7 @@ export const MStudentEditor = () => {
                         deleteMutation.mutate(s.id);
                       }
                     }}
-                    loading={deleteMutation.isLoading}
+                    loading={deleteMutation.isPending}
                     aria-label="Delete student"
                   >
                     <Icon as={FaTrashAlt} boxSize={3} />

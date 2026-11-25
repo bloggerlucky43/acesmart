@@ -23,13 +23,28 @@ function harness(t) {
   const classKey = ["student-editor-classes", "owner", "school", "teacher"];
   client.setQueryData(classKey, { success: true, data: [{ id: "a", institutionId: "school", formTeacherId: "owner", name: "Class A" }] });
   const state = { user, compression: null, upload: null };
-  const calls = { compress: [], save: [], updated: [], closed: 0, created: [], revoked: [], toast: [], classes: 0 };
+  const calls = { compress: [], save: [], updated: [], closed: 0, created: [], revoked: [], toast: [], classes: 0, focus: [], scroll: [] };
+  const listeners = new Map();
+  const document = { body: { style: { position: "", top: "", left: "", width: "", overflow: "auto", paddingRight: "6px" } },
+    documentElement: { clientWidth: 1000, style: { scrollBehavior: "smooth" } },
+    addEventListener: (type, fn) => listeners.set(type, fn), removeEventListener: (type) => listeners.delete(type) };
+  const focusElement = (name) => ({ name, isConnected: true, getClientRects: () => [1],
+    focus(options) { document.activeElement = this; calls.focus.push({ name, options }); } });
+  const trigger = focusElement("trigger"); document.activeElement = trigger;
+  const focusable = [focusElement("first"), focusElement("last")];
+  const dialog = { ...focusElement("dialog"), querySelectorAll: () => focusable, contains: (node) => node === dialog || focusable.includes(node) };
+  const window = { scrollX: 8, scrollY: 1820, innerWidth: 1024, getComputedStyle: () => ({ paddingRight: "6px" }),
+    scrollTo: (...args) => calls.scroll.push(args) };
   const props = { isOpen: true, student: { id: "s1", studentId: "SCH/1", classArmId: "a", institutionId: "school", firstName: "Alice", faceImageUrl: "original-photo" },
     onClose: () => { calls.closed++; }, onUpdated: (student) => calls.updated.push(student) };
   const hooks = [];
   let cursor = 0, dirty = true, rendered, effects = [];
   const context = {
-    jsx: (type, props, ...children) => ({ type, props: { ...props, children } }),
+    jsx: (type, props, ...children) => {
+      if (props?.role === "dialog") props.ref.current = dialog;
+      return { type, props: { ...props, children } };
+    },
+    useId: () => "fixture-student-editor-title",
     useState(initial) {
       const index = cursor++;
       if (!hooks[index]) hooks[index] = { value: initial };
@@ -54,7 +69,7 @@ function harness(t) {
     getClassArmsApi: async () => { calls.classes++; assert.fail("Fresh scoped editor classes must be reused by the modal"); },
     imageCompression: async (file, options) => { calls.compress.push({ file, options }); return state.compression ? state.compression.promise : new Blob(["fixture-jpeg"], { type: "image/jpeg" }); },
     updateStudentApi: async (id, formData, options) => { calls.save.push({ id, formData, options }); return state.upload ? state.upload.promise : { success: true, student: { ...props.student, faceImageUrl: "stored-photo" } }; },
-    toaster: { create: (value) => calls.toast.push(value) }, File, Blob, FormData, AbortController,
+    toaster: { create: (value) => calls.toast.push(value) }, File, Blob, FormData, AbortController, document, window,
     URL: { createObjectURL: (file) => { const url = `blob:fixture-${calls.created.length}`; calls.created.push({ file, url }); return url; }, revokeObjectURL: (url) => calls.revoked.push(url) },
   };
   for (const node of tree.body.filter((node) => node.type === "ImportDeclaration")) {
@@ -63,7 +78,7 @@ function harness(t) {
   const Component = new Function(...Object.keys(context), `${compiled}\nreturn EditStudentModal;`)(...Object.values(context));
   const render = () => { cursor = 0; dirty = false; rendered = Component(props); const pending = effects; effects = []; pending.forEach((fn) => fn()); };
   const h = {
-    state, calls, props, render,
+    state, calls, props, render, document, window, dialog, focusable, trigger,
     find(predicate) { return nodes(rendered).find(predicate); },
     text() { return text(rendered); },
     async flush() { for (let i = 0; i < 5; i++) { if (dirty) render(); await new Promise(setImmediate); } if (dirty) render(); },
@@ -72,6 +87,8 @@ function harness(t) {
     },
     submit() { return this.find((node) => node.type === "form").props.onSubmit({ preventDefault() {} }); },
     preview() { return this.find((node) => node.type === "img")?.props.src; },
+    key(key, shiftKey = false) { const event = { key, shiftKey, prevented: false, preventDefault() { this.prevented = true; } }; listeners.get("keydown")?.(event); return event; },
+    focusOutside() { listeners.get("focusin")?.({ target: trigger }); },
   };
   t.after(() => { hooks.forEach((hook) => { hook.cleanup?.(); hook.unsubscribe?.(); }); client.clear(); });
   return h;
@@ -185,4 +202,45 @@ test("student API helper passes upload progress and abort signals without loadin
   }
   await updateStudentApi("s1", "fixture-form");
   assert.equal(calls.at(-1).args[2].onUploadProgress, undefined, "existing callers remain supported");
+});
+
+test("portal dialog stays viewport-bound with internal scrolling and restores the original page/focus", async (t) => {
+  const h = harness(t);
+  const originalStyle = { ...h.document.body.style };
+  await h.flush();
+  assert.ok(h.find((node) => node.type === "Portal"));
+  const backdrop = h.find((node) => node.props.position === "fixed");
+  assert.equal(backdrop.props.h, "100dvh");
+  const dialog = h.find((node) => node.props.role === "dialog");
+  assert.equal(dialog.props["aria-modal"], "true");
+  assert.equal(dialog.props.maxH, "calc(100dvh - 32px)");
+  assert.equal(dialog.props.overflow, "hidden");
+  assert.ok(h.find((node) => node.props.overflowY === "auto" && node.props.minH === 0 && node.props.flex === "1"));
+  assert.equal(h.document.body.style.top, "-1820px");
+  assert.equal(h.document.body.style.position, "fixed");
+  assert.equal(h.document.body.style.paddingRight, "30px");
+  assert.deepEqual(h.calls.scroll, [], "opening never scrolls the page to the top");
+  assert.equal(h.document.activeElement, h.dialog);
+  assert.ok(h.calls.focus.every((call) => call.options.preventScroll));
+  h.props.isOpen = false; h.render(); await h.flush();
+  assert.deepEqual(h.document.body.style, originalStyle);
+  assert.deepEqual(h.calls.scroll, [[8, 1820]]);
+  assert.equal(h.document.documentElement.style.scrollBehavior, "smooth");
+  assert.equal(h.document.activeElement, h.trigger);
+});
+
+test("focus is trapped, Escape/backdrop close only when not saving, and inside clicks do not close", async (t) => {
+  const h = harness(t); await h.flush();
+  assert.equal(h.key("Tab").prevented, true); assert.equal(h.document.activeElement, h.focusable[0]);
+  assert.equal(h.key("Tab", true).prevented, true); assert.equal(h.document.activeElement, h.focusable[1]);
+  assert.equal(h.key("Tab").prevented, true); assert.equal(h.document.activeElement, h.focusable[0]);
+  h.focusOutside(); assert.equal(h.document.activeElement, h.dialog);
+  const backdrop = h.find((node) => node.props.position === "fixed");
+  backdrop.props.onClick({ target: {}, currentTarget: {} }); assert.equal(h.calls.closed, 0);
+  const target = {}; backdrop.props.onClick({ target, currentTarget: target }); assert.equal(h.calls.closed, 1);
+  h.key("Escape"); assert.equal(h.calls.closed, 2);
+  h.state.upload = deferred(); const pending = h.submit(); await h.flush();
+  h.key("Escape"); backdrop.props.onClick({ target, currentTarget: target }); assert.equal(h.calls.closed, 2);
+  h.state.upload.resolve({ success: true, student: h.props.student }); await pending;
+  assert.equal(h.calls.closed, 3);
 });

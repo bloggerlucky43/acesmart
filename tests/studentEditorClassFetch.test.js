@@ -33,7 +33,7 @@ function harness(source, name, user = { _id: "owner", role: "teacher", instituti
     .map((node) => source.slice(...node.range).replace(/^export /, "")).join("\n");
   const compiled = transformSync(isolated, { loader: "jsx", jsxFactory: "jsx", target: "es2022" }).code;
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
-  const state = { user, loading: false, classRows, classError: false, loader: null };
+  const state = { user, loading: false, classRows, classError: false, loader: null, mutationPending: false };
   const calls = { students: [], classes: 0 };
   const hooks = [];
   let cursor = 0;
@@ -67,7 +67,7 @@ function harness(source, name, user = { _id: "owner", role: "teacher", instituti
     useQueryClient: () => client,
     useMutation: (options) => ({
       mutate(id) { void Promise.resolve(options.onMutate?.()).then((scope) => options.onSuccess?.({ success: true }, id, scope)); },
-      isPending: false, isLoading: false,
+      isPending: state.mutationPending,
     }),
     getClassArmsApi: async () => {
       calls.classes++;
@@ -254,5 +254,20 @@ for (const [label, path, name] of pages) {
     assert.equal(h.calls.students.length, 2);
     h.select("b"); await h.flush();
     assert.equal(h.calls.students.length, 3);
+  });
+
+  test(`${label}: status and delete actions use the current mutation pending state`, async (t) => {
+    const h = harness(source, name); t.after(() => h.close());
+    await h.flush(); h.select("a"); await h.flush();
+    h.state.mutationPending = true; h.render();
+    const status = () => h.find((node) => node.type === "Button" && ["Activate", "Deactivate", "Suspend"].includes(text(node)));
+    const remove = h.find((node) => node.type === "Button" && (text(node) === "Delete" || node.props["aria-label"] === "Delete student"));
+    assert.equal(status().props.loading, true);
+    assert.equal(remove.props.loading, true);
+    const key = ["students", "editing", "owner", "school", "teacher", "a", "", 1, 25, true];
+    h.client.setQueryData(key, (data) => ({ ...data, students: data.students.map((student) => ({ ...student, active: false })) }));
+    h.render();
+    assert.equal(text(status()), "Activate");
+    assert.equal(status().props.loading, true);
   });
 }
