@@ -29,6 +29,7 @@ import {
   FaCommentDots,
   FaTable,
   FaIdCard,
+  FaUserCircle,
 } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
@@ -47,6 +48,7 @@ const MobileSideBar = ({ onClose }) => {
       title: "OVERVIEW",
       links: [
         { name: "CBT Dashboard", path: "/teacher_dashboard", icon: FaTachometerAlt },
+        { name: "My Profile", path: "/teacher/profile", icon: FaUserCircle },
       ],
     },
     ...(isInstitutionAdmin

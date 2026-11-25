@@ -1,4 +1,5 @@
 import axios from "axios";
+import { isCurrentPortalSessionError, studentPortalHeaders } from "./studentPortalSession";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_BACKEND_URL,
@@ -8,6 +9,7 @@ const api = axios.create({
 // Attach Authorization Bearer token from localStorage for seamless cross-subdomain API calls
 api.interceptors.request.use(
   (config) => {
+    Object.assign(config.headers, studentPortalHeaders(config.url));
     try {
       const stored = localStorage.getItem("USER_KEY");
       if (stored) {
@@ -22,6 +24,16 @@ api.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (isCurrentPortalSessionError(error)) {
+      window.dispatchEvent(new Event("student-portal-expired"));
+    }
+    return Promise.reject(error);
+  },
 );
 
 // //Global Response Interceptor

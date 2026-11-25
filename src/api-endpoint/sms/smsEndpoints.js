@@ -229,6 +229,11 @@ export const checkResultTokenStatusApi = async (studentId, params = {}) => {
 };
 
 // Report Cards & Broadsheets
+export const getClassReportRosterApi = async (params = {}) => {
+  const { data } = await api.get("/sms-results/class-roster", { params, withCredentials: true });
+  return data;
+};
+
 export const getSubjectScoresApi = async (params = {}) => {
   const query = new URLSearchParams(
     Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "")
@@ -356,4 +361,3 @@ export const rolloverPromotedStudentsApi = async (payload) => {
   });
   return data;
 };
-

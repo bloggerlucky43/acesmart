@@ -5,9 +5,10 @@ import MCards from "../../mobile/component/cards";
 import MPerformance from "../../mobile/component/performance";
 import MobileLayout from "../../mobile/constant/mobilelayout";
 import { Box, useBreakpointValue, Flex, Text, Button, Icon } from "@chakra-ui/react";
-import { FaGraduationCap, FaPlus, FaBookOpen, FaQrcode, FaCog, FaCalendarCheck } from "react-icons/fa";
+import { FaGraduationCap, FaPlus, FaBookOpen, FaQrcode, FaCog, FaCalendarCheck, FaUserCircle } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../libs/AuthProvider";
+import TeachingAssignments from "../../components/teacher/TeachingAssignments";
 
 const Teacher = () => {
   const isMobile = useBreakpointValue({ base: true, lg: false });
@@ -15,6 +16,13 @@ const Teacher = () => {
   const { user } = useAuth();
   const teacherName = user?.name || user?.username || "Educator";
   const isInstitutionAdmin = ["institution_admin", "institution", "admin", "superadmin"].includes(user?.role);
+  const profileAction = (
+    <Flex justify="flex-end" mb={4}>
+      <Button minH="44px" variant="outline" borderRadius="xl" onClick={() => navigate("/teacher/profile")}>
+        <Icon as={FaUserCircle} boxSize={4} />My Profile
+      </Button>
+    </Flex>
+  );
   const gateActions = user?.institutionId && (
     <Box mb={5} p={4} bg="white" border="1px solid #E2E8F0" borderRadius="2xl">
       <Text fontSize="14px" fontWeight="800" color="#0F172A" mb={1}>School Gate & Attendance</Text>
@@ -39,6 +47,8 @@ const Teacher = () => {
     <Box>
       {isMobile ? (
         <MobileLayout>
+          {profileAction}
+          <TeachingAssignments />
           {gateActions}
           <MCards />
           <MPerformance />
@@ -156,6 +166,8 @@ const Teacher = () => {
               </Flex>
             </Box>
 
+            {profileAction}
+            <TeachingAssignments />
             {gateActions}
 
             {/* Metric KPI Cards & Action Bar */}

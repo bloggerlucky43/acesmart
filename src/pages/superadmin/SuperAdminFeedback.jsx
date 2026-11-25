@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Flex,
@@ -8,8 +8,8 @@ import {
   Icon,
   Badge,
   SimpleGrid,
-  Table,
   HStack,
+  VStack,
   Textarea,
   NativeSelect,
 } from "@chakra-ui/react";
@@ -18,12 +18,9 @@ import {
   FaStar,
   FaCheckCircle,
   FaClock,
-  FaSearch,
   FaSyncAlt,
   FaTrash,
   FaReply,
-  FaFilter,
-  FaExclamationTriangle,
   FaTimes,
 } from "react-icons/fa";
 import SuperAdminLayout from "./SuperAdminLayout";
@@ -32,7 +29,6 @@ import {
   updateFeedbackStatusApi,
   deleteFeedbackApi,
 } from "../../api-endpoint/feedback/feedbackEndpoints";
-import { toaster } from "../../components/ui/toaster";
 
 const CATEGORIES = [
   "All",
@@ -51,7 +47,7 @@ export default function SuperAdminFeedback() {
     total: 0,
     pending: 0,
     resolved: 0,
-    averageRating: 5.0,
+    averageRating: 0,
   });
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -59,6 +55,11 @@ export default function SuperAdminFeedback() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [loadError, setLoadError] = useState("");
+  const [replyError, setReplyError] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
+  const requestId = useRef(null);
+  const mutationInFlight = useRef(false);
 
   // Response Modal State
   const [selectedItem, setSelectedItem] = useState(null);
@@ -67,7 +68,10 @@ export default function SuperAdminFeedback() {
   const [savingReply, setSavingReply] = useState(false);
 
   const fetchFeedbacks = useCallback(async () => {
+    const request = Symbol();
+    requestId.current = request;
     setLoading(true);
+    setLoadError("");
     try {
       const res = await getFeedbacksApi({
         category: selectedCategory,
@@ -77,47 +81,78 @@ export default function SuperAdminFeedback() {
         limit: 15,
       });
 
+      if (request !== requestId.current) return;
       if (res?.success) {
+        const pages = res.totalPages || 1;
+        if (page > pages) {
+          setPage(pages);
+          return;
+        }
         setFeedbacks(res.data || []);
         if (res.metrics) setMetrics(res.metrics);
-        setTotalPages(res.totalPages || 1);
+        setTotalPages(pages);
+      } else {
+        setLoadError(res?.message || "Unable to load feedback. Please try again.");
       }
-    } catch (err) {
-      console.error("fetchFeedbacks error:", err);
+    } catch {
+      if (request === requestId.current) setLoadError("Unable to load feedback. Please try again.");
     } finally {
-      setLoading(false);
+      if (request === requestId.current) setLoading(false);
     }
   }, [selectedCategory, selectedStatus, search, page]);
 
   useEffect(() => {
     fetchFeedbacks();
+    return () => { requestId.current = null; };
   }, [fetchFeedbacks]);
 
   const handleOpenReply = (fb) => {
     setSelectedItem(fb);
     setReplyStatus(fb.status === "pending" ? "resolved" : fb.status);
     setReplyText(fb.adminResponse || "");
+    setReplyError("");
   };
 
   const handleSaveReply = async () => {
-    if (!selectedItem) return;
+    if (!selectedItem || mutationInFlight.current) return;
+    mutationInFlight.current = true;
     setSavingReply(true);
-    const res = await updateFeedbackStatusApi(selectedItem.id, {
-      status: replyStatus,
-      adminResponse: replyText,
-    });
-    setSavingReply(false);
-    if (res?.success) {
-      setSelectedItem(null);
-      fetchFeedbacks();
+    setReplyError("");
+    try {
+      const res = await updateFeedbackStatusApi(selectedItem.id, {
+        status: replyStatus,
+        adminResponse: replyText.trim(),
+      });
+      if (res?.success) {
+        setSelectedItem(null);
+        await fetchFeedbacks();
+      } else {
+        setReplyError(res?.message || "Unable to save feedback changes.");
+      }
+    } catch {
+      setReplyError("Unable to save feedback changes. Please try again.");
+    } finally {
+      mutationInFlight.current = false;
+      setSavingReply(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this feedback entry?")) return;
-    const res = await deleteFeedbackApi(id);
-    if (res?.success) {
-      fetchFeedbacks();
+    if (mutationInFlight.current || !window.confirm("Are you sure you want to delete this feedback entry?")) return;
+    mutationInFlight.current = true;
+    setDeletingId(id);
+    try {
+      const res = await deleteFeedbackApi(id);
+      if (res?.success) {
+        await fetchFeedbacks();
+      } else {
+        setLoadError(res?.message || "Unable to delete feedback.");
+      }
+    } catch {
+      setLoadError("Unable to delete feedback. Please try again.");
+    } finally {
+      mutationInFlight.current = false;
+      setDeletingId(null);
     }
   };
 
@@ -175,6 +210,7 @@ export default function SuperAdminFeedback() {
             borderRadius="xl"
             onClick={fetchFeedbacks}
             loading={loading}
+            disabled={savingReply || deletingId !== null}
           >
             <Icon as={FaSyncAlt} mr={2} boxSize={3} />
             Refresh
@@ -255,7 +291,12 @@ export default function SuperAdminFeedback() {
                 <Input
                   placeholder="Search subject, user, school, or keyword..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  disabled={savingReply || deletingId !== null}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  maxLength={255}
                   h="38px"
                   borderRadius="xl"
                   fontSize="13px"
@@ -265,6 +306,7 @@ export default function SuperAdminFeedback() {
               <NativeSelect.Root size="sm" w="180px">
                 <NativeSelect.Field
                   value={selectedCategory}
+                  disabled={savingReply || deletingId !== null}
                   onChange={(e) => {
                     setSelectedCategory(e.target.value);
                     setPage(1);
@@ -282,6 +324,7 @@ export default function SuperAdminFeedback() {
               <NativeSelect.Root size="sm" w="140px">
                 <NativeSelect.Field
                   value={selectedStatus}
+                  disabled={savingReply || deletingId !== null}
                   onChange={(e) => {
                     setSelectedStatus(e.target.value);
                     setPage(1);
@@ -299,12 +342,14 @@ export default function SuperAdminFeedback() {
           </Flex>
         </Box>
 
+        {loadError && <Box role="alert" bg="red.50" color="#B91C1C" p={4} borderRadius="xl" mb={4}>{loadError}</Box>}
+
         {/* Feedback List */}
         {loading ? (
           <Flex justify="center" align="center" h="200px" color="#64748B">
             Loading feedbacks...
           </Flex>
-        ) : feedbacks.length === 0 ? (
+        ) : feedbacks.length === 0 && !loadError ? (
           <Box bg="white" p={12} borderRadius="2xl" textAlign="center" border="1px solid #E2E8F0">
             <Icon as={FaCheckCircle} boxSize={8} color="#10B981" mb={3} />
             <Text fontSize="16px" fontWeight="800" color="#0F172A">
@@ -389,6 +434,7 @@ export default function SuperAdminFeedback() {
                         color="white"
                         borderRadius="lg"
                         onClick={() => handleOpenReply(fb)}
+                        disabled={deletingId !== null || savingReply}
                         _hover={{ bg: "#3730A3" }}
                       >
                         <Icon as={FaReply} mr={1} />
@@ -400,6 +446,9 @@ export default function SuperAdminFeedback() {
                         color="#DC2626"
                         borderRadius="lg"
                         onClick={() => handleDelete(fb.id)}
+                        aria-label={`Delete feedback: ${fb.subject}`}
+                        loading={deletingId === fb.id}
+                        disabled={deletingId !== null || savingReply}
                       >
                         <Icon as={FaTrash} />
                       </Button>
@@ -416,13 +465,13 @@ export default function SuperAdminFeedback() {
                       <Text fontSize="11px" fontWeight="800" color="#475569" mb={1}>
                         DEVELOPER / ADMIN RESPONSE:
                       </Text>
-                      <Text fontSize="13px" color="#0F172A">
+                      <Text fontSize="13px" color="#0F172A" whiteSpace="pre-wrap">
                         {fb.adminResponse}
                       </Text>
                     </Box>
                   )}
 
-                  <Flex justify="space-between" align="center" fontSize="12px" color="#64748B" pt={2} borderTop="1px solid #F1F5F9">
+                  <Flex justify="space-between" align="center" wrap="wrap" gap={2} fontSize="12px" color="#64748B" pt={2} borderTop="1px solid #F1F5F9">
                     <Text>
                       Submitted by: <strong style={{ color: "#0F172A" }}>{fb.name || "Anonymous"}</strong> ({fb.email || "No email"})
                       {fb.Institution && ` • School: ${fb.Institution.name}`}
@@ -443,6 +492,14 @@ export default function SuperAdminFeedback() {
           </VStack>
         )}
 
+        {totalPages > 1 && (
+          <Flex justify="center" align="center" gap={3} mt={6}>
+            <Button variant="outline" size="sm" disabled={loading || savingReply || deletingId !== null || page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
+            <Text fontSize="13px">Page {page} of {totalPages}</Text>
+            <Button variant="outline" size="sm" disabled={loading || savingReply || deletingId !== null || page >= totalPages} onClick={() => setPage(page + 1)}>Next</Button>
+          </Flex>
+        )}
+
         {/* Resolution & Response Modal */}
         {selectedItem && (
           <Box
@@ -450,7 +507,7 @@ export default function SuperAdminFeedback() {
             top={0}
             left={0}
             w="100vw"
-            h="100vh"
+            h="100dvh"
             bg="rgba(15, 23, 42, 0.6)"
             backdropFilter="blur(4px)"
             zIndex={9999}
@@ -459,7 +516,7 @@ export default function SuperAdminFeedback() {
             justifyContent="center"
             p={4}
           >
-            <Box bg="white" w="100%" maxW="500px" borderRadius="24px" overflow="hidden" boxShadow="2xl">
+            <Box bg="white" w="100%" maxW="500px" maxH="calc(100dvh - 32px)" borderRadius="24px" overflowY="auto" boxShadow="2xl" role="dialog" aria-modal="true" aria-label="Respond to feedback">
               <Flex bg="#1E1B4B" color="white" p={5} justify="space-between" align="center">
                 <Box>
                   <Text fontSize="16px" fontWeight="800">
@@ -469,7 +526,7 @@ export default function SuperAdminFeedback() {
                     {selectedItem.subject}
                   </Text>
                 </Box>
-                <Button size="xs" variant="ghost" color="white" onClick={() => setSelectedItem(null)}>
+                <Button size="xs" variant="ghost" color="white" aria-label="Close response" disabled={savingReply} onClick={() => setSelectedItem(null)}>
                   <Icon as={FaTimes} boxSize={4} />
                 </Button>
               </Flex>
@@ -497,6 +554,7 @@ export default function SuperAdminFeedback() {
                     ADMIN NOTE / RESPONSE (OPTIONAL)
                   </Text>
                   <Textarea
+                    maxLength={10000}
                     rows={4}
                     placeholder="e.g. Fixed in patch v2.4 or added to next sprint roadmap..."
                     value={replyText}
@@ -506,8 +564,10 @@ export default function SuperAdminFeedback() {
                   />
                 </Box>
 
+                {replyError && <Text role="alert" color="#B91C1C" fontSize="13px" mb={4}>{replyError}</Text>}
+
                 <Flex justify="flex-end" gap={2}>
-                  <Button variant="outline" borderRadius="xl" onClick={() => setSelectedItem(null)}>
+                  <Button variant="outline" borderRadius="xl" disabled={savingReply} onClick={() => setSelectedItem(null)}>
                     Cancel
                   </Button>
                   <Button
@@ -516,6 +576,7 @@ export default function SuperAdminFeedback() {
                     borderRadius="xl"
                     onClick={handleSaveReply}
                     loading={savingReply}
+                    disabled={savingReply}
                   >
                     Save Changes
                   </Button>

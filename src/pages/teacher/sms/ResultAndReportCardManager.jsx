@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Flex,
@@ -34,7 +34,8 @@ import {
 } from "react-icons/fa";
 import {
   getClassArmsApi,
-  getClassAttendanceByDateApi,
+  getClassReportRosterApi,
+  getInstitutionProfileApi,
   getSubjectScoresApi,
   uploadSubjectScoresApi,
   syncCbtScoresApi,
@@ -43,10 +44,9 @@ import {
   uploadTeacherSignatureApi,
 } from "../../../api-endpoint/sms/smsEndpoints";
 import { fetchExams } from "../../../api-endpoint/exam/exams";
+import { getMyTeachingAssignmentsApi } from "../../../api-endpoint/institution/teachingAssignments";
 import { fetchSubjectsApi } from "../../../api-endpoint/subjects/subjectEndpoints";
-import { fetchStudent } from "../../../api-endpoint/student/students";
 import {
-  formatStudentName,
   getFormattedStudentName,
 } from "../../../libs/helper";
 import { useAuth } from "../../../libs/AuthProvider";
@@ -54,6 +54,8 @@ import { toaster } from "../../../components/ui/toaster";
 import DashboardLayout from "../../../constants/dashboardlayout";
 import StudentReportCardSheet from "../../../components/student/StudentReportCardSheet";
 import { useNavigate } from "react-router-dom";
+import { academicSessionOptions, defaultAcademicSession, assignedSubjectNames, scoreRowEditable } from "../../institution/reportScope";
+import { reportClassAssignments } from "./reportClassSelector";
 
 const DEFAULT_FALLBACK_SUBJECTS = [
   "Mathematics",
@@ -64,8 +66,10 @@ const DEFAULT_FALLBACK_SUBJECTS = [
   "Chemistry",
   "Physics",
   "Civic Education",
+  "Citizenship Education",
   "Economics",
   "Agricultural Science",
+  "Livestock Farming",
   "Government",
   "Commerce",
   "Financial Accounting",
@@ -303,9 +307,22 @@ function TeacherSignatureUploader({ onSave, saving }) {
 }
 
 export default function ResultAndReportCardManager() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const authReady = mounted && !authLoading && Boolean(user?._id) &&
+    ["teacher", "institution_admin", "institution", "admin", "superadmin"].includes(user?.role);
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("scores"); // "scores" | "cbt-sync" | "report-card"
+  const isSchoolAdmin = ["institution_admin", "institution", "admin", "superadmin"].includes(user?.role);
+  const [subjectAssignments, setSubjectAssignments] = useState([]);
+  const [formClassIds, setFormClassIds] = useState([]);
+  const [formSubjects, setFormSubjects] = useState([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(true);
+  const [assignmentsScope, setAssignmentsScope] = useState("");
+  const [assignmentsVersion, setAssignmentsVersion] = useState(0);
+  const [profile, setProfile] = useState(null);
+  const [profileReady, setProfileReady] = useState(false);
+  const [activeTab, setActiveTab] = useState("report-card"); // "scores" | "cbt-sync" | "report-card"
   const [classes, setClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [subject, setSubject] = useState("Mathematics");
@@ -319,9 +336,13 @@ export default function ResultAndReportCardManager() {
 
   // Score spreadsheet state
   const [roster, setRoster] = useState([]);
+  const [rosterScope, setRosterScope] = useState("");
+  const [loadingRoster, setLoadingRoster] = useState(false);
   const [scores, setScores] = useState({}); // { [studentId]: { ca1, ca2, assignment, exam } }
   const [existingScores, setExistingScores] = useState({}); // { [studentId]: saved record }
   const [loadingExisting, setLoadingExisting] = useState(false);
+  const [scoreLoadScope, setScoreLoadScope] = useState(null);
+  const [scoreLoadError, setScoreLoadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
@@ -329,39 +350,68 @@ export default function ResultAndReportCardManager() {
   const [selectedStudentForCard, setSelectedStudentForCard] = useState(null);
   const [reportCardData, setReportCardData] = useState(null);
   const [loadingReportCard, setLoadingReportCard] = useState(false);
+  const [reportScope, setReportScope] = useState("");
+  const [reportVersion, setReportVersion] = useState(0);
+  const scoreRequestId = useRef(0);
+  const reportRequestId = useRef(0);
   const [studentSearch, setStudentSearch] = useState("");
 
-  const institution = user?.institution;
-  const institutionName = institution?.name || "Institution";
+  const institution = profile || user?.institution;
   const institutionLogo = institution?.logoUrl;
   const currentTerm = institution?.currentTerm || "First Term";
-  const currentSession = institution?.academicSession || "2025/2026";
+  const currentSession = institution?.academicSession || defaultAcademicSession();
 
-  const [selectedTerm, setSelectedTerm] = useState(currentTerm);
-  const [selectedSession, setSelectedSession] = useState(currentSession);
+  const [selectedTerm, setSelectedTerm] = useState("");
+  const [selectedSession, setSelectedSession] = useState("");
+  const identity = `${user?._id || ""}:${user?.role || ""}`;
+  const assignmentKey = `${identity}:${selectedSession}:${assignmentsVersion}`;
+  const assignmentsReady = authReady && profileReady && !loadingAssignments && assignmentsScope === assignmentKey;
+  const isFormClass = formClassIds.includes(String(selectedClassId));
+  const permittedSubjects = isSchoolAdmin ? availableSubjects : isFormClass ? formSubjects : assignedSubjectNames(subjectAssignments, selectedClassId, selectedSession);
+  const canEditSubject = assignmentsReady && classes.some((classArm) => String(classArm.id) === String(selectedClassId)) && Boolean(subject) && (isSchoolAdmin || permittedSubjects.includes(subject));
+  const reportClasses = isSchoolAdmin ? classes : classes.filter((classArm) => formClassIds.includes(String(classArm.id)));
+  const scoreClasses = isSchoolAdmin ? classes : classes.filter((classArm) => formClassIds.includes(classArm.id) || assignedSubjectNames(subjectAssignments, classArm.id, selectedSession).length > 0);
+  const visibleClasses = assignmentsReady ? (activeTab === "report-card" ? reportClasses : scoreClasses) : [];
+  const canPreviewReports = assignmentsReady && reportClasses.some((classArm) => classArm.id === selectedClassId);
+  const rosterKey = `${assignmentKey}:${selectedClassId}:${selectedTerm}:${activeTab === "report-card" ? "fullCard" : subject}`;
+  const rosterReady = assignmentsReady && !loadingRoster && rosterScope === rosterKey;
+  const editableRoster = roster.filter(scoreRowEditable);
+  const scoreDataReady = rosterReady && !loadingExisting && !scoreLoadError &&
+    scoreLoadScope?.key === rosterKey && scoreLoadScope?.roster === roster;
+  const previewKey = `${rosterKey}:${selectedStudentForCard?.studentId || selectedStudentForCard?.id || ""}`;
+  const previewReady = rosterReady && canPreviewReports && reportScope === previewKey;
+  const mutationScope = useRef("");
+  useEffect(() => {
+    mutationScope.current = `${rosterKey}:${subject}`;
+    return () => { mutationScope.current = ""; };
+  }, [rosterKey, subject]);
+
+  useEffect(() => {
+    const names = isSchoolAdmin ? availableSubjects : isFormClass ? formSubjects : assignedSubjectNames(subjectAssignments, selectedClassId, selectedSession);
+    setSubject((previous) => names.includes(previous) ? previous : names[0] || "");
+  }, [isSchoolAdmin, isFormClass, formSubjects, availableSubjects, subjectAssignments, selectedClassId, selectedSession]);
 
   // Sync state if institution details arrive asynchronously
   useEffect(() => {
-    if (institution?.currentTerm && !selectedTerm) {
-      setSelectedTerm(institution.currentTerm);
-    }
-    if (institution?.academicSession && !selectedSession) {
-      setSelectedSession(institution.academicSession);
-    }
-  }, [institution?.currentTerm, institution?.academicSession]);
+    let cancelled = false;
+    setProfileReady(false);
+    setProfile(null);
+    setSelectedSession("");
+    setSelectedTerm("");
+    if (!authReady) return;
+    getInstitutionProfileApi().catch(() => null).then((res) => {
+      if (cancelled) return;
+      const school = res?.success ? res.data : user?.institution;
+      setProfile(school || null);
+      setSelectedSession(school?.academicSession || defaultAcademicSession());
+      setSelectedTerm(school?.currentTerm || "First Term");
+      setProfileReady(true);
+    });
+    return () => { cancelled = true; };
+  }, [authReady, user?._id, user?.institution]);
 
   const availableTerms = ["First Term", "Second Term", "Third Term"];
-  const availableSessions = useMemo(() => {
-    const set = new Set();
-    if (currentSession) set.add(currentSession);
-    if (selectedSession) set.add(selectedSession);
-    const match = String(currentSession).match(/^(\d{4})\/(\d{4})$/);
-    const baseYear = match ? parseInt(match[1], 10) : new Date().getFullYear();
-    for (let y = baseYear - 4; y <= baseYear + 2; y++) {
-      set.add(`${y}/${y + 1}`);
-    }
-    return Array.from(set).sort().reverse();
-  }, [currentSession, selectedSession]);
+  const availableSessions = academicSessionOptions(currentSession, selectedSession);
 
   const isPreviousPeriod =
     selectedTerm !== currentTerm || selectedSession !== currentSession;
@@ -373,17 +423,54 @@ export default function ResultAndReportCardManager() {
   const [savingSignature, setSavingSignature] = useState(false);
 
   useEffect(() => {
+    if (!authReady || !profileReady) return;
+    const refreshAssignments = () => {
+      if (activeTab === "report-card" && !saving && !syncing && document.visibilityState !== "hidden") {
+        setAssignmentsVersion((version) => version + 1);
+      }
+    };
+    window.addEventListener("focus", refreshAssignments);
+    document.addEventListener("visibilitychange", refreshAssignments);
+    return () => {
+      window.removeEventListener("focus", refreshAssignments);
+      document.removeEventListener("visibilitychange", refreshAssignments);
+    };
+  }, [authReady, profileReady, activeTab, saving, syncing]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingAssignments(true);
+    setAssignmentsScope("");
+    setClasses([]);
+    setSubjectAssignments([]);
+    setFormClassIds([]);
+    setFormSubjects([]);
+    setReportCardData(null);
+    setSelectedStudentForCard(null);
+    reportRequestId.current += 1;
+    setLoadingReportCard(false);
+    scoreRequestId.current += 1;
+    if (!authReady || !profileReady || !selectedSession) return;
     const initData = async () => {
       try {
         const [classRes, examRes, subjectRes] = await Promise.all([
-          getClassArmsApi(),
+          isSchoolAdmin ? getClassArmsApi() : getMyTeachingAssignmentsApi({ session: selectedSession }),
           fetchExams().catch(() => ({ data: [] })),
           fetchSubjectsApi().catch(() => ({ success: false, data: [] })),
         ]);
-
-        if (classRes.success && classRes.data.length > 0) {
-          setClasses(classRes.data);
-          setSelectedClassId(classRes.data[0].id);
+        if (cancelled) return;
+        if (!classRes?.success) throw new Error(classRes?.message || "Unable to load teaching assignments");
+        const { classes: classList, formClassIds: formIds, subjectAssignments: assignments, formSubjects: catalogSubjects } = reportClassAssignments(classRes, selectedSession, isSchoolAdmin);
+        setSubjectAssignments(assignments);
+        setFormClassIds(formIds);
+        setFormSubjects(catalogSubjects);
+        setAssignmentsScope(assignmentKey);
+        setClasses(classList);
+        if (classList.length > 0) {
+          const firstScoreClass = isSchoolAdmin ? classList[0] : classList.find((classArm) =>
+            formIds.includes(classArm.id) ? catalogSubjects.length > 0 : assignedSubjectNames(assignments, classArm.id, selectedSession).length > 0);
+          setActiveTab((previous) => !firstScoreClass && !isSchoolAdmin ? "report-card"
+            : previous === "report-card" && !isSchoolAdmin && formIds.length === 0 ? "scores" : previous);
         }
 
         const examList = examRes?.data || [];
@@ -406,44 +493,89 @@ export default function ResultAndReportCardManager() {
         ).sort((a, b) => a.localeCompare(b));
 
         setAvailableSubjects(unified);
-        if (unified.length > 0 && !unified.includes(subject)) {
-          setSubject(unified[0]);
-        }
+        if (isSchoolAdmin) setSubject((previous) => unified.includes(previous) ? previous : unified[0] || "");
 
         getTeacherSignatureApi()
           .then((sigRes) => {
-            if (sigRes?.success && sigRes.signatureUrl) {
+            if (!cancelled && sigRes?.success && sigRes.signatureUrl) {
               setTeacherSignatureUrl(sigRes.signatureUrl);
             }
           })
           .catch(() => {});
       } catch (err) {
         console.error("Init data error:", err);
+        if (!cancelled) toaster.create({ title: err.response?.data?.message || err.message || "Unable to load teaching assignments", type: "error" });
+      } finally {
+        if (!cancelled) setLoadingAssignments(false);
       }
     };
     initData();
-  }, []);
+    return () => { cancelled = true; };
+  }, [authReady, profileReady, isSchoolAdmin, assignmentKey, selectedSession]);
 
   useEffect(() => {
-    if (!selectedClassId) return;
+    if (!assignmentsReady) return;
+    const allowed = isSchoolAdmin ? classes : classes.filter((classArm) => activeTab === "report-card"
+      ? formClassIds.includes(String(classArm.id))
+      : formClassIds.includes(classArm.id) || assignedSubjectNames(subjectAssignments, classArm.id, selectedSession).length > 0);
+    if (!allowed.some((classArm) => String(classArm.id) === String(selectedClassId))) {
+      setSelectedClassId(allowed[0] ? String(allowed[0].id) : "");
+    }
+  }, [assignmentsReady, activeTab, classes, formClassIds, subjectAssignments, selectedSession, selectedClassId, isSchoolAdmin]);
+
+  useEffect(() => { setStudentSearch(""); }, [selectedClassId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setRoster([]);
+    setRosterScope("");
+    setLoadingRoster(false);
+    setScores({});
+    setExistingScores({});
+    setReportCardData(null);
+    setSelectedStudentForCard(null);
+    reportRequestId.current += 1;
+    setLoadingReportCard(false);
+    scoreRequestId.current += 1;
+    if (!assignmentsReady || !selectedClassId || !selectedSession || !selectedTerm ||
+      (activeTab === "report-card" ? !canPreviewReports : !canEditSubject)) return;
+    setLoadingRoster(true);
     const loadClassStudents = async () => {
       try {
-        const res = await getClassAttendanceByDateApi(selectedClassId);
-        if (res.success) {
-          setRoster(res.data.roster);
-          if (res.data.roster.length > 0 && !selectedStudentForCard) {
-            setSelectedStudentForCard(res.data.roster[0]);
+        const res = await getClassReportRosterApi({
+          classArmId: selectedClassId,
+          session: selectedSession,
+          term: selectedTerm,
+          ...(activeTab === "report-card" ? {} : { subject }),
+        });
+        if (res.success && !cancelled) {
+          const students = (res.data?.roster || []).map((student) => ({ ...student, studentCode: student.studentCode || student.code || student.studentId }));
+          setRoster(students);
+          setRosterScope(rosterKey);
+          if (activeTab === "report-card" && students.length > 0) {
+            setSelectedStudentForCard(students[0]);
           }
         }
       } catch (e) {
-        console.error("Load class students error:", e);
+        if (!cancelled) toaster.create({ title: e.response?.data?.message || "Unable to load the report roster", type: "error" });
+      } finally {
+        if (!cancelled) setLoadingRoster(false);
       }
     };
     loadClassStudents();
-  }, [selectedClassId]);
+    return () => { cancelled = true; };
+  }, [assignmentsReady, selectedClassId, selectedSession, selectedTerm, activeTab, subject, canPreviewReports, canEditSubject, rosterKey]);
 
   const loadExistingScores = useCallback(async () => {
-    if (!selectedClassId || !subject) return;
+    const requestId = ++scoreRequestId.current;
+    setScoreLoadScope(null);
+    setScoreLoadError("");
+    if (!rosterReady || activeTab === "report-card" || !canEditSubject) {
+      setExistingScores({});
+      setScores({});
+      setLoadingExisting(false);
+      return;
+    }
     setLoadingExisting(true);
     try {
       const res = await getSubjectScoresApi({
@@ -452,7 +584,8 @@ export default function ResultAndReportCardManager() {
         term: selectedTerm,
         session: selectedSession,
       });
-
+      if (requestId !== scoreRequestId.current) return;
+      if (!res.success) throw new Error(res.message || "Unable to load saved scores");
       if (res.success) {
         const recordMap = {};
         const prefilledScores = {};
@@ -467,19 +600,24 @@ export default function ResultAndReportCardManager() {
         });
         setExistingScores(recordMap);
         setScores(prefilledScores);
+        setScoreLoadScope({ key: rosterKey, roster });
       }
     } catch (e) {
-      console.error("Load existing scores error:", e);
+      if (requestId !== scoreRequestId.current) return;
+      setScoreLoadError(e.response?.data?.message || e.message || "Unable to load saved scores");
     } finally {
-      setLoadingExisting(false);
+      if (requestId === scoreRequestId.current) setLoadingExisting(false);
     }
-  }, [selectedClassId, subject, selectedTerm, selectedSession]);
+  }, [selectedClassId, subject, selectedTerm, selectedSession, canEditSubject, rosterReady, rosterKey, roster, activeTab]);
 
   useEffect(() => {
     loadExistingScores();
+    return () => { scoreRequestId.current += 1; };
   }, [loadExistingScores]);
 
   const handleScoreChange = (studentId, field, value) => {
+    if (!canEditSubject || !scoreDataReady || saving || syncing) return;
+    if (!editableRoster.some((student) => student.studentId === studentId)) return;
     const numVal = Math.max(0, Number(value) || 0);
     setScores((prev) => ({
       ...prev,
@@ -507,9 +645,11 @@ export default function ResultAndReportCardManager() {
   const enteredCount = roster.filter((s) => existingScores[s.studentId]).length;
 
   const handleSaveScores = async () => {
+    if (!canEditSubject || !scoreDataReady || editableRoster.length === 0 || saving || syncing) return;
+    const savedScope = mutationScope.current;
     setSaving(true);
     try {
-      const formattedScores = roster.map((item) => {
+      const formattedScores = editableRoster.map((item) => {
         const s = scores[item.studentId] || {};
         return {
           studentId: item.studentId,
@@ -528,15 +668,16 @@ export default function ResultAndReportCardManager() {
         scores: formattedScores,
       });
 
-      if (res.success) {
+      if (res.success && savedScope === mutationScope.current) {
         toaster.create({
           title: "Scores Saved Successfully!",
-          description: `Updated scores for ${roster.length} students in ${subject} (${selectedSession} • ${selectedTerm})`,
+          description: `Updated scores for ${editableRoster.length} students in ${subject} (${selectedSession} • ${selectedTerm})`,
           type: "success",
         });
         await loadExistingScores();
       }
     } catch (error) {
+      if (savedScope !== mutationScope.current) return;
       toaster.create({
         title: error.response?.data?.message || "Failed to save scores",
         type: "error",
@@ -551,6 +692,7 @@ export default function ResultAndReportCardManager() {
     setSelectedExamId(examId);
     const chosen = exams.find((x) => (x._id || x.id) === examId);
     if (chosen?.subject) {
+      if (!isSchoolAdmin && !permittedSubjects.includes(chosen.subject)) return;
       setSubject(chosen.subject);
       setAvailableSubjects((prev) => {
         if (!prev.includes(chosen.subject)) {
@@ -562,6 +704,8 @@ export default function ResultAndReportCardManager() {
   };
 
   const handleSyncCbt = async () => {
+    if (!canEditSubject || !rosterReady || !subject || editableRoster.length === 0 || saving || syncing) return;
+    const savedScope = mutationScope.current;
     if (!selectedExamId) {
       toaster.create({
         title: "Please select a CBT exam to synchronize",
@@ -582,19 +726,17 @@ export default function ResultAndReportCardManager() {
         scaleMode,
       });
 
-      if (res.success) {
+      if (res.success && savedScope === mutationScope.current) {
         toaster.create({
           title: "CBT Sync Complete!",
           description: res.message,
           type: "success",
         });
         await loadExistingScores();
-        if (selectedStudentForCard) {
-          await handleFetchReportCard(selectedStudentForCard);
-        }
         setActiveTab("scores");
       }
     } catch (error) {
+      if (savedScope !== mutationScope.current) return;
       toaster.create({
         title: error.response?.data?.message || "Failed to sync CBT scores",
         type: "error",
@@ -604,41 +746,48 @@ export default function ResultAndReportCardManager() {
     }
   };
 
-  const handleFetchReportCard = async (student) => {
-    if (!student) return;
+  const handleFetchReportCard = (student) => {
+    if (!student || !canPreviewReports || !rosterReady || !roster.includes(student)) return;
     setSelectedStudentForCard(student);
-    setLoadingReportCard(true);
-    setReportCardData(null);
-    try {
-      const idToFetch = student.studentId || student.id || student.studentCode;
-      const res = await getStudentReportCardApi(idToFetch, {
-        term: selectedTerm,
-        session: selectedSession,
-        bypassTokenCheck: "true", // Staff view bypasses token check
-      });
-      if (res.success) {
-        setReportCardData(res.data);
-      }
-    } catch (error) {
-      console.error("Fetch report card error:", error);
-      toaster.create({
-        title:
-          error.response?.data?.message || "Failed to load report card preview",
-        type: "error",
-      });
-    } finally {
-      setLoadingReportCard(false);
-    }
   };
 
-  // Re-fetch report card if the teacher switches term or session while inspecting
   useEffect(() => {
-    if (activeTab === "report-card" && selectedStudentForCard) {
-      handleFetchReportCard(selectedStudentForCard);
-    }
-  }, [selectedTerm, selectedSession, activeTab]);
+    let cancelled = false;
+    const requestId = ++reportRequestId.current;
+    setReportCardData(null);
+    setReportScope("");
+    setLoadingReportCard(false);
+    if (activeTab !== "report-card" || !canPreviewReports || !rosterReady || !selectedStudentForCard || !roster.includes(selectedStudentForCard)) return;
+    setLoadingReportCard(true);
+    const fetchCard = async () => {
+      try {
+        const idToFetch = selectedStudentForCard.studentId || selectedStudentForCard.id;
+        const res = await getStudentReportCardApi(idToFetch, {
+          classArmId: selectedClassId,
+          term: selectedTerm,
+          session: selectedSession,
+        });
+        if (cancelled || requestId !== reportRequestId.current) return;
+        if (res.success) {
+          setReportCardData(res.data);
+          setReportScope(previewKey);
+        }
+      } catch (error) {
+        if (cancelled || requestId !== reportRequestId.current) return;
+        toaster.create({
+          title: error.response?.data?.message || "Failed to load report card preview",
+          type: "error",
+        });
+      } finally {
+        if (!cancelled && requestId === reportRequestId.current) setLoadingReportCard(false);
+      }
+    };
+    fetchCard();
+    return () => { cancelled = true; reportRequestId.current += 1; };
+  }, [activeTab, canPreviewReports, rosterReady, selectedStudentForCard, roster, selectedClassId, selectedTerm, selectedSession, previewKey, reportVersion]);
 
   const handleSaveSignature = async (signatureData) => {
+    if (!authReady) return;
     setSavingSignature(true);
     try {
       let payload;
@@ -661,8 +810,8 @@ export default function ResultAndReportCardManager() {
           type: "success",
         });
         setShowSignatureModal(false);
-        if (selectedStudentForCard) {
-          handleFetchReportCard(selectedStudentForCard);
+        if (canPreviewReports && selectedStudentForCard) {
+          setReportVersion((version) => version + 1);
         }
       }
     } catch (e) {
@@ -748,6 +897,7 @@ export default function ResultAndReportCardManager() {
                 h="38px"
                 boxShadow="0 2px 8px rgba(22, 163, 74, 0.25)"
                 onClick={() => navigate("/teacher/broadsheet")}
+                disabled={!assignmentsReady || saving || syncing || (!isSchoolAdmin && formClassIds.length === 0)}
                 _hover={{ bg: "#15803D" }}
                 flexShrink={0}
               >
@@ -765,6 +915,7 @@ export default function ResultAndReportCardManager() {
                 fontSize="12px"
                 h="38px"
                 onClick={() => setShowSignatureModal(true)}
+                disabled={!authReady || saving || syncing}
                 _hover={{ opacity: 0.9 }}
                 flexShrink={0}
               >
@@ -794,6 +945,7 @@ export default function ResultAndReportCardManager() {
                 activeTab === "scores" ? "0 2px 6px rgba(0,0,0,0.06)" : "none"
               }
               onClick={() => setActiveTab("scores")}
+              disabled={!assignmentsReady || saving || syncing || (!isSchoolAdmin && scoreClasses.length === 0)}
               flexShrink={0}
             >
               <Icon as={FaTable} mr={1.5} boxSize={3.5} />
@@ -809,6 +961,7 @@ export default function ResultAndReportCardManager() {
                 activeTab === "cbt-sync" ? "0 2px 6px rgba(0,0,0,0.06)" : "none"
               }
               onClick={() => setActiveTab("cbt-sync")}
+              disabled={!canEditSubject || saving || syncing}
               flexShrink={0}
             >
               <Icon as={FaBrain} mr={1.5} boxSize={3.5} />
@@ -827,9 +980,8 @@ export default function ResultAndReportCardManager() {
               }
               onClick={() => {
                 setActiveTab("report-card");
-                const target = selectedStudentForCard || roster[0];
-                if (target) handleFetchReportCard(target);
               }}
+              disabled={!assignmentsReady || reportClasses.length === 0 || saving || syncing}
               flexShrink={0}
             >
               <Icon as={FaFileInvoice} mr={1.5} boxSize={3.5} />
@@ -838,11 +990,36 @@ export default function ResultAndReportCardManager() {
           </Flex>
         </Flex>
 
+        {!isSchoolAdmin && (
+          <Box mb={5} p={4} bg="#EEF2FF" borderRadius="xl" border="1px solid #C7D2FE">
+            <Text fontSize="13px" color="#312E81">
+              {!assignmentsReady ? "Loading approved teaching assignments..." : classes.length === 0
+                ? "No teaching assignments for this session. Your school admin must assign your classes and subjects before you can access results."
+                : "Class teachers can enter scores for all active school subjects in their assigned classes. In other classes, score editing is limited to assigned subjects. Full report cards remain limited to class-teacher assignments."}
+            </Text>
+            <Button mt={2} size="xs" variant="outline" onClick={() => setAssignmentsVersion((version) => version + 1)} disabled={!authReady || !profileReady || loadingAssignments || saving || syncing}>
+              Refresh Assignments
+            </Button>
+          </Box>
+        )}
+        {visibleClasses.length > 0 && (
+          <Box mb={4}>
+            <Text fontSize="12px" fontWeight="700" mb={1}>Assigned Class</Text>
+            <select aria-label="Assigned class" disabled={saving || syncing} value={selectedClassId} onChange={(event) => {
+              setSelectedClassId(event.target.value);
+            }} style={{ width: "100%", maxWidth: "360px", padding: "10px", border: "1px solid #CBD5E1", borderRadius: "8px" }}>
+              {visibleClasses.map((classArm) => <option key={classArm.id} value={classArm.id}>{classArm.name || "Unnamed class"}{visibleClasses.some((other) => other.id !== classArm.id && other.name === classArm.name) ? ` (${classArm.id})` : ""}</option>)}
+            </select>
+            {!canEditSubject && <Text mt={2} fontSize="12px" color="#64748B">{isFormClass ? "No active subject catalog is available. Refresh Assignments before entering scores; Report Card Preview remains available." : "No subject-score editing assignment for this class."}</Text>}
+          </Box>
+        )}
+
         {/* TAB 1: MANUAL SCORE ENTRY */}
         {activeTab === "scores" && (
           <Box>
             {/* Filter Bar */}
             <Flex
+              inert={saving || syncing ? true : undefined}
               bg="white"
               p={5}
               borderRadius="2xl"
@@ -861,6 +1038,7 @@ export default function ResultAndReportCardManager() {
                   </Text>
                   <select
                     value={selectedSession}
+                    disabled={!profileReady}
                     onChange={(e) => setSelectedSession(e.target.value)}
                     style={{
                       height: "40px",
@@ -888,6 +1066,7 @@ export default function ResultAndReportCardManager() {
                   </Text>
                   <select
                     value={selectedTerm}
+                    disabled={!profileReady}
                     onChange={(e) => setSelectedTerm(e.target.value)}
                     style={{
                       height: "40px",
@@ -926,7 +1105,7 @@ export default function ResultAndReportCardManager() {
                       background: "#F8FAFC",
                     }}
                   >
-                    {classes.map((cls) => (
+                    {(assignmentsReady ? scoreClasses : []).map((cls) => (
                       <option key={cls.id} value={cls.id}>
                         {cls.name}
                       </option>
@@ -953,18 +1132,12 @@ export default function ResultAndReportCardManager() {
                       minWidth: "160px",
                     }}
                   >
-                    {availableSubjects.map((s) => (
+                    {permittedSubjects.map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>
                     ))}
-                    {Boolean(
-                      subject && !availableSubjects.includes(subject),
-                    ) && (
-                      <option key={subject} value={subject}>
-                        {subject}
-                      </option>
-                    )}
+                    {!permittedSubjects.length && <option value="">No assigned subjects</option>}
                   </select>
                 </Box>
               </Flex>
@@ -997,7 +1170,7 @@ export default function ResultAndReportCardManager() {
                     fontSize="11px"
                     fontWeight="800"
                   >
-                    {loadingExisting
+                    {!rosterReady || loadingExisting
                       ? "Checking saved scores..."
                       : roster.length > 0
                         ? `${enteredCount} of ${roster.length} already entered`
@@ -1028,6 +1201,7 @@ export default function ResultAndReportCardManager() {
                   boxShadow="0 4px 14px rgba(16, 185, 129, 0.3)"
                   _hover={{ opacity: 0.95 }}
                   onClick={handleSaveScores}
+                  disabled={!canEditSubject || !scoreDataReady || syncing || editableRoster.length === 0}
                   loading={saving}
                   loadingText="Saving Scores..."
                   w={{ base: "100%", md: "auto" }}
@@ -1039,7 +1213,7 @@ export default function ResultAndReportCardManager() {
             </Flex>
 
             {/* Past/Custom Period Indicator Banner */}
-            {isPreviousPeriod && (
+            {profileReady && isPreviousPeriod && (
               <Flex
                 align="center"
                 justify="space-between"
@@ -1069,6 +1243,7 @@ export default function ResultAndReportCardManager() {
                     setSelectedTerm(currentTerm);
                     setSelectedSession(currentSession);
                   }}
+                  disabled={saving || syncing}
                 >
                   Reset to Current Active Term ({currentSession} • {currentTerm})
                 </Button>
@@ -1076,6 +1251,8 @@ export default function ResultAndReportCardManager() {
             )}
 
             {/* Score Entry Spreadsheet */}
+            {rosterReady && scoreLoadError && <Text role="alert" mb={3} fontSize="12px" color="#991B1B">{scoreLoadError}. Editing and saving are disabled until Refresh successfully loads this sheet. Previously loaded values are shown read-only.</Text>}
+            {rosterReady && roster.some((student) => !scoreRowEditable(student)) && <Text mb={3} fontSize="12px" color="#64748B">Archived or moved students are read-only. Their existing scores remain visible and are excluded from uploads.</Text>}
             <Box
               bg="white"
               borderRadius="2xl"
@@ -1188,7 +1365,7 @@ export default function ResultAndReportCardManager() {
                     </tr>
                   </thead>
                   <tbody>
-                    {roster.map((student, idx) => {
+                    {(rosterReady && canEditSubject ? roster : []).map((student, idx) => {
                       const total = calculateRowTotal(student.studentId);
                       const { grade } = getRowGrade(total);
                       const s = scores[student.studentId] || {};
@@ -1221,6 +1398,7 @@ export default function ResultAndReportCardManager() {
                           >
                             <Flex align="center" gap={2}>
                               {getFormattedStudentName(student)}
+                              {!scoreRowEditable(student) && <Badge bg="#F1F5F9" color="#475569" fontSize="9px">ARCHIVED / READ ONLY</Badge>}
                               {saved && (
                                 <Badge
                                   bg={saved.cbtExamId ? "#EDE9FE" : "#DCFCE7"}
@@ -1251,6 +1429,7 @@ export default function ResultAndReportCardManager() {
                           <td style={{ padding: "12px 16px" }}>
                             <Input
                               type="number"
+                              disabled={saving || syncing || !scoreDataReady || !canEditSubject || !scoreRowEditable(student)}
                               size="sm"
                               max={10}
                               w="65px"
@@ -1268,6 +1447,7 @@ export default function ResultAndReportCardManager() {
                           <td style={{ padding: "12px 16px" }}>
                             <Input
                               type="number"
+                              disabled={saving || syncing || !scoreDataReady || !canEditSubject || !scoreRowEditable(student)}
                               size="sm"
                               max={10}
                               w="65px"
@@ -1285,6 +1465,7 @@ export default function ResultAndReportCardManager() {
                           <td style={{ padding: "12px 16px" }}>
                             <Input
                               type="number"
+                              disabled={saving || syncing || !scoreDataReady || !canEditSubject || !scoreRowEditable(student)}
                               size="sm"
                               max={10}
                               w="65px"
@@ -1302,6 +1483,7 @@ export default function ResultAndReportCardManager() {
                           <td style={{ padding: "12px 16px" }}>
                             <Input
                               type="number"
+                              disabled={saving || syncing || !scoreDataReady || !canEditSubject || !scoreRowEditable(student)}
                               size="sm"
                               max={70}
                               w="65px"
@@ -1373,7 +1555,7 @@ export default function ResultAndReportCardManager() {
         )}
 
         {/* TAB 2: CBT AUTO-SYNC */}
-        {activeTab === "cbt-sync" &&
+        {activeTab === "cbt-sync" && canEditSubject &&
           (() => {
             const selectedExam = exams.find(
               (e) => (e._id || e.id) === selectedExamId,
@@ -1384,6 +1566,7 @@ export default function ResultAndReportCardManager() {
 
             return (
               <Box
+                inert={saving || syncing ? true : undefined}
                 maxW="740px"
                 mx="auto"
                 bg="white"
@@ -1651,18 +1834,12 @@ export default function ResultAndReportCardManager() {
                         background: "#F8FAFC",
                       }}
                     >
-                      {availableSubjects.map((s) => (
+                      {permittedSubjects.map((s) => (
                         <option key={s} value={s}>
                           {s}
                         </option>
                       ))}
-                      {Boolean(
-                        subject && !availableSubjects.includes(subject),
-                      ) && (
-                        <option key={subject} value={subject}>
-                          {subject}
-                        </option>
-                      )}
+                      {!permittedSubjects.length && <option value="">No assigned subjects</option>}
                     </select>
                   </Box>
 
@@ -1752,6 +1929,7 @@ export default function ResultAndReportCardManager() {
                     fontSize="15px"
                     fontWeight="700"
                     onClick={handleSyncCbt}
+                    disabled={!canEditSubject || !rosterReady || saving || editableRoster.length === 0}
                     loading={syncing}
                     loadingText="Pulling & Synchronizing Candidate Scores..."
                     _hover={{ opacity: 0.95 }}
@@ -1765,9 +1943,9 @@ export default function ResultAndReportCardManager() {
           })()}
 
         {/* TAB 3: REPORT CARD PREVIEW & PRINT */}
-        {activeTab === "report-card" &&
+        {activeTab === "report-card" && canPreviewReports &&
           (() => {
-            const filteredRoster = roster.filter((s) => {
+            const filteredRoster = (rosterReady ? roster : []).filter((s) => {
               if (!studentSearch.trim()) return true;
               const q = studentSearch.toLowerCase();
               const formatted = getFormattedStudentName(s).toLowerCase();
@@ -1977,7 +2155,7 @@ export default function ResultAndReportCardManager() {
                 </Box>
 
                 {/* Document Container */}
-                {loadingReportCard ? (
+                {loadingReportCard || loadingRoster ? (
                   <Flex
                     direction="column"
                     align="center"
@@ -2005,14 +2183,14 @@ export default function ResultAndReportCardManager() {
                       and institution endorsements
                     </Text>
                   </Flex>
-                ) : reportCardData ? (
+                ) : previewReady && reportCardData ? (
                   <Box overflowX="auto" pb={4} w="100%">
                     <StudentReportCardSheet
                       reportCard={reportCardData}
-                      onPrint={() => window.print()}
+                      onPrint={() => { if (previewReady && !loadingReportCard) window.print(); }}
                       showDetailedCa={true}
-                      onEditScores={() => setActiveTab("scores")}
-                      onSyncCbt={() => setActiveTab("cbt-sync")}
+                      onEditScores={canEditSubject ? () => setActiveTab("scores") : undefined}
+                      onSyncCbt={canEditSubject ? () => setActiveTab("cbt-sync") : undefined}
                     />
                   </Box>
                 ) : (

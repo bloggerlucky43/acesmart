@@ -15,6 +15,7 @@ import {
 import { getStudentAcademicTermsApi } from "../api-endpoint/sms/portalEndpoints";
 import { toaster } from "../components/ui/toaster";
 import { resetGateNotificationSession } from "./gateNotifications";
+import { setStudentPortalToken } from "./studentPortalSession";
 import {
   STUDENT_CODE_KEY,
   clearSavedStudentCode,
@@ -37,7 +38,10 @@ export const StudentPortalProvider = ({ children }) => {
   const credentialsRef = useRef({ code: "", lastName: "" });
   const activeStudentIdRef = useRef(null);
 
-  useEffect(() => () => { void resetGateNotificationSession(); }, []);
+  useEffect(() => () => {
+    setStudentPortalToken("");
+    void resetGateNotificationSession();
+  }, []);
 
   const periodParams = useCallback(
     (period) => {
@@ -127,6 +131,7 @@ export const StudentPortalProvider = ({ children }) => {
       try {
         const res = await studentCodeLoginApi(trimmedCode, trimmedLastName);
         if (!res.success) return false;
+        setStudentPortalToken(res.data.portalToken);
 
         if (
           activeStudentIdRef.current !== res.data.student?.id ||
@@ -181,6 +186,7 @@ export const StudentPortalProvider = ({ children }) => {
   }, [login]);
 
   const logout = useCallback(() => {
+    setStudentPortalToken("");
     void resetGateNotificationSession({ unsubscribe: true });
     activeStudentIdRef.current = null;
     credentialsRef.current = { code: "", lastName: "" };
@@ -192,6 +198,15 @@ export const StudentPortalProvider = ({ children }) => {
     setTermOptions([]);
     setSelectedPeriod(null);
   }, []);
+
+  useEffect(() => {
+    const expire = () => {
+      logout();
+      toaster.create({ title: "Your student portal session expired. Please sign in again.", type: "info" });
+    };
+    window.addEventListener("student-portal-expired", expire);
+    return () => window.removeEventListener("student-portal-expired", expire);
+  }, [logout]);
 
   const loadReportCard = useCallback(
     async (period) => {
@@ -207,6 +222,7 @@ export const StudentPortalProvider = ({ children }) => {
         }
         return { ok: false };
       } catch (error) {
+        if (error.response?.status === 401) return { ok: false, reauthRequired: true };
         if (error.response?.data?.paywallRequired) {
           setIsUnlocked(false);
           return { ok: false, paywall: true };
@@ -220,6 +236,7 @@ export const StudentPortalProvider = ({ children }) => {
             approvalStatus: error.response?.data?.approvalStatus || "pending",
           };
         }
+        setReportCardData(null);
         toaster.create({ title: "Failed to load report card", type: "error" });
         return { ok: false };
       }

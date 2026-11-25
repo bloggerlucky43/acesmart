@@ -12,6 +12,11 @@ import {
   FaShieldAlt,
 } from "react-icons/fa";
 import { formatStudentName } from "../../libs/helper";
+import { getReportCardDisplay } from "../../libs/reportCardDisplay";
+
+const STUDENT_PASSPORT_AVATAR = `data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 100"><rect width="80" height="100" fill="#F1F5F9"/><circle cx="40" cy="34" r="17" fill="#94A3B8"/><path d="M8 100V84c0-18 14-29 32-29s32 11 32 29v16" fill="#94A3B8"/></svg>'
+)}`;
 
 const callableCa = (result) =>
   (Number(result?.caScore1) || 0) +
@@ -89,8 +94,7 @@ const StudentReportCardSheet = ({
 
   const studentInfo = reportCard.student || {};
   const institutionInfo = reportCard.institution || {};
-  const results = reportCard.results || [];
-  const summary = reportCard.summary || {};
+  const { results, summary } = getReportCardDisplay(reportCard.results || [], reportCard.summary || {});
   const signature = reportCard.signature || {};
   const approval = reportCard.approval || {};
   const attendance = summary.attendance || {};
@@ -109,6 +113,7 @@ const StudentReportCardSheet = ({
   const formattedCandidateName = formatStudentName(
     studentInfo.name || `${studentInfo.firstName || ""} ${studentInfo.lastName || ""}` || "Student Name"
   );
+  const studentPhotoUrl = studentInfo.faceImageUrl?.trim() || STUDENT_PASSPORT_AVATAR;
 
   return (
     <Box
@@ -346,38 +351,30 @@ const StudentReportCardSheet = ({
           gap={isUltraCompact ? 2 : 3}
         >
           {/* Candidate Identity */}
-          <Flex align="center" gap={2.5}>
-            {studentInfo.faceImageUrl ? (
-              <Box
-                w={isUltraCompact ? "38px" : "46px"}
-                h={isUltraCompact ? "38px" : "46px"}
-                borderRadius="lg"
-                overflow="hidden"
-                border="2px solid #4338CA"
-                flexShrink={0}
-              >
-                <img
-                  src={studentInfo.faceImageUrl}
-                  alt={formattedCandidateName}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              </Box>
-            ) : (
-              <Flex
-                w={isUltraCompact ? "34px" : "42px"}
-                h={isUltraCompact ? "34px" : "42px"}
-                borderRadius="lg"
-                bg="#EDE9FE"
-                color="#6D28D9"
-                align="center"
-                justify="center"
-                flexShrink={0}
-              >
-                <Icon as={FaGraduationCap} boxSize={isUltraCompact ? 4 : 5} />
-              </Flex>
-            )}
+          <Flex align="center" gap={2.5} minW={0} maxW="100%">
+            <Box
+              w={isUltraCompact ? "48px" : isCompact ? "56px" : "64px"}
+              h={isUltraCompact ? "60px" : isCompact ? "70px" : "80px"}
+              borderRadius="md"
+              overflow="hidden"
+              border="2px solid #4338CA"
+              bg="#F1F5F9"
+              flexShrink={0}
+            >
+              <img
+                key={studentPhotoUrl}
+                src={studentPhotoUrl}
+                alt={`${formattedCandidateName} passport photo`}
+                onError={(event) => {
+                  if (event.currentTarget.getAttribute("src") !== STUDENT_PASSPORT_AVATAR) {
+                    event.currentTarget.src = STUDENT_PASSPORT_AVATAR;
+                  }
+                }}
+                style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            </Box>
 
-            <Box>
+            <Box minW={0} overflowWrap="anywhere">
               <Text
                 fontSize={isUltraCompact ? "8px" : "9px"}
                 fontWeight="800"
@@ -585,10 +582,10 @@ const StudentReportCardSheet = ({
                 >
                   <Icon as={FaExclamationTriangle} boxSize={5} color="#D97706" mb={1.5} />
                   <Text fontSize="13px" fontWeight="800" color="#0F172A">
-                    No Examination Results Recorded Yet
+                    No Subject Marks To Display
                   </Text>
                   <Text fontSize="11px" color="#64748B" maxW="400px" mx="auto" mt={0.5}>
-                    Scores have not been entered or synchronized from CBT for this candidate for {reportCard.term} • {reportCard.session}.
+                    Subjects with only zero or empty marks are omitted from this report card for {reportCard.term} • {reportCard.session}.
                   </Text>
                   {(onEditScores || onSyncCbt) && (
                     <Flex justify="center" gap={2} mt={3} className="no-print">
@@ -734,7 +731,7 @@ const StudentReportCardSheet = ({
                     textAlign: "center",
                   }}
                 >
-                  {summary.totalScore ?? 0}
+                  {summary.totalScore ?? "-"}
                 </td>
                 <td
                   colSpan={2}
@@ -745,7 +742,7 @@ const StudentReportCardSheet = ({
                     color: "#4338CA",
                   }}
                 >
-                  AVERAGE: {summary.averageScore ?? 0}%
+                  AVERAGE: {summary.averageScore == null ? "-" : `${summary.averageScore}%`}
                 </td>
               </tr>
             </tfoot>
@@ -791,20 +788,20 @@ const StudentReportCardSheet = ({
         <SummaryTile
           label="Total Subjects"
           value={summary.totalSubjects ?? results.length}
-          subtext="Enrollments"
+          subtext="Visible Subjects"
           isCompact={isCompact}
           isUltraCompact={isUltraCompact}
         />
         <SummaryTile
           label="Cumulative Marks"
-          value={summary.totalScore ?? 0}
+          value={summary.totalScore ?? "-"}
           subtext={`Out of ${(results.length || 0) * 100}`}
           isCompact={isCompact}
           isUltraCompact={isUltraCompact}
         />
         <SummaryTile
           label="Terminal Average"
-          value={`${summary.averageScore ?? 0}%`}
+          value={summary.averageScore == null ? "-" : `${summary.averageScore}%`}
           subtext="Overall Standing"
           color="#4338CA"
           bg="#EEF2FF"
@@ -814,7 +811,9 @@ const StudentReportCardSheet = ({
         <SummaryTile
           label="Academic Standing"
           value={
-            (summary.averageScore ?? 0) >= 70
+            summary.averageScore == null
+              ? "Unavailable"
+              : summary.averageScore >= 70
               ? "Excellent"
               : (summary.averageScore ?? 0) >= 60
               ? "Very Good"

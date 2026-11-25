@@ -7,6 +7,8 @@ import {
   Icon,
   Badge,
   Input,
+  Dialog,
+  Portal,
 } from "@chakra-ui/react";
 import {
   FaUserPlus,
@@ -28,6 +30,21 @@ import {
 import { useAuth } from "../../libs/AuthProvider";
 import { toaster } from "../../components/ui/toaster";
 import DashboardLayout from "../../constants/dashboardlayout";
+import {
+  getStaffTeachingAssignmentsApi,
+  saveStaffTeachingAssignmentsApi,
+} from "../../api-endpoint/institution/teachingAssignments";
+
+const assignmentSelectStyle = {
+  width: "100%",
+  minHeight: "44px",
+  padding: "8px 12px",
+  borderRadius: "12px",
+  border: "1px solid #CBD5E1",
+  background: "#F8FAFC",
+  color: "#334155",
+  fontSize: "13px",
+};
 
 export default function StaffManager() {
   const { user } = useAuth();
@@ -37,6 +54,15 @@ export default function StaffManager() {
   const [enrolling, setEnrolling] = useState(false);
   const [confirmUnenroll, setConfirmUnenroll] = useState(null);
   const [unenrolling, setUnenrolling] = useState(false);
+  const [assignmentStaff, setAssignmentStaff] = useState(null);
+  const [assignmentData, setAssignmentData] = useState(null);
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
+  const [assignmentError, setAssignmentError] = useState("");
+  const [assignmentRetry, setAssignmentRetry] = useState(0);
+  const canManageAssignments = Boolean(user?.institutionId)
+    && ["institution_admin", "institution", "admin"].includes(user?.role);
+  const assignmentStaffId = assignmentStaff?.id;
 
   // Form State
   const [form, setForm] = useState({
@@ -64,6 +90,65 @@ export default function StaffManager() {
   useEffect(() => {
     fetchStaff();
   }, []);
+
+  useEffect(() => {
+    if (!assignmentStaffId || !canManageAssignments) return;
+    let active = true;
+    setAssignmentLoading(true);
+    setAssignmentData(null);
+    setAssignmentError("");
+    getStaffTeachingAssignmentsApi(assignmentStaffId)
+      .then((response) => {
+        if (!response.success || !response.data) {
+          throw new Error(response.message || "Unable to load teaching assignments.");
+        }
+        if (active) {
+          setAssignmentData({
+            ...response.data,
+            classTeacherClassIds: response.data.classTeacherClassIds || [],
+            subjectAssignments: (response.data.subjectAssignments || []).map(({ classArmId, subjectId }) => ({ classArmId, subjectId })),
+          });
+        }
+      })
+      .catch((error) => {
+        if (active) setAssignmentError(error.response?.data?.message || error.message || "Unable to load teaching assignments.");
+      })
+      .finally(() => {
+        if (active) setAssignmentLoading(false);
+      });
+    return () => { active = false; };
+  }, [assignmentStaffId, assignmentRetry, canManageAssignments]);
+
+  const handleSaveAssignments = async (event) => {
+    event.preventDefault();
+    if (!canManageAssignments || !assignmentData || assignmentLoading || assignmentSaving) return;
+    const { classTeacherClassIds, subjectAssignments, session } = assignmentData;
+    if (subjectAssignments.some((assignment) => !assignment.classArmId || !assignment.subjectId)) {
+      setAssignmentError("Select both a class and a subject for each subject-teacher assignment, or remove the incomplete row.");
+      return;
+    }
+    const pairs = subjectAssignments.map(({ classArmId, subjectId }) => `${classArmId}:${subjectId}`);
+    if (new Set(pairs).size !== pairs.length) {
+      setAssignmentError("Each class and subject pair can only be assigned once.");
+      return;
+    }
+    setAssignmentSaving(true);
+    setAssignmentError("");
+    try {
+      const response = await saveStaffTeachingAssignmentsApi(assignmentStaffId, {
+        classTeacherClassIds,
+        subjectAssignments,
+        session,
+      });
+      if (!response.success) throw new Error(response.message || "Unable to save teaching assignments.");
+      toaster.create({ title: "Teaching assignments saved", description: `${assignmentStaff.name}'s school-approved assignments have been updated.`, type: "success" });
+      setAssignmentStaff(null);
+    } catch (error) {
+      setAssignmentError(error.response?.data?.message || error.message || "Unable to save teaching assignments.");
+    } finally {
+      setAssignmentSaving(false);
+    }
+  };
 
   const handleEnrollSubmit = async (e) => {
     e.preventDefault();
@@ -290,6 +375,26 @@ export default function StaffManager() {
                         )}
                       </td>
                       <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                        <Flex gap={2} justify="center" wrap="wrap">
+                        {canManageAssignments && staff.role === "teacher" && (
+                          <Button
+                            h="32px"
+                            px={3}
+                            borderRadius="lg"
+                            bg="#EEF2FF"
+                            color="#4338CA"
+                            fontWeight="700"
+                            fontSize="12px"
+                            onClick={() => {
+                              setAssignmentData(null);
+                              setAssignmentError("");
+                              setAssignmentLoading(true);
+                              setAssignmentStaff(staff);
+                            }}
+                          >
+                            Manage Assignments
+                          </Button>
+                        )}
                         {staff.id === currentUserId ? (
                           <Text fontSize="12px" color="#94A3B8" fontWeight="700">
                             You
@@ -310,6 +415,7 @@ export default function StaffManager() {
                             Unenroll
                           </Button>
                         )}
+                        </Flex>
                       </td>
                     </tr>
                   ))
@@ -324,6 +430,120 @@ export default function StaffManager() {
             </table>
           </Box>
         </Box>
+
+        <Dialog.Root
+          open={Boolean(assignmentStaff) && canManageAssignments}
+          onOpenChange={({ open }) => { if (!open && !assignmentSaving) setAssignmentStaff(null); }}
+          size="lg"
+          placement="center"
+          scrollBehavior="inside"
+        >
+          <Portal>
+            <Dialog.Backdrop bg="rgba(15, 23, 42, 0.7)" backdropFilter="blur(6px)" />
+            <Dialog.Positioner p={4}>
+              <Dialog.Content borderRadius="2xl" maxH="calc(100dvh - 32px)" color="#0F172A" bg="white">
+                <Dialog.Header bg="#EEF2FF" borderTopRadius="2xl">
+                  <Box>
+                    <Dialog.Title fontWeight="800">Manage Teaching Assignments</Dialog.Title>
+                    <Text fontSize="13px" color="#64748B" mt={1}>{assignmentStaff?.name} | {assignmentStaff?.staffIdNumber}</Text>
+                  </Box>
+                </Dialog.Header>
+                <Dialog.Body>
+                  <Text fontSize="13px" color="#64748B" mb={4}>
+                    School-admin approval is required. Assign one or two classes as class teacher, subject/class pairs as subject teacher, or both. Teachers can view these assignments but cannot change them.
+                  </Text>
+                  {assignmentLoading ? (
+                    <Text role="status" fontSize="13px" color="#64748B" py={5}>Loading classes and assignments...</Text>
+                  ) : !assignmentData ? (
+                    <Box role="alert" p={4} bg="#FEF2F2" borderRadius="xl">
+                      <Text fontSize="13px" color="#B91C1C" mb={3}>{assignmentError || "Unable to load teaching assignments."}</Text>
+                      <Button size="sm" variant="outline" onClick={() => setAssignmentRetry((value) => value + 1)}>Retry</Button>
+                    </Box>
+                  ) : (
+                    <form id="teaching-assignment-form" onSubmit={handleSaveAssignments}>
+                      <fieldset disabled={assignmentSaving} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+                        <Badge bg="#F1F5F9" color="#334155" px={3} py={1} borderRadius="lg" mb={4}>Academic Session: {assignmentData.session || "Current session"}</Badge>
+                        <Text as="h3" fontSize="14px" fontWeight="800" mb={1}>Class Teacher</Text>
+                        <Text fontSize="12px" color="#64748B" mb={3}>Select the classes this teacher oversees. Uncheck to remove an assignment. Classes already assigned to another teacher must be released first.</Text>
+                        <Flex direction="column" gap={2} mb={5}>
+                          {(assignmentData.classes || []).map((classArm) => {
+                            const selected = assignmentData.classTeacherClassIds.includes(classArm.id);
+                            const occupied = classArm.formTeacherId && classArm.formTeacherId !== assignmentStaffId && !selected;
+                            return (
+                              <Flex as="label" key={classArm.id} gap={3} align="center" p={3} border="1px solid #E2E8F0" borderRadius="xl" bg={selected ? "#EEF2FF" : "#F8FAFC"}>
+                                <input
+                                  type="checkbox"
+                                  checked={selected}
+                                  disabled={Boolean(occupied) || assignmentSaving}
+                                  onChange={(event) => setAssignmentData((previous) => ({
+                                    ...previous,
+                                    classTeacherClassIds: event.target.checked
+                                      ? [...previous.classTeacherClassIds, classArm.id]
+                                      : previous.classTeacherClassIds.filter((id) => id !== classArm.id),
+                                  }))}
+                                />
+                                <Box>
+                                  <Text fontSize="13px" fontWeight="600">{classArm.name}</Text>
+                                  {occupied && <Text fontSize="11px" color="#64748B">Assigned to another class teacher</Text>}
+                                </Box>
+                              </Flex>
+                            );
+                          })}
+                          {!assignmentData.classes?.length && <Text fontSize="13px" color="#64748B">Create school classes before assigning a teacher.</Text>}
+                        </Flex>
+                        <Flex justify="space-between" align="center" gap={3} wrap="wrap" mb={3}>
+                          <Text as="h3" fontSize="14px" fontWeight="800">Subject Teacher</Text>
+                          <Button
+                            size="sm" bg="#EEF2FF" color="#4338CA" borderRadius="lg"
+                            disabled={!assignmentData.classes?.length || !assignmentData.subjects?.length}
+                            onClick={() => setAssignmentData((previous) => ({ ...previous, subjectAssignments: [...previous.subjectAssignments, { classArmId: "", subjectId: "" }] }))}
+                          >Add Class / Subject</Button>
+                        </Flex>
+                        <Flex direction="column" gap={3}>
+                          {assignmentData.subjectAssignments.map((assignment, index) => (
+                            <Flex key={index} gap={2} direction={{ base: "column", md: "row" }} p={3} border="1px solid #E2E8F0" borderRadius="xl" align={{ base: "stretch", md: "center" }}>
+                              <Box flex={1} minW={0}>
+                                <select
+                                  aria-label={`Class for subject assignment ${index + 1}`}
+                                  style={assignmentSelectStyle}
+                                  value={assignment.classArmId}
+                                  onChange={(event) => setAssignmentData((previous) => ({ ...previous, subjectAssignments: previous.subjectAssignments.map((row, rowIndex) => rowIndex === index ? { ...row, classArmId: event.target.value } : row) }))}
+                                >
+                                  <option value="">Select class</option>
+                                  {(assignmentData.classes || []).map((classArm) => <option key={classArm.id} value={classArm.id}>{classArm.name}</option>)}
+                                </select>
+                              </Box>
+                              <Box flex={1} minW={0}>
+                                <select
+                                  aria-label={`Subject for assignment ${index + 1}`}
+                                  style={assignmentSelectStyle}
+                                  value={assignment.subjectId}
+                                  onChange={(event) => setAssignmentData((previous) => ({ ...previous, subjectAssignments: previous.subjectAssignments.map((row, rowIndex) => rowIndex === index ? { ...row, subjectId: event.target.value } : row) }))}
+                                >
+                                  <option value="">Select subject</option>
+                                  {(assignmentData.subjects || []).map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+                                </select>
+                              </Box>
+                              <Button size="sm" color="#B91C1C" variant="ghost" aria-label={`Remove subject assignment ${index + 1}`} onClick={() => setAssignmentData((previous) => ({ ...previous, subjectAssignments: previous.subjectAssignments.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</Button>
+                            </Flex>
+                          ))}
+                          {!assignmentData.subjectAssignments.length && <Text fontSize="12px" color="#64748B">No subject assignments. Add a class and subject pair to grant subject-teacher access.</Text>}
+                          {!assignmentData.subjects?.length && <Text fontSize="12px" color="#64748B">No subjects available. Add school subjects before assigning subject teachers.</Text>}
+                        </Flex>
+                        <Text fontSize="12px" color="#64748B" mt={4}>Saving an empty selection removes this teacher's current assignments. Account roles and permissions are not changed.</Text>
+                        {assignmentError && <Text role="alert" fontSize="13px" color="#B91C1C" bg="#FEF2F2" p={3} borderRadius="xl" mt={4}>{assignmentError}</Text>}
+                      </fieldset>
+                    </form>
+                  )}
+                </Dialog.Body>
+                <Dialog.Footer gap={3}>
+                  <Button variant="ghost" borderRadius="xl" disabled={assignmentSaving} onClick={() => setAssignmentStaff(null)}>Cancel</Button>
+                  <Button type="submit" form="teaching-assignment-form" bg="#4338CA" color="white" borderRadius="xl" loading={assignmentSaving} loadingText="Saving..." disabled={assignmentLoading || !assignmentData}>Save Assignments</Button>
+                </Dialog.Footer>
+              </Dialog.Content>
+            </Dialog.Positioner>
+          </Portal>
+        </Dialog.Root>
 
         {/* Enroll Teacher Modal */}
         {isModalOpen && (

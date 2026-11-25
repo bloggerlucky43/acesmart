@@ -40,6 +40,7 @@ import StudentAttendanceManager from "./teacher/sms/StudentAttendanceManager";
 import StudentGateCheckIn from "./teacher/sms/StudentGateCheckIn";
 import ResultAndReportCardManager from "./teacher/sms/ResultAndReportCardManager";
 import TeacherResources from "./teacher/resources/TeacherResources";
+import TeacherProfile from "./teacher/TeacherProfile";
 import SchoolAdminDashboard from "./institution/SchoolAdminDashboard";
 import StaffQrGenerator from "./institution/StaffQrGenerator";
 import StaffAttendanceHistory from "./institution/StaffAttendanceHistory";
@@ -110,6 +111,21 @@ const SuperAdminRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
+  return children;
+};
+
+const TeacherRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  // AuthProvider begins revalidation in its mount effect, after the first render.
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted || loading) return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!["teacher", "institution_admin", "institution", "admin", "superadmin", "platform_admin"].includes(user.role)) {
+    return <Navigate to="/login" replace />;
+  }
   return children;
 };
 
@@ -330,11 +346,27 @@ const Home = () => {
             />
             <Route
               path="/teacher/report-cards"
-              element={<ResultAndReportCardManager />}
+              element={
+                <TeacherRoute>
+                  <ResultAndReportCardManager />
+                </TeacherRoute>
+              }
             />
             <Route
               path="/teacher/broadsheet"
-              element={<MasterBroadsheet />}
+              element={
+                <TeacherRoute>
+                  <MasterBroadsheet />
+                </TeacherRoute>
+              }
+            />
+            <Route
+              path="/teacher/profile"
+              element={
+                <TeacherRoute>
+                  <TeacherProfile />
+                </TeacherRoute>
+              }
             />
             <Route
               path="/teacher/resources"

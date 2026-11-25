@@ -19,6 +19,7 @@ export const MASTER_NIGERIAN_SUBJECTS = [
   { name: "English Language", category: "Core General", level: "Senior Secondary", code: "ENG" },
   { name: "Mathematics", category: "Sciences", level: "Senior Secondary", code: "MTH" },
   { name: "Civic Education", category: "Core General", level: "Senior Secondary", code: "CIV" },
+  { name: "Citizenship Education", category: "Core General", level: "Senior Secondary", code: "CTE" },
   { name: "Computer Studies", category: "Sciences", level: "Senior Secondary", code: "CSC" },
   { name: "Data Processing", category: "Trade & Vocational", level: "Senior Secondary", code: "DPR" },
 
@@ -69,6 +70,7 @@ export const MASTER_NIGERIAN_SUBJECTS = [
   { name: "Woodwork", category: "Trade & Vocational", level: "Senior Secondary", code: "WDW" },
   { name: "Building Construction", category: "Trade & Vocational", level: "Senior Secondary", code: "BDC" },
   { name: "Animal Husbandry", category: "Trade & Vocational", level: "Senior Secondary", code: "ANH" },
+  { name: "Livestock Farming", category: "Trade & Vocational", level: "Senior Secondary", code: "LVF" },
   { name: "Fisheries", category: "Trade & Vocational", level: "Senior Secondary", code: "FSH" },
   { name: "Salesmanship", category: "Trade & Vocational", level: "Senior Secondary", code: "SLM" },
   { name: "Cosmetology", category: "Trade & Vocational", level: "Senior Secondary", code: "COS" },

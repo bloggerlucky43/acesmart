@@ -1,6 +1,11 @@
 import api from "../../libs/axios";
 import { toaster } from "../../components/ui/toaster";
 
+const feedbackError = (error, fallback) => {
+  const message = error.response?.data?.message || error.response?.data?.error || error.message;
+  return { success: false, message: typeof message === "string" ? message : fallback };
+};
+
 /**
  * Submit user or student feedback
  */
@@ -18,13 +23,13 @@ export const submitFeedbackApi = async (payload) => {
     }
     return data;
   } catch (error) {
-    console.error("submitFeedbackApi error:", error);
+    const result = feedbackError(error, "Unable to submit feedback. Please try again.");
     toaster.create({
       title: "Failed to submit feedback",
-      description: error.response?.data?.message || error.message,
+      description: result.message,
       type: "error",
     });
-    return { success: false };
+    return result;
   }
 };
 
@@ -39,8 +44,7 @@ export const getFeedbacksApi = async (params = {}) => {
     });
     return data;
   } catch (error) {
-    console.error("getFeedbacksApi error:", error);
-    return { success: false, data: [], metrics: {} };
+    return feedbackError(error, "Unable to load feedback. Please try again.");
   }
 };
 
@@ -61,13 +65,13 @@ export const updateFeedbackStatusApi = async (id, payload) => {
     }
     return data;
   } catch (error) {
-    console.error("updateFeedbackStatusApi error:", error);
+    const result = feedbackError(error, "Unable to update feedback. Please try again.");
     toaster.create({
       title: "Update Failed",
-      description: error.response?.data?.message || error.message,
+      description: result.message,
       type: "error",
     });
-    return { success: false };
+    return result;
   }
 };
 
@@ -87,12 +91,12 @@ export const deleteFeedbackApi = async (id) => {
     }
     return data;
   } catch (error) {
-    console.error("deleteFeedbackApi error:", error);
+    const result = feedbackError(error, "Unable to delete feedback. Please try again.");
     toaster.create({
       title: "Delete Failed",
-      description: error.response?.data?.message || error.message,
+      description: result.message,
       type: "error",
     });
-    return { success: false };
+    return result;
   }
 };
