@@ -14,6 +14,7 @@ import {
 import {
   FaUserEdit,
   FaCamera,
+  FaUpload,
   FaTimes,
   FaCheckCircle,
   FaExclamationTriangle,
@@ -28,6 +29,14 @@ import StudentAcademicSection from "./StudentAcademicSection";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../libs/AuthProvider";
 import { STUDENT_EDITOR_CACHE_MS } from "../../libs/studentEditorCache";
+
+function stopPhotoCamera(cameraRef) {
+  const camera = cameraRef.current;
+  if (!camera) return;
+  cameraRef.current = null;
+  camera.stream?.getTracks().forEach((track) => track.stop());
+  if (camera.video.srcObject === camera.stream) camera.video.srcObject = null;
+}
 
 const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
   const [form, setForm] = useState({
@@ -47,7 +56,10 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
   const [loading, setLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(null);
+  const [cameraStatus, setCameraStatus] = useState("");
   const fileInputRef = useRef(null);
+  const cameraRef = useRef(null);
+  const videoRef = useRef(null);
   const objectUrlRef = useRef(null);
   const processingRef = useRef(null);
   const savingRef = useRef(null);
@@ -75,6 +87,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
 
   useEffect(() => {
     const operations = operationRef;
+    const camera = cameraRef;
     operations.current++;
     processingRef.current = null;
     savingRef.current = null;
@@ -82,6 +95,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
     setLoading(false);
     setUploadProgress(null);
     setSelectedFile(null);
+    setCameraStatus("");
     if (isOpen && student) {
       setForm({
         firstName: student.firstName || "",
@@ -94,6 +108,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
     }
     return () => {
       operations.current++;
+      stopPhotoCamera(camera);
       processingRef.current?.abort();
       savingRef.current?.abort();
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
@@ -162,9 +177,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
 
   if (!isOpen || !student) return null;
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
+  const preparePhoto = async (file) => {
     if (!file || savingRef.current) return;
 
     if (!["image/jpeg", "image/jpg", "image/png"].includes(file.type)) {
@@ -172,6 +185,8 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
       return;
     }
 
+    stopPhotoCamera(cameraRef);
+    setCameraStatus("");
     processingRef.current?.abort();
     const controller = new AbortController();
     processingRef.current = controller;
@@ -207,9 +222,75 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
     }
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    return preparePhoto(file);
+  };
+
+  const closeCamera = () => {
+    stopPhotoCamera(cameraRef);
+    setCameraStatus("");
+  };
+
+  const openCamera = async () => {
+    if (cameraRef.current || savingRef.current || !videoRef.current) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toaster.create({ title: "Camera unavailable", description: "Open the site over HTTPS in a supported browser, or upload a photo instead.", type: "warning" });
+      return;
+    }
+
+    const camera = { video: videoRef.current, stream: null, capturing: false };
+    cameraRef.current = camera;
+    setCameraStatus("opening");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+      if (cameraRef.current !== camera) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      camera.stream = stream;
+      camera.video.srcObject = stream;
+      await camera.video.play();
+      if (cameraRef.current === camera) setCameraStatus("ready");
+    } catch (error) {
+      if (cameraRef.current !== camera) return;
+      closeCamera();
+      toaster.create({
+        title: error.name === "NotAllowedError" ? "Camera access was denied" : "Could not start the camera",
+        description: "Check your camera and browser permissions, or upload a photo instead.",
+        type: "warning",
+      });
+    }
+  };
+
+  const capturePhoto = async () => {
+    const camera = cameraRef.current;
+    if (!camera || camera.capturing || cameraStatus !== "ready") return;
+    const { video } = camera;
+    camera.capturing = true;
+    setCameraStatus("capturing");
+    try {
+      if (!video.videoWidth || !video.videoHeight) throw new Error("Camera frame unavailable");
+      const canvas = document.createElement("canvas");
+      const scale = Math.min(1, 600 / Math.max(video.videoWidth, video.videoHeight));
+      canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+      canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+      if (cameraRef.current !== camera) return;
+      if (!blob) throw new Error("Camera frame could not be encoded");
+      await preparePhoto(new File([blob], "student-face.jpg", { type: "image/jpeg" }));
+    } catch {
+      if (cameraRef.current !== camera) return;
+      closeCamera();
+      toaster.create({ title: "Could not capture a photo", description: "Try the camera again or upload a photo instead.", type: "error" });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (processingRef.current || savingRef.current) return;
+    if (cameraRef.current || processingRef.current || savingRef.current) return;
     const controller = new AbortController();
     savingRef.current = controller;
     const operation = operationRef.current;
@@ -361,7 +442,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
         {/* Modal Body Form */}
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}>
           <Box p={{ base: 4, sm: 6 }} flex="1" minH={0} overflowY="auto" overscrollBehavior="contain">
-            {/* Biometric Photo Upload Section */}
+            {/* Biometric Photo Section */}
             <Box
               p={4}
               borderRadius="2xl"
@@ -383,7 +464,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
                   borderRadius="full"
                 >
                   <Icon as={hasFace ? FaCheckCircle : FaExclamationTriangle} mr={1} />
-                  {hasFace ? "Face Registered" : "Face Missing"}
+                  {selectedFile ? "Photo Pending" : hasFace ? "Face Registered" : "Face Missing"}
                 </Badge>
               </Flex>
 
@@ -430,9 +511,10 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
                 {/* File Picker Controls */}
                 <Box flex={1}>
                   <Text fontSize="12px" color="#475569" mb={2}>
-                    {hasFace
+                    {selectedFile ? "Review the new photo, then save to apply it."
+                      : hasFace
                       ? "Biometric headshot is registered for exam authentication. You can replace it anytime."
-                      : "No headshot was uploaded during initial enrollment. Upload one now to enable face proctoring for CBT exams."}
+                      : "Take or upload a headshot to enable face proctoring for CBT exams."}
                   </Text>
 
                   <input
@@ -444,8 +526,9 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
                     disabled={loading}
                   />
 
-                  <Flex gap={2} align="center">
+                  <Flex gap={2} align="center" wrap="wrap">
                     <Button
+                      type="button"
                       size="sm"
                       bg="linear-gradient(135deg, #6A1B9A 0%, #8E24AA 100%)"
                       color="white"
@@ -453,19 +536,26 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
                       fontSize="12px"
                       fontWeight="700"
                       px={3.5}
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={loading}
+                      onClick={openCamera}
+                      disabled={loading || isProcessing || Boolean(cameraStatus)}
                       _hover={{ opacity: 0.92 }}
                     >
                       <Icon as={FaCamera} mr={1.5} boxSize={3.5} />
-                      {hasFace ? "Change Face Photo" : "Upload Face Photo"}
+                      {selectedFile ? "Retake Photo" : "Take Photo"}
                     </Button>
-
-                    {selectedFile && (
-                      <Badge bg="#EDE9FE" color="#6B21A8" fontSize="10px" px={2} py={1} borderRadius="lg">
-                        New photo selected
-                      </Badge>
-                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      borderColor="#CBD5E1"
+                      borderRadius="xl"
+                      fontSize="12px"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={loading}
+                    >
+                      <Icon as={FaUpload} mr={1.5} boxSize={3.5} />
+                      Upload Photo
+                    </Button>
                   </Flex>
                   {isProcessing && <Text role="status" fontSize="12px" mt={2}>Preparing photo...</Text>}
                   {loading && selectedFile && (
@@ -476,6 +566,22 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
                   )}
                 </Box>
               </Flex>
+              <Box hidden={!cameraStatus} mt={4}>
+                {cameraStatus === "opening" && <Text role="status" fontSize="12px" mb={2}>Opening camera. Allow access if prompted.</Text>}
+                <video
+                  ref={videoRef}
+                  muted
+                  playsInline
+                  aria-label="Live camera preview"
+                  style={{ width: "100%", maxHeight: "240px", borderRadius: "12px", background: "#0F172A" }}
+                />
+                <Flex gap={2} mt={2} wrap="wrap">
+                  <Button type="button" size="sm" colorPalette="purple" onClick={capturePhoto} disabled={cameraStatus !== "ready"}>
+                    {cameraStatus === "capturing" ? "Capturing..." : "Capture Photo"}
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={closeCamera}>Cancel Camera</Button>
+                </Flex>
+              </Box>
             </Box>
 
             {/* Form Fields Grid */}
@@ -598,7 +704,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onUpdated }) => {
               borderRadius="xl"
               px={5}
               fontWeight="700"
-              disabled={isProcessing || loading}
+              disabled={isProcessing || loading || Boolean(cameraStatus)}
               loading={loading || isProcessing}
               loadingText={isProcessing ? "Preparing photo..." : selectedFile && uploadProgress !== 100 ? "Uploading photo..." : "Saving Changes..."}
               _hover={{ opacity: 0.95 }}

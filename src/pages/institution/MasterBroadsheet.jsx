@@ -43,7 +43,7 @@ import { getMyTeachingAssignmentsApi } from "../../api-endpoint/institution/teac
 import { toaster } from "../../components/ui/toaster";
 import { formatStudentName } from "../../libs/helper";
 import { academicSessionOptions, defaultAcademicSession, displayScore, annualRowComplete, promotionLabel, savedPromotionEligible } from "./reportScope";
-import { buildBroadsheetExport, downloadBroadsheetExcel, subjectDisplayValue } from "./broadsheetExport";
+import { buildBroadsheetExport, broadsheetPrintPanels, downloadBroadsheetExcel, subjectScoreLabels, subjectScoreValues } from "./broadsheetExport";
 
 export default function MasterBroadsheet() {
   const { user, loading: authLoading } = useAuth();
@@ -87,6 +87,9 @@ export default function MasterBroadsheet() {
   const classScope = `${identity}:${academicSession}`;
   const scope = `${classScope}:${selectedClassArm}:${termFilter}`;
   const annual = termFilter === "all";
+  const showSummary = annual && viewMode === "cumulative";
+  const subjectLabels = subjectScoreLabels(annual);
+  const subjectHeaderRows = !showSummary && subjects.length ? 2 : 1;
   const scopeLabel = annual ? "Annual 3-Term Cumulative" : termFilter;
   const dataReady = authReady && profileReady && classesScope === classScope && loadedScope === scope && !loading;
   const canDecide = canManage && annual && dataReady && !saving && !rollingOver;
@@ -427,6 +430,8 @@ export default function MasterBroadsheet() {
               margin: 0 !important;
               padding: 0 !important;
             }
+            .print-broadsheet-panel + .print-broadsheet-panel { break-before: page; }
+            .print-broadsheet-panel th, .print-broadsheet-panel td { overflow-wrap: anywhere; }
             @page {
               size: A4 landscape;
               margin: 8mm 6mm;
@@ -766,19 +771,20 @@ export default function MasterBroadsheet() {
             {/* View Mode & Search */}
             <Flex wrap="wrap" gap={3} align="center">
               {/* View Switcher */}
-              <HStack bg="#FFFFFF" border="1px solid #CBD5E1" p="3px" borderRadius="xl">
+              {annual && <HStack bg="#FFFFFF" border="1px solid #CBD5E1" p="3px" borderRadius="xl" flexWrap="wrap">
                 <Button
                   size="xs"
                   borderRadius="lg"
                   px={3}
                   h="30px"
                   fontWeight="bold"
+                  aria-pressed={viewMode === "cumulative"}
                   bg={viewMode === "cumulative" ? "#0F172A" : "transparent"}
                   color={viewMode === "cumulative" ? "white" : "#64748B"}
                   _hover={{ bg: viewMode === "cumulative" ? "#0F172A" : "#F8FAFC" }}
                   onClick={() => setViewMode("cumulative")}
                 >
-                   {annual ? "Cumulative Matrix" : "Term Matrix"}
+                  Cumulative Matrix
                 </Button>
                 <Button
                   size="xs"
@@ -786,14 +792,15 @@ export default function MasterBroadsheet() {
                   px={3}
                   h="30px"
                   fontWeight="bold"
+                  aria-pressed={viewMode === "breakdown"}
                   bg={viewMode === "breakdown" ? "#0F172A" : "transparent"}
                   color={viewMode === "breakdown" ? "white" : "#64748B"}
                   _hover={{ bg: viewMode === "breakdown" ? "#0F172A" : "#F8FAFC" }}
                   onClick={() => setViewMode("breakdown")}
                 >
-                  All Subjects Breakdown
+                  Subject Averages
                 </Button>
-              </HStack>
+              </HStack>}
 
               {/* Student Search */}
               <Flex
@@ -864,12 +871,12 @@ export default function MasterBroadsheet() {
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
                 <thead>
                   <tr style={{ background: "#0F172A", color: "#F8FAFC", textAlign: "left", fontSize: "11px", letterSpacing: "0.5px" }}>
-                    <th style={{ padding: "12px 14px", width: "60px", textAlign: "center" }}>RANK</th>
-                    <th style={{ padding: "12px 14px", minWidth: "180px" }}>STUDENT NAME</th>
-                    <th style={{ padding: "12px 14px", width: "110px" }}>STUDENT ID</th>
+                    <th rowSpan={subjectHeaderRows} style={{ padding: "12px 14px", width: "60px", textAlign: "center" }}>RANK</th>
+                    <th rowSpan={subjectHeaderRows} style={{ padding: "12px 14px", minWidth: "180px" }}>STUDENT NAME</th>
+                    <th rowSpan={subjectHeaderRows} style={{ padding: "12px 14px", width: "110px" }}>STUDENT ID</th>
 
                     {/* View Mode: Cumulative vs Breakdown */}
-                    {viewMode === "cumulative" ? (
+                    {showSummary ? (
                       <>
                         {annual && <><th style={{ padding: "12px 10px", textAlign: "center", width: "90px" }}>TERM 1 (%)</th>
                         <th style={{ padding: "12px 10px", textAlign: "center", width: "90px" }}>TERM 2 (%)</th>
@@ -881,17 +888,29 @@ export default function MasterBroadsheet() {
                     ) : (
                       <>
                         {subjects.map((subj) => (
-                          <th key={subj} style={{ padding: "12px 10px", textAlign: "center", minWidth: "85px" }}>
+                          <th key={subj} colSpan={subjectLabels.length} style={{ padding: "10px", textAlign: "center", borderLeft: "1px solid #334155" }}>
                             {subj.toUpperCase()}
                           </th>
                         ))}
-                        <th style={{ padding: "12px 10px", textAlign: "center", minWidth: "100px", background: "#1E293B" }}>
+                        <th rowSpan={subjectHeaderRows} style={{ padding: "12px 10px", textAlign: "center", minWidth: "100px", background: "#1E293B" }}>
                           {annual ? "CUMULATIVE (%)" : `${termFilter.toUpperCase()} (%)`}
                         </th>
-                        {annual && <th style={{ padding: "12px 14px", minWidth: "150px" }}>PROMOTION</th>}
+                        {annual && <th rowSpan={subjectHeaderRows} style={{ padding: "12px 14px", minWidth: "150px" }}>PROMOTION</th>}
                       </>
                     )}
                   </tr>
+                  {subjectHeaderRows === 2 && (
+                    <tr style={{ background: "#1E293B", color: "#F8FAFC", fontSize: "11px" }}>
+                      {subjects.flatMap((subject) => subjectLabels.map((label, index) => (
+                        <th key={`${subject}:${label}`} scope="col" aria-label={`${subject} ${label}`} style={{
+                          padding: "7px 8px", minWidth: "52px", textAlign: "center", whiteSpace: "nowrap",
+                          borderLeft: index === 0 ? "1px solid #334155" : undefined,
+                        }}>
+                          {label}
+                        </th>
+                      )))}
+                    </tr>
+                  )}
                 </thead>
 
                 <tbody>
@@ -951,7 +970,7 @@ export default function MasterBroadsheet() {
                         </td>
 
                         {/* View Mode columns */}
-                        {viewMode === "cumulative" ? (
+                        {showSummary ? (
                           <>
                             {annual && <>{/* Term 1 */}
                             <td style={{ padding: "10px 10px", textAlign: "center", fontWeight: "700", color: r.term1Average >= 50 ? "#166534" : "#991B1B" }}>
@@ -1029,25 +1048,21 @@ export default function MasterBroadsheet() {
                         ) : (
                           <>
                             {/* Subject Marks Breakdown */}
-                            {subjects.map((subj) => {
-                              const item = r.subjectGrades?.[subj];
-                              const score = item?.annualAverage;
-                              const shown = subjectDisplayValue(score);
-                              return (
-                                <td
-                                  key={subj}
-                                  style={{
-                                    padding: "10px 8px",
-                                    textAlign: "center",
-                                    fontWeight: "700",
-                                    fontSize: "11px",
-                                    color: shown === "-" ? "#94A3B8" : score >= 50 ? "#166534" : "#DC2626",
-                                  }}
-                                >
-                                  {shown}
-                                </td>
-                              );
-                            })}
+                            {subjects.flatMap((subject) => subjectScoreValues(r.subjectGrades?.[subject], termFilter).map((shown, index) => (
+                              <td
+                                key={`${subject}:${subjectLabels[index]}`}
+                                style={{
+                                  padding: "10px 8px",
+                                  textAlign: "center",
+                                  fontWeight: index === 2 ? "800" : "600",
+                                  fontSize: "11px",
+                                  color: shown === "-" ? "#94A3B8" : index !== 2 ? "#334155" : shown >= 50 ? "#166534" : "#DC2626",
+                                  borderLeft: index === 0 ? "1px solid #E2E8F0" : undefined,
+                                }}
+                              >
+                                {shown}
+                              </td>
+                            )))}
 
                             {/* Cumulative Score */}
                             <td style={{ padding: "10px 10px", textAlign: "center", background: "#F1F5F9", fontWeight: "900" }}>
@@ -1212,20 +1227,27 @@ export default function MasterBroadsheet() {
           </Box>
 
           {/* Broadsheet Table */}
-          <table>
-            <thead>
-              <tr>
-                {exportReport.columns.map((column, index) => <th key={index} style={{ textAlign: column.align || "center" }}>{column.label}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {exportReport.body.map((row, index) => (
-                <tr key={index}>
-                  {row.map((value, columnIndex) => <td key={columnIndex} style={{ textAlign: exportReport.columns[columnIndex].align || "center" }}>{value}</td>)}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {broadsheetPrintPanels(exportReport.columns).map((panel, panelIndex, panels) => (
+            <Box key={panelIndex} className="print-broadsheet-panel">
+              {panels.length > 1 && (
+                <Text fontSize="8pt" fontWeight="bold" mb={2}>{exportReport.scopeLine} | Subject panel {panelIndex + 1} of {panels.length}</Text>
+              )}
+              <table>
+                <thead>
+                  <tr>
+                    {panel.map((index) => <th key={index}>{exportReport.columns[index].label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {exportReport.body.map((row, index) => (
+                    <tr key={index}>
+                      {panel.map((columnIndex) => <td key={columnIndex}>{row[columnIndex]}</td>)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+          ))}
 
           {/* Endorsement & Signature Footer */}
           <Flex justify="space-between" align="flex-end" mt={8} pt={4}>

@@ -8,7 +8,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import { jsPDF } from "jspdf";
 import { autoTable } from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import { buildBroadsheetExport, downloadBroadsheetExcel, subjectDisplayValue } from "./broadsheetExport.js";
+import { buildBroadsheetExport, broadsheetPrintPanels, downloadBroadsheetExcel, subjectDisplayValue } from "./broadsheetExport.js";
 import { downloadBroadsheetPdf } from "./broadsheetPdf.js";
 
 const source = await readFile(new URL("./MasterBroadsheet.jsx", import.meta.url), "utf8");
@@ -96,9 +96,9 @@ test("shared annual snapshot dashes zero subject cells but preserves overall zer
   assert.equal(cells["Term 1 Avg (%)"], 0);
   assert.equal(cells["Term 2 Avg (%)"], "-");
   assert.equal(cells["Term 3 Avg (%)"], "-");
-  assert.equal(cells["Mathematics Avg (%)"], "-");
-  assert.equal(cells["English Avg (%)"], "-");
-  assert.equal(cells["Unrecorded Avg (%)"], "-");
+  assert.equal(cells["Mathematics Total Avg"], "-");
+  assert.equal(cells["English Total Avg"], "-");
+  assert.equal(cells["Unrecorded Total Avg"], "-");
   assert.equal(cells["Cumulative Annual Avg (%)"], 0);
   assert.equal(cells["Promotion Status"], "INCOMPLETE");
   assert.equal(cells["Principal Remark"], "-");
@@ -110,16 +110,52 @@ test("shared annual snapshot dashes zero subject cells but preserves overall zer
 });
 
 test("each single-term report uses selected term values and has no annual/promotion columns or labels", () => {
-  for (const term of ["First Term", "Second Term", "Third Term"]) {
-    const data = report({ term, rows: [row({ annualRank: 2, cumulativeAverage: 0, principalRemark: "ANNUAL_ONLY", promotionStatus: "promoted" })] });
+  const subjectGrades = { Mathematics: {
+    term1: { ca: 18, exam: 40, total: 58 }, term2: { ca: 22, exam: 49, total: 71 },
+    term3: { ca: 0, exam: 55, total: 55 }, annualAverage: 61.3,
+  } };
+  const terms = [["First Term", [18, 40, 58]], ["Second Term", [22, 49, 71]], ["Third Term", ["-", 55, 55]]];
+  for (const [term, expected] of terms) {
+    const data = report({ term, rows: [row({ subjectGrades, annualRank: 2, cumulativeAverage: 0, principalRemark: "ANNUAL_ONLY", promotionStatus: "promoted" })] });
     assert.equal(data.title, `${term} Master Broadsheet`);
     assert.match(data.scopeLine, new RegExp(`Scope: ${term}$`));
     assert.equal(data.columns[1].label, `${term} Rank`);
     assert.equal(data.body[0][1], 2);
+    assert.deepEqual(data.columns.slice(4, 7).map((column) => column.label), ["Mathematics CA", "Mathematics Exam", "Mathematics Total"]);
+    assert.deepEqual(data.body[0].slice(4, 7), expected);
+    assert.deepEqual(data.body[0].slice(7, 10), ["-", "-", "-"]);
     assert.equal(data.body[0].at(-1), 0);
     assert.equal(data.columns.at(-1).label, `${term} Avg (%)`);
     assert.ok(!JSON.stringify(data).match(/Annual|Promotion|Principal|ANNUAL_ONLY|Term [123] Avg/));
   }
+});
+
+test("annual subject averages exclude unscored terms and keep the official total average", () => {
+  const subjectGrades = { Mathematics: {
+    term1: { ca: 21, exam: 39, total: 60 }, term2: { ca: 36, exam: 50, total: null },
+    term3: { ca: 26, exam: 63, total: 89 }, annualAverage: 74.5,
+  } };
+  const data = report({ rows: [row({ subjectGrades })] });
+  assert.deepEqual(data.columns.slice(7, 10).map((column) => column.label), ["Mathematics CA Avg", "Mathematics Exam Avg", "Mathematics Total Avg"]);
+  assert.deepEqual(data.body[0].slice(7, 10), [23.5, 51, 74.5]);
+  assert.deepEqual(data.body[0].slice(10, 13), ["-", "-", "-"]);
+  assert.equal(subjectGrades.Mathematics.term2.ca, 36);
+});
+
+test("print panels keep all three marks together and repeat student and summary columns", () => {
+  const data = report({ subjects: Array.from({ length: 9 }, (_, index) => `Subject ${index + 1}`) });
+  const columns = data.columns;
+  const panels = broadsheetPrintPanels(columns);
+  assert.deepEqual(panels.map((panel) => panel.length), [22, 22, 13]);
+  for (const panel of panels) {
+    assert.deepEqual(panel.slice(0, 7), [0, 1, 2, 3, 4, 5, 6]);
+    assert.deepEqual(panel.slice(-3), [34, 35, 36]);
+    const subjectColumns = panel.slice(7, -3);
+    for (let index = 0; index < subjectColumns.length; index += 3) {
+      assert.equal(new Set(subjectColumns.slice(index, index + 3).map((column) => columns[column].subject)).size, 1);
+    }
+  }
+  assert.equal(new Set(panels.flat()).size, columns.length);
 });
 
 test("export cells are a detached ordered snapshot and only supplied filtered rows are exported", () => {
@@ -185,20 +221,20 @@ test("zero and missing subject marks use dashes while nonzero values and source 
     assert.equal(subjectDisplayValue(value), "-");
   }
   for (const value of [45, 72.5, "63", "invalid"]) assert.equal(subjectDisplayValue(value), value);
-  for (const term of ["all", "First Term", "Second Term", "Third Term"]) {
-    const original = row({ subjectGrades: { Mathematics: { annualAverage: 0 }, English: { annualAverage: 63 } } });
-    const data = report({ term, rows: [original] });
-    const cells = Object.fromEntries(data.columns.map((column, index) => [column.label, data.body[0][index]]));
-    assert.equal(cells["Mathematics Avg (%)"], "-");
-    assert.equal(cells["English Avg (%)"], 63);
-    assert.equal(original.subjectGrades.Mathematics.annualAverage, 0);
-    assert.equal(original.cumulativeAverage, 0);
-    assert.match(data.notes.join(" "), /Subject cells use - for zero/);
-  }
+  const original = row({ subjectGrades: { Mathematics: { annualAverage: 0 }, English: { annualAverage: 63 } } });
+  const data = report({ rows: [original] });
+  const cells = Object.fromEntries(data.columns.map((column, index) => [column.label, data.body[0][index]]));
+  assert.equal(cells["Mathematics Total Avg"], "-");
+  assert.equal(cells["English Total Avg"], 63);
+  assert.equal(original.subjectGrades.Mathematics.annualAverage, 0);
+  assert.equal(original.cumulativeAverage, 0);
+  assert.match(data.notes.join(" "), /Subject cells use - for zero/);
 });
 
-test("screen subject cells use the same formatter as print, Excel and PDF snapshots", () => {
-  assert.match(source, /const shown = subjectDisplayValue\(score\)/);
+test("screen subject cells use the same breakdown as print, Excel and PDF snapshots", () => {
+  assert.match(source, /subjectScoreValues\(r\.subjectGrades\?\.\[subject\], termFilter\)/);
+  assert.match(source, /colSpan=\{subjectLabels\.length\}/);
+  assert.match(source, /const showSummary = annual && viewMode === "cumulative"/);
   assert.match(source, /color: shown === "-" \? "#94A3B8"/);
   assert.match(source, /\{shown\}/);
   assert.match(source, /exportReport\.body\.map/);
@@ -409,7 +445,7 @@ test("owned JSX is valid, both actions are discoverable/responsive, and print sh
   assert.match(source, /Download PDF/);
   assert.ok(!source.includes("Export Excel"));
   assert.match(source, /<SimpleGrid columns=\{\{ base: 1, sm: 2 \}\} gap=\{3\}>/);
-  assert.match(source, /exportReport\.columns\.map/);
+  assert.match(source, /broadsheetPrintPanels\(exportReport\.columns\)\.map/);
   assert.match(source, /exportReport\.body\.map/);
   assert.match(source, /aria-busy=\{exporting === "pdf"\}/);
   assert.match(source, /await import\("\.\/broadsheetPdf"\)/);

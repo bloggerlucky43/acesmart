@@ -23,11 +23,19 @@ function harness(t) {
   const classKey = ["student-editor-classes", "owner", "school", "teacher"];
   client.setQueryData(classKey, { success: true, data: [{ id: "a", institutionId: "school", formTeacherId: "owner", name: "Class A" }] });
   const state = { user, compression: null, upload: null };
-  const calls = { compress: [], save: [], updated: [], closed: 0, created: [], revoked: [], toast: [], classes: 0, focus: [], scroll: [] };
+  const calls = { compress: [], save: [], updated: [], closed: 0, created: [], revoked: [], toast: [], classes: 0, focus: [], scroll: [], camera: [], stopped: 0, frames: [] };
   const listeners = new Map();
+  const stream = { getTracks: () => [{ stop: () => { calls.stopped++; } }] };
+  const video = { srcObject: null, videoWidth: 1280, videoHeight: 720, play: async () => {} };
+  const camera = { getUserMedia: async (options) => { calls.camera.push(options); return state.camera ? state.camera.promise : stream; } };
   const document = { body: { style: { position: "", top: "", left: "", width: "", overflow: "auto", paddingRight: "6px" } },
     documentElement: { clientWidth: 1000, style: { scrollBehavior: "smooth" } },
-    addEventListener: (type, fn) => listeners.set(type, fn), removeEventListener: (type) => listeners.delete(type) };
+    addEventListener: (type, fn) => listeners.set(type, fn), removeEventListener: (type) => listeners.delete(type),
+    createElement: () => ({
+      getContext: () => ({ drawImage: (...args) => calls.frames.push(args) }),
+      toBlob: (resolve, type) => state.frame ? state.frame.promise.then(resolve) : resolve(new Blob(["camera-frame"], { type })),
+    }),
+  };
   const focusElement = (name) => ({ name, isConnected: true, getClientRects: () => [1],
     focus(options) { document.activeElement = this; calls.focus.push({ name, options }); } });
   const trigger = focusElement("trigger"); document.activeElement = trigger;
@@ -42,6 +50,7 @@ function harness(t) {
   const context = {
     jsx: (type, props, ...children) => {
       if (props?.role === "dialog") props.ref.current = dialog;
+      if (type === "video") props.ref.current = video;
       return { type, props: { ...props, children } };
     },
     useId: () => "fixture-student-editor-title",
@@ -70,6 +79,7 @@ function harness(t) {
     imageCompression: async (file, options) => { calls.compress.push({ file, options }); return state.compression ? state.compression.promise : new Blob(["fixture-jpeg"], { type: "image/jpeg" }); },
     updateStudentApi: async (id, formData, options) => { calls.save.push({ id, formData, options }); return state.upload ? state.upload.promise : { success: true, student: { ...props.student, faceImageUrl: "stored-photo" } }; },
     toaster: { create: (value) => calls.toast.push(value) }, File, Blob, FormData, AbortController, document, window,
+    navigator: { mediaDevices: camera },
     URL: { createObjectURL: (file) => { const url = `blob:fixture-${calls.created.length}`; calls.created.push({ file, url }); return url; }, revokeObjectURL: (url) => calls.revoked.push(url) },
   };
   for (const node of tree.body.filter((node) => node.type === "ImportDeclaration")) {
@@ -78,9 +88,10 @@ function harness(t) {
   const Component = new Function(...Object.keys(context), `${compiled}\nreturn EditStudentModal;`)(...Object.values(context));
   const render = () => { cursor = 0; dirty = false; rendered = Component(props); const pending = effects; effects = []; pending.forEach((fn) => fn()); };
   const h = {
-    state, calls, props, render, document, window, dialog, focusable, trigger,
+    state, calls, props, render, document, window, dialog, focusable, trigger, stream, video,
     find(predicate) { return nodes(rendered).find(predicate); },
     text() { return text(rendered); },
+    button(label) { return this.find((node) => node.type === "Button" && text(node) === label); },
     async flush() { for (let i = 0; i < 5; i++) { if (dirty) render(); await new Promise(setImmediate); } if (dirty) render(); },
     file(file = new File(["fixture-png"], "headshot.png", { type: "image/png" })) {
       return this.find((node) => node.type === "input" && node.props.type === "file").props.onChange({ target: { files: [file], value: "fixture" } });
@@ -117,6 +128,59 @@ test("Save is disabled and guarded synchronously until bounded JPEG processing f
   assert.equal(h.calls.closed, 1);
   assert.equal(h.calls.classes, 0);
   assert.ok(h.find((node) => node.type === "StudentAcademicSection"), "academic section remains intact");
+});
+
+test("camera capture previews a JPEG and only uploads it after Save Changes", async (t) => {
+  const h = harness(t); await h.flush();
+  assert.equal(h.button("Take Photo").props.type, "button");
+  await h.button("Take Photo").props.onClick(); await h.flush();
+  assert.deepEqual(h.calls.camera, [{ video: { facingMode: { ideal: "environment" } }, audio: false }]);
+  assert.equal(h.video.srcObject, h.stream);
+  assert.equal(h.button("Capture Photo").props.disabled, false);
+  await h.submit();
+  assert.equal(h.calls.save.length, 0);
+
+  await h.button("Capture Photo").props.onClick(); await h.flush();
+  assert.deepEqual(h.calls.frames[0], [h.video, 0, 0, 600, 338]);
+  assert.equal(h.calls.stopped, 1);
+  assert.equal(h.video.srcObject, null);
+  assert.equal(h.preview(), h.calls.created[0].url);
+  assert.ok(h.button("Retake Photo"));
+  assert.equal(h.calls.save.length, 0);
+  await h.submit();
+  assert.equal(h.calls.save[0].formData.get("face").name, "student-face.jpg");
+});
+
+test("denied camera access leaves file upload and save available", async (t) => {
+  const h = harness(t); await h.flush();
+  h.state.camera = deferred();
+  const opening = h.button("Take Photo").props.onClick();
+  h.state.camera.reject(Object.assign(new Error("blocked"), { name: "NotAllowedError" }));
+  await opening; await h.flush();
+  assert.match(h.calls.toast.at(-1).title, /access was denied/);
+  assert.equal(h.button("Upload Photo").props.disabled, false);
+  await h.file(); await h.flush(); await h.submit();
+  assert.equal(h.calls.save[0].formData.get("face").name, "headshot.jpg");
+});
+
+test("cancelling camera permission and switching students during capture discard late results", async (t) => {
+  const h = harness(t); await h.flush();
+  h.state.camera = deferred();
+  const opening = h.button("Take Photo").props.onClick(); await h.flush();
+  h.button("Cancel Camera").props.onClick();
+  h.state.camera.resolve(h.stream); await opening; await h.flush();
+  assert.equal(h.video.srcObject, null);
+  assert.equal(h.calls.stopped, 1);
+
+  await h.button("Take Photo").props.onClick(); await h.flush();
+  h.state.frame = deferred();
+  const capture = h.button("Capture Photo").props.onClick();
+  h.props.student = { ...h.props.student, id: "s2", faceImageUrl: "student-two" }; h.render(); await h.flush();
+  h.state.frame.resolve(new Blob(["late-frame"], { type: "image/jpeg" })); await capture; await h.flush();
+  assert.equal(h.calls.stopped, 2);
+  assert.equal(h.video.srcObject, null);
+  assert.equal(h.calls.compress.length, 0);
+  assert.equal(h.preview(), "student-two");
 });
 
 test("replacement, student switching, closing and unmounting discard late compression and clean URLs", async (t) => {
